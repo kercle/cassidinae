@@ -55,11 +55,14 @@ impl BigInteger {
         BigInteger::from_vec(Sign::Positive, vec![value])
     }
 
-    fn trim_leading_zeros(&mut self) {
-        while let Some(&0) = self.digits.last() {
-            self.digits.pop();
+    fn trim_leading_zeros_from_digits(digits: &mut Vec<Digit>) {
+        while let Some(&0) = digits.last() {
+            digits.pop();
         }
+    }
 
+    fn trim_leading_zeros(&mut self) {
+        Self::trim_leading_zeros_from_digits(&mut self.digits);
         if self.digits.is_empty() {
             self.digits.push(0);
             self.sign = Sign::Positive;
@@ -236,6 +239,29 @@ impl BigInteger {
         Some((result, rem as Digit))
     }
 
+    fn estimate_quotient_digit(rem: &[Digit], rhs: &[Digit]) -> Digit {
+        let n = rhs.len();
+        let m = rem.len();
+
+        // Use the top two digits of rem and the top digit of rhs
+        let rem_hi = if m >= n + 1 {
+            ((rem[m - 1] as DoubleDigit) << DIGIT_BITS) | (rem[m - 2] as DoubleDigit)
+        } else if m >= n {
+            rem[m - 1] as DoubleDigit
+        } else {
+            0
+        };
+
+        let rhs_hi = rhs[n - 1] as DoubleDigit;
+
+        let q_hat = rem_hi / rhs_hi;
+        if q_hat >= Digit::MAX as DoubleDigit {
+            Digit::MAX
+        } else {
+            q_hat as Digit + 1 // Round up to ensure we don't underestimate
+        }
+    }
+
     fn div_multi_digit_with_reminder_naive(
         lhs: &[Digit],
         rhs: &[Digit],
@@ -244,15 +270,27 @@ impl BigInteger {
             return None;
         }
 
-        let mut result = Vec::with_capacity(lhs.len());
+        let mut result = Vec::new();
         let mut rem: Vec<Digit> = Vec::new();
+        let mut rhs = rhs.to_vec();
+        Self::trim_leading_zeros_from_digits(&mut rhs);
 
         for &digit in lhs.iter().rev() {
             rem.insert(0, digit); // Add new digit to the remainder
-
             let mut quotient = 0;
-            while Self::cmp_digits(CompareFunction::GreaterEqual, &rem, rhs) {
-                todo!()
+
+            if Self::cmp_digits(CompareFunction::GreaterEqual, &rem, &rhs) {
+                quotient = Self::estimate_quotient_digit(&rem, &rhs);
+
+                let mut prod = Self::mul_by_digit_naive(&rhs, quotient);
+
+                while Self::cmp_digits(CompareFunction::Greater, &prod, &rem) && quotient > 0 {
+                    quotient -= 1;
+                    prod = Self::sub_digits_larger_from_smaller_naive(&prod, &rhs);
+                }
+
+                rem = Self::sub_digits_larger_from_smaller_naive(&rem, &prod);
+                Self::trim_leading_zeros_from_digits(&mut rem);
             }
 
             result.push(quotient);
@@ -517,10 +555,16 @@ mod tests {
 
         let (quotient, remainder) = BigInteger::div(&a, &b).unwrap();
 
-        dbg!(&quotient.digits);
-
-        assert_eq!(quotient.digits, vec![1, 2]);
-        assert_eq!(remainder.digits, vec![3, 4, 5]);
+        assert_eq!(
+            quotient.digits,
+            vec![
+                2305843009213693952,
+                13835058055282163713,
+                9223372036854775808,
+                2
+            ]
+        );
+        assert_eq!(remainder.digits, vec![16140901064495857665]);
     }
 
     #[test]
