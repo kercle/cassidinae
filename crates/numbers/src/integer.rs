@@ -90,6 +90,22 @@ impl BigInteger {
         Self::cmp_digits(CompareFunction::Less, &self.digits, &other.digits)
     }
 
+    pub fn ge(&self, other: &Self) -> bool {
+        if self.sign != other.sign {
+            return self.sign == Sign::Positive;
+        }
+
+        Self::cmp_digits(CompareFunction::GreaterEqual, &self.digits, &other.digits)
+    }
+
+    pub fn le(&self, other: &Self) -> bool {
+        if self.sign != other.sign {
+            return self.sign == Sign::Negative;
+        }
+
+        Self::cmp_digits(CompareFunction::LessEqual, &self.digits, &other.digits)
+    }
+
     pub fn abs(&self) -> Self {
         BigInteger::from_vec(Sign::Positive, self.digits.clone())
     }
