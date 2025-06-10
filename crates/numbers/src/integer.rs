@@ -12,6 +12,15 @@ pub enum Sign {
     Negative,
 }
 
+impl fmt::Display for Sign {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Sign::Positive => write!(f, "+"),
+            Sign::Negative => write!(f, "-"),
+        }
+    }
+}
+
 enum CompareFunction {
     Greater,
     Less,
@@ -55,6 +64,46 @@ impl BigInteger {
         BigInteger::from_vec(Sign::Positive, vec![value])
     }
 
+    pub fn from_str_radix(s: &str, radix: u32) -> Result<Self, String> {
+        if radix != 10 {
+            return Err(format!("Unsupported radix: {}", radix));
+        }
+
+        if s.is_empty() {
+            return Err("Input string is empty".to_string());
+        }
+
+        let s = s.trim();
+        let mut chars_iter = s.chars();
+
+        let sign = if s.starts_with('-') {
+            chars_iter.next();
+            Sign::Negative
+        } else if s.starts_with('+') {
+            chars_iter.next();
+            Sign::Positive
+        } else {
+            Sign::Positive
+        };
+
+        let mut result = Self::from_u64(0);
+        for chunk in chars_iter.collect::<Vec<_>>().chunks(18) {
+            let chunk_str: String = chunk.iter().collect();
+            let factor = 10u64.pow(chunk.len() as u32);
+
+            if let Ok(value) = chunk_str.parse::<u64>() {
+                result = BigInteger::mul(&result, &BigInteger::from_u64(factor));
+                result = BigInteger::add(&result, &BigInteger::from_u64(value));
+            } else {
+                return Err(format!("Invalid number: {}", chunk_str));
+            }
+        }
+
+        result.sign = sign;
+        result.trim_leading_zeros();
+        Ok(result)
+    }
+
     fn trim_leading_zeros_from_digits(digits: &mut Vec<Digit>) {
         while let Some(&0) = digits.last() {
             digits.pop();
@@ -69,9 +118,19 @@ impl BigInteger {
         }
     }
 
+    pub fn is_zero(&self) -> bool {
+        for &digit in &self.digits {
+            if digit != 0 {
+                return false;
+            }
+        }
+
+        true
+    }
+
     pub fn eq(&self, other: &Self) -> bool {
         self.sign == other.sign
-            && !Self::cmp_digits(CompareFunction::NotEqual, &self.digits, &other.digits)
+            && Self::cmp_digits(CompareFunction::Equal, &self.digits, &other.digits)
     }
 
     pub fn gt(&self, other: &Self) -> bool {
@@ -408,11 +467,6 @@ impl BigInteger {
 
 impl fmt::Display for BigInteger {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let sign_str = match self.sign {
-            Sign::Positive => "",
-            Sign::Negative => "-",
-        };
-
         let mut digits_str: String = String::new();
         let mut num = self.clone();
 
@@ -431,7 +485,17 @@ impl fmt::Display for BigInteger {
             digits_str.push('0');
         }
 
-        write!(f, "{}{}", sign_str, digits_str)
+        if self.sign == Sign::Negative {
+            write!(f, "{}{}", self.sign, digits_str)
+        } else {
+            write!(f, "{}", digits_str)
+        }
+    }
+}
+
+impl fmt::Debug for BigInteger {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.to_string())
     }
 }
 
@@ -599,5 +663,28 @@ mod tests {
             format!("{}", r),
             "-38518245624879860378241768376646701319896340484039306"
         );
+    }
+
+    #[test]
+    fn test_big_integer_from_str_radix() {
+        let a = BigInteger::from_str_radix("123456789012", 10).unwrap();
+        assert_eq!(a.digits, vec![123456789012]);
+        assert_eq!(a.sign, Sign::Positive);
+
+        let a = BigInteger::from_str_radix("+123456789012", 10).unwrap();
+        assert_eq!(a.digits, vec![123456789012]);
+        assert_eq!(a.sign, Sign::Positive);
+
+        let b = BigInteger::from_str_radix("-123456789012", 10).unwrap();
+        assert_eq!(b.digits, vec![123456789012]);
+        assert_eq!(b.sign, Sign::Negative);
+
+        let a = BigInteger::from_str_radix("123456789012345678901234567890", 10).unwrap();
+        assert_eq!(a.digits, vec![14083847773837265618, 6692605942]);
+        assert_eq!(a.sign, Sign::Positive);
+
+        let c = BigInteger::from_str_radix("0", 10).unwrap();
+        assert_eq!(c.digits, vec![0]);
+        assert_eq!(c.sign, Sign::Positive);
     }
 }
