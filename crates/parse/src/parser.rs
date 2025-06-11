@@ -475,4 +475,28 @@ mod tests {
             }])
         );
     }
+
+    #[test]
+    fn test_parsing_block_with_nested_expressions() {
+        let input = "{ 3 + 4; 5 * 6 }";
+        let ast = parse(input).expect("Failed to parse block with nested expressions");
+
+        assert_eq!(
+            ast,
+            Block(vec![
+                BinaryNode {
+                    op: Add,
+                    lhs: Number(RealScalar::from_str("3").unwrap()).into(),
+                    rhs: Number(RealScalar::from_str("4").unwrap()).into()
+                }
+                .into(),
+                BinaryNode {
+                    op: Mul,
+                    lhs: Number(RealScalar::from_str("5").unwrap()).into(),
+                    rhs: Number(RealScalar::from_str("6").unwrap()).into()
+                }
+                .into()
+            ])
+        );
+    }
 }
