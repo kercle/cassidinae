@@ -9,7 +9,7 @@ use crate::{
 fn parse_named_value_or_function_call(stream: &mut TokenStream) -> Result<AstNode, ParseError> {
     // <named_value_or_function_call> ::= <identifier>
     //    | <identifier> "(" ")"
-    //    | <identifier> "(" <expression> { "," <expression> }* ")"
+    //    | <identifier> "(" <block> { "," <block> }* ")"
 
     let identifier = stream.next_if_identifier();
 
@@ -33,18 +33,18 @@ fn parse_named_value_or_function_call(stream: &mut TokenStream) -> Result<AstNod
         });
     }
 
-    let mut args = vec![parse_expression(stream)?];
+    let mut args = vec![parse_block(stream)?];
     loop {
         if stream.next_if_matches_token(&Token::Comma).is_none() {
             break; // No more arguments
         }
 
-        args.push(parse_expression(stream)?);
+        args.push(parse_block(stream)?);
     }
 
     if stream.next_if_matches_token(&Token::RightParen).is_none() {
         return Err(ParseError {
-            message: "Expected an identifier".to_string(),
+            message: "Expected closing parenthesis ')' after function arguments".to_string(),
             at_token: stream.peek().cloned(),
         });
     }
@@ -57,11 +57,11 @@ fn parse_named_value_or_function_call(stream: &mut TokenStream) -> Result<AstNod
 
 fn parse_atom(stream: &mut TokenStream) -> Result<AstNode, ParseError> {
     // <atom> ::= <number>
-    //    | "(" <expression> ")"
+    //    | "(" <block> ")"
     //    | <named_value_or_function_call>
 
     if stream.next_if_matches_token(&Token::LeftParen).is_some() {
-        let expr = parse_expression(stream)?;
+        let expr = parse_block(stream)?;
 
         if stream.next_if_matches_token(&Token::RightParen).is_some() {
             return Ok(expr);
@@ -88,7 +88,7 @@ fn parse_power(stream: &mut TokenStream) -> Result<AstNode, ParseError> {
     let mut result = parse_atom(stream)?;
 
     if stream.next_if_matches_token(&Token::Caret).is_some() {
-        result = AstNode::BinaryOp {
+        result = AstNode::BinaryNode {
             op: BinaryOp::Pow,
             lhs: Box::new(result),
             rhs: Box::new(parse_power(stream)?),
@@ -114,7 +114,7 @@ fn parse_signed_power(stream: &mut TokenStream) -> Result<AstNode, ParseError> {
     let ast = parse_power(stream)?;
 
     if negate_count % 2 == 1 {
-        Ok(AstNode::UnaryOp {
+        Ok(AstNode::UnaryNode {
             op: UnaryOp::Negate,
             expr: Box::new(ast),
         })
@@ -135,7 +135,7 @@ fn parse_product(stream: &mut TokenStream) -> Result<AstNode, ParseError> {
             break; // No more operators
         }
 
-        result = AstNode::BinaryOp {
+        result = AstNode::BinaryNode {
             op: match c {
                 Some(Token::Asterisk) => BinaryOp::Mul,
                 Some(Token::Slash) => BinaryOp::Div,
@@ -160,7 +160,7 @@ fn parse_sum(stream: &mut TokenStream) -> Result<AstNode, ParseError> {
             break; // No more operators
         }
 
-        result = AstNode::BinaryOp {
+        result = AstNode::BinaryNode {
             op: match op {
                 Some(Token::Plus) => BinaryOp::Add,
                 Some(Token::Minus) => BinaryOp::Sub,
@@ -180,10 +180,40 @@ fn parse_expression(stream: &mut TokenStream) -> Result<AstNode, ParseError> {
     parse_sum(stream)
 }
 
+fn parse_block(stream: &mut TokenStream) -> Result<AstNode, ParseError> {
+    // <block> ::= <expression> { ";" <expression> }*
+    //    | "{" <block> "}"
+
+    let mut nodes = Vec::new();
+
+    if stream.next_if_matches_token(&Token::LeftBrace).is_some() {
+        let block = parse_block(stream)?;
+        if stream.next_if_matches_token(&Token::RightBrace).is_none() {
+            return Err(ParseError {
+                message: "Expected closing brace '}'".to_string(),
+                at_token: stream.peek().cloned(),
+            });
+        }
+
+        Ok(block)
+    } else {
+        loop {
+            let expr = parse_expression(stream)?;
+            nodes.push(expr);
+
+            if stream.next_if_matches_token(&Token::Semicolon).is_none() {
+                break; // No more expressions
+            }
+        }
+
+        Ok(AstNode::Block(nodes))
+    }
+}
+
 pub fn parse(input: &str) -> Result<AstNode, BoxedError> {
     let mut stream = TokenStream::from_str(input)?;
 
-    let ast = parse_expression(&mut stream);
+    let ast = parse_block(&mut stream);
 
     if ast.is_ok() && !stream.end_of_stream() {
         return Err(ParseError {
@@ -202,7 +232,9 @@ pub fn parse(input: &str) -> Result<AstNode, BoxedError> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ast::AstNode;
+
+    use AstNode::*;
+    use BinaryOp::*;
 
     #[test]
     fn test_parse_expression_long() {
@@ -211,31 +243,39 @@ mod tests {
 
         assert_eq!(
             ast,
-            AstNode::BinaryOp {
-                op: BinaryOp::Sub,
-                lhs: Box::new(AstNode::BinaryOp {
-                    op: BinaryOp::Add,
-                    lhs: Box::new(AstNode::Number(RealScalar::from_str("3").unwrap())),
-                    rhs: Box::new(AstNode::BinaryOp {
-                        op: BinaryOp::Mul,
-                        lhs: Box::new(AstNode::Number(RealScalar::from_str("4").unwrap())),
-                        rhs: Box::new(AstNode::Number(RealScalar::from_str("2").unwrap()))
-                    })
-                }),
-                rhs: Box::new(AstNode::BinaryOp {
-                    op: BinaryOp::Pow,
-                    lhs: Box::new(AstNode::BinaryOp {
-                        op: BinaryOp::Add,
-                        lhs: Box::new(AstNode::Number(RealScalar::from_str("1").unwrap())),
-                        rhs: Box::new(AstNode::Number(RealScalar::from_str("5").unwrap()))
-                    }),
-                    rhs: Box::new(AstNode::BinaryOp {
-                        op: BinaryOp::Pow,
-                        lhs: Box::new(AstNode::Number(RealScalar::from_str("2").unwrap())),
-                        rhs: Box::new(AstNode::Number(RealScalar::from_str("3").unwrap()))
-                    })
-                })
-            }
+            Block(vec![BinaryNode {
+                op: Sub,
+                lhs: BinaryNode {
+                    op: Add,
+                    lhs: Number(RealScalar::from_str("3").unwrap()).into(),
+                    rhs: BinaryNode {
+                        op: Mul,
+                        lhs: Number(RealScalar::from_str("4").unwrap()).into(),
+                        rhs: Number(RealScalar::from_str("2").unwrap()).into()
+                    }
+                    .into()
+                }
+                .into(),
+                rhs: BinaryNode {
+                    op: Pow,
+                    lhs: Block(vec![
+                        BinaryNode {
+                            op: Add,
+                            lhs: Number(RealScalar::from_str("1").unwrap()).into(),
+                            rhs: Number(RealScalar::from_str("5").unwrap()).into()
+                        }
+                        .into()
+                    ])
+                    .into(),
+                    rhs: BinaryNode {
+                        op: Pow,
+                        lhs: Number(RealScalar::from_str("2").unwrap()).into(),
+                        rhs: Number(RealScalar::from_str("3").unwrap()).into()
+                    }
+                    .into()
+                }
+                .into()
+            }])
         );
     }
 
@@ -246,15 +286,16 @@ mod tests {
 
         assert_eq!(
             ast,
-            AstNode::BinaryOp {
-                op: BinaryOp::Sub,
-                lhs: Box::new(AstNode::BinaryOp {
-                    op: BinaryOp::Add,
-                    lhs: Box::new(AstNode::Number(RealScalar::from_str("3").unwrap())),
-                    rhs: Box::new(AstNode::Number(RealScalar::from_str("5").unwrap()))
-                }),
-                rhs: Box::new(AstNode::Number(RealScalar::from_str("2").unwrap()))
-            }
+            Block(vec![BinaryNode {
+                op: Sub,
+                lhs: BinaryNode {
+                    op: Add,
+                    lhs: Number(RealScalar::from_str("3").unwrap()).into(),
+                    rhs: Number(RealScalar::from_str("5").unwrap()).into()
+                }
+                .into(),
+                rhs: Number(RealScalar::from_str("2").unwrap()).into()
+            }])
         );
     }
 
@@ -265,11 +306,11 @@ mod tests {
 
         assert_eq!(
             ast,
-            AstNode::BinaryOp {
-                op: BinaryOp::Add,
-                lhs: Box::new(AstNode::Number(RealScalar::from_str("3.14").unwrap())),
-                rhs: Box::new(AstNode::Number(RealScalar::from_str("2.71").unwrap()))
-            }
+            Block(vec![BinaryNode {
+                op: Add,
+                lhs: Number(RealScalar::from_str("3.14").unwrap()).into(),
+                rhs: Number(RealScalar::from_str("2.71").unwrap()).into()
+            }])
         );
     }
 
@@ -287,15 +328,16 @@ mod tests {
 
         assert_eq!(
             ast,
-            AstNode::BinaryOp {
-                op: BinaryOp::Add,
-                lhs: Box::new(AstNode::Number(RealScalar::from_str("3").unwrap())),
-                rhs: Box::new(AstNode::BinaryOp {
-                    op: BinaryOp::Mul,
-                    lhs: Box::new(AstNode::Number(RealScalar::from_str("5").unwrap())),
-                    rhs: Box::new(AstNode::Number(RealScalar::from_str("2").unwrap()))
-                })
-            }
+            Block(vec![BinaryNode {
+                op: Add,
+                lhs: Number(RealScalar::from_str("3").unwrap()).into(),
+                rhs: BinaryNode {
+                    op: Mul,
+                    lhs: Number(RealScalar::from_str("5").unwrap()).into(),
+                    rhs: Number(RealScalar::from_str("2").unwrap()).into()
+                }
+                .into()
+            }])
         );
     }
 
@@ -306,19 +348,21 @@ mod tests {
 
         assert_eq!(
             ast,
-            AstNode::BinaryOp {
-                op: BinaryOp::Add,
-                lhs: Box::new(AstNode::BinaryOp {
-                    op: BinaryOp::Mul,
-                    lhs: Box::new(AstNode::Number(RealScalar::from_str("7").unwrap())),
-                    rhs: Box::new(AstNode::BinaryOp {
-                        op: BinaryOp::Pow,
-                        lhs: Box::new(AstNode::Number(RealScalar::from_str("2").unwrap())),
-                        rhs: Box::new(AstNode::Number(RealScalar::from_str("3").unwrap()))
-                    })
-                }),
-                rhs: Box::new(AstNode::Number(RealScalar::from_str("4").unwrap()))
-            }
+            Block(vec![BinaryNode {
+                op: Add,
+                lhs: BinaryNode {
+                    op: Mul,
+                    lhs: Number(RealScalar::from_str("7").unwrap()).into(),
+                    rhs: BinaryNode {
+                        op: Pow,
+                        lhs: Number(RealScalar::from_str("2").unwrap()).into(),
+                        rhs: Number(RealScalar::from_str("3").unwrap()).into()
+                    }
+                    .into()
+                }
+                .into(),
+                rhs: Number(RealScalar::from_str("4").unwrap()).into()
+            }])
         );
     }
 
@@ -329,15 +373,16 @@ mod tests {
 
         assert_eq!(
             ast,
-            AstNode::BinaryOp {
-                op: BinaryOp::Mul,
-                lhs: Box::new(AstNode::BinaryOp {
-                    op: BinaryOp::Add,
-                    lhs: Box::new(AstNode::Number(RealScalar::from_str("3").unwrap())),
-                    rhs: Box::new(AstNode::Number(RealScalar::from_str("5").unwrap()))
-                }),
-                rhs: Box::new(AstNode::Number(RealScalar::from_str("2").unwrap()))
-            }
+            Block(vec![BinaryNode {
+                op: Mul,
+                lhs: Block(vec![BinaryNode {
+                    op: Add,
+                    lhs: Number(RealScalar::from_str("3").unwrap()).into(),
+                    rhs: Number(RealScalar::from_str("5").unwrap()).into()
+                }])
+                .into(),
+                rhs: Number(RealScalar::from_str("2").unwrap()).into()
+            }])
         );
     }
 
@@ -348,23 +393,26 @@ mod tests {
 
         assert_eq!(
             ast,
-            AstNode::BinaryOp {
-                op: BinaryOp::Add,
-                lhs: Box::new(AstNode::Number(RealScalar::from_str("3").unwrap())),
-                rhs: Box::new(AstNode::BinaryOp {
-                    op: BinaryOp::Pow,
-                    lhs: Box::new(AstNode::BinaryOp {
-                        op: BinaryOp::Mul,
-                        lhs: Box::new(AstNode::Number(RealScalar::from_str("2").unwrap())),
-                        rhs: Box::new(AstNode::BinaryOp {
-                            op: BinaryOp::Sub,
-                            lhs: Box::new(AstNode::Number(RealScalar::from_str("5").unwrap())),
-                            rhs: Box::new(AstNode::Number(RealScalar::from_str("1").unwrap()))
-                        })
-                    }),
-                    rhs: Box::new(AstNode::Number(RealScalar::from_str("2").unwrap()))
-                })
-            }
+            Block(vec![BinaryNode {
+                op: Add,
+                lhs: Number(RealScalar::from_str("3").unwrap()).into(),
+                rhs: BinaryNode {
+                    op: Pow,
+                    lhs: Block(vec![BinaryNode {
+                        op: Mul,
+                        lhs: Number(RealScalar::from_str("2").unwrap()).into(),
+                        rhs: Block(vec![BinaryNode {
+                            op: Sub,
+                            lhs: Number(RealScalar::from_str("5").unwrap()).into(),
+                            rhs: Number(RealScalar::from_str("1").unwrap()).into()
+                        }])
+                        .into()
+                    }])
+                    .into(),
+                    rhs: Number(RealScalar::from_str("2").unwrap()).into()
+                }
+                .into()
+            }])
         );
     }
 
@@ -375,49 +423,56 @@ mod tests {
 
         assert_eq!(
             ast,
-            AstNode::BinaryOp {
-                op: BinaryOp::Mul,
-                lhs: Box::new(AstNode::BinaryOp {
-                    op: BinaryOp::Mul,
-                    lhs: Box::new(AstNode::BinaryOp {
-                        op: BinaryOp::Div,
-                        lhs: Box::new(AstNode::BinaryOp {
-                            op: BinaryOp::Mul,
-                            lhs: Box::new(AstNode::Number(RealScalar::from_str("5").unwrap())),
-                            rhs: Box::new(AstNode::BinaryOp {
-                                op: BinaryOp::Pow,
-                                lhs: Box::new(AstNode::NamedValue("pi".to_string())),
-                                rhs: Box::new(AstNode::Number(RealScalar::from_str("2").unwrap()))
-                            })
-                        }),
-                        rhs: Box::new(AstNode::Number(RealScalar::from_str("4").unwrap()))
-                    }),
-                    rhs: Box::new(AstNode::FunctionCall {
+            Block(vec![BinaryNode {
+                op: Mul,
+                lhs: BinaryNode {
+                    op: Mul,
+                    lhs: BinaryNode {
+                        op: Div,
+                        lhs: BinaryNode {
+                            op: Mul,
+                            lhs: Number(RealScalar::from_str("5").unwrap()).into(),
+                            rhs: BinaryNode {
+                                op: Pow,
+                                lhs: AstNode::NamedValue("pi".to_string()).into(),
+                                rhs: Number(RealScalar::from_str("2").unwrap()).into()
+                            }
+                            .into()
+                        }
+                        .into(),
+                        rhs: Number(RealScalar::from_str("4").unwrap()).into()
+                    }
+                    .into(),
+                    rhs: AstNode::FunctionCall {
                         name: "cos".to_string(),
-                        args: vec![AstNode::BinaryOp {
-                            op: BinaryOp::Div,
-                            lhs: Box::new(AstNode::BinaryOp {
-                                op: BinaryOp::Mul,
-                                lhs: Box::new(AstNode::NamedValue("pi".to_string())),
-                                rhs: Box::new(AstNode::NamedValue("x".to_string()))
-                            }),
-                            rhs: Box::new(AstNode::Number(RealScalar::from_str("2").unwrap()))
-                        }]
-                    })
-                }),
-                rhs: Box::new(AstNode::FunctionCall {
+                        args: vec![Block(vec![BinaryNode {
+                            op: Div,
+                            lhs: BinaryNode {
+                                op: Mul,
+                                lhs: AstNode::NamedValue("pi".to_string()).into(),
+                                rhs: AstNode::NamedValue("x".to_string()).into()
+                            }
+                            .into(),
+                            rhs: Number(RealScalar::from_str("2").unwrap()).into()
+                        }])]
+                    }.into()
+                }
+                .into(),
+                rhs: AstNode::FunctionCall {
                     name: "sin".to_string(),
-                    args: vec![AstNode::BinaryOp {
-                        op: BinaryOp::Div,
-                        lhs: Box::new(AstNode::BinaryOp {
-                            op: BinaryOp::Mul,
-                            lhs: Box::new(AstNode::NamedValue("pi".to_string())),
-                            rhs: Box::new(AstNode::NamedValue("y".to_string()))
-                        }),
-                        rhs: Box::new(AstNode::Number(RealScalar::from_str("2").unwrap()))
-                    }]
-                })
-            }
+                    args: vec![Block(vec![BinaryNode {
+                        op: Div,
+                        lhs: BinaryNode {
+                            op: Mul,
+                            lhs: AstNode::NamedValue("pi".to_string()).into(),
+                            rhs: AstNode::NamedValue("y".to_string()).into()
+                        }
+                        .into(),
+                        rhs: Number(RealScalar::from_str("2").unwrap()).into()
+                    }])]
+                }
+                .into()
+            }])
         );
     }
 }

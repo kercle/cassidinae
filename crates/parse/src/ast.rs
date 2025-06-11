@@ -50,11 +50,11 @@ impl Operator for BinaryOp {
 pub enum AstNode {
     Number(RealScalar),
     NamedValue(String),
-    UnaryOp {
+    UnaryNode {
         op: UnaryOp,
         expr: Box<AstNode>,
     },
-    BinaryOp {
+    BinaryNode {
         op: BinaryOp,
         lhs: Box<AstNode>,
         rhs: Box<AstNode>,
@@ -63,6 +63,7 @@ pub enum AstNode {
         name: String,
         args: Vec<AstNode>,
     },
+    Block(Vec<AstNode>),
 }
 
 impl AstNode {
@@ -104,13 +105,13 @@ impl AstNode {
         match ast {
             AstNode::Number(value) => value.to_string(),
             AstNode::NamedValue(name) => Self::fancy_name(name),
-            AstNode::UnaryOp { op, expr } => {
+            AstNode::UnaryNode { op, expr } => {
                 let expr_str = Self::ast_to_latex(expr, Some(op.precedence()));
                 match op {
                     UnaryOp::Negate => format!("-{}", expr_str),
                 }
             }
-            AstNode::BinaryOp { op, lhs, rhs } => {
+            AstNode::BinaryNode { op, lhs, rhs } => {
                 let precedence = if *op == BinaryOp::Div {
                     None // For fractions we don't want parentheses
                 } else {
@@ -163,6 +164,16 @@ impl AstNode {
                 };
 
                 format!("{name}{lbracket}{}{rbracket}", args_disp.join(", "))
+            }
+            AstNode::Block(nodes) => {
+                let mut block_str = String::new();
+                for node in nodes {
+                    if !block_str.is_empty() {
+                        block_str.push_str(" \\\\\n");
+                    }
+                    block_str.push_str(&Self::ast_to_latex(node, None));
+                }
+                block_str
             }
         }
     }
