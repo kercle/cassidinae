@@ -48,27 +48,69 @@ impl Operator for BinaryOp {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum AstNode {
-    Number(RealScalar),
+    Constant(RealScalar),
     NamedValue(String),
-    UnaryNode {
-        op: UnaryOp,
-        expr: Box<AstNode>,
-    },
-    BinaryNode {
-        op: BinaryOp,
-        lhs: Box<AstNode>,
-        rhs: Box<AstNode>,
-    },
-    FunctionCall {
-        name: String,
-        args: Vec<AstNode>,
-    },
+    Negate(Box<AstNode>),
+    Add(Box<AstNode>, Box<AstNode>),
+    Sub(Box<AstNode>, Box<AstNode>),
+    Mul(Box<AstNode>, Box<AstNode>),
+    Div(Box<AstNode>, Box<AstNode>),
+    Pow(Box<AstNode>, Box<AstNode>),
+    Sin(Box<AstNode>),
+    Cos(Box<AstNode>),
+    Tan(Box<AstNode>),
+    Sqrt(Box<AstNode>),
+    FunctionCall { name: String, args: Vec<AstNode> },
     Block(Vec<AstNode>),
 }
 
 impl AstNode {
+    pub fn from_function_call(name: String, mut args: Vec<AstNode>) -> Result<Self, String> {
+        let initial_args_len = args.len();
+
+        let result = match name.as_str() {
+            "sin" => Ok(AstNode::Sin(Box::new(
+                args.pop().ok_or("sin requires one argument")?,
+            ))),
+            "cos" => Ok(AstNode::Cos(Box::new(
+                args.pop().ok_or("cos requires one argument")?,
+            ))),
+            "tan" => Ok(AstNode::Tan(Box::new(
+                args.pop().ok_or("tan requires one argument")?,
+            ))),
+            "sqrt" => Ok(AstNode::Sqrt(Box::new(
+                args.pop().ok_or("sqrt requires one argument")?,
+            ))),
+            _ => {
+                return Ok(AstNode::FunctionCall {
+                    name: name.clone(),
+                    args: args,
+                });
+            }
+        };
+
+        if !args.is_empty() {
+            let expected_arg_count = initial_args_len - args.len();
+
+            let arguments = if expected_arg_count == 1 {
+                "argument"
+            } else {
+                "arguments"
+            };
+
+            return Err(format!(
+                "Function {} takes {} {arguments} but {} given.",
+                name,
+                initial_args_len - args.len(),
+                initial_args_len
+            ));
+        }
+
+        result
+    }
+
     pub fn is_numeric(&self) -> bool {
-        matches!(self, AstNode::Number(_))
+        matches!(self, AstNode::Constant(_))
     }
 
     fn fancy_name(name: &str) -> String {
@@ -101,45 +143,98 @@ impl AstNode {
         }
     }
 
-    fn ast_to_latex(ast: &AstNode, parent_precedence: Option<u8>) -> String {
-        match ast {
-            AstNode::Number(value) => value.to_string(),
-            AstNode::NamedValue(name) => Self::fancy_name(name),
-            AstNode::UnaryNode { op, expr } => {
-                let expr_str = Self::ast_to_latex(expr, Some(op.precedence()));
-                match op {
-                    UnaryOp::Negate => format!("-{}", expr_str),
-                }
-            }
-            AstNode::BinaryNode { op, lhs, rhs } => {
-                let precedence = if *op == BinaryOp::Div {
-                    None // For fractions we don't want parentheses
-                } else {
-                    Some(op.precedence())
-                };
+    fn operator_precedence(self: &AstNode) -> Option<u32> {
+        match self {
+            AstNode::Negate(_) => Some(3),
+            AstNode::Add(_, _) => Some(1),
+            AstNode::Sub(_, _) => Some(1),
+            AstNode::Mul(_, _) => Some(2),
+            AstNode::Div(_, _) => Some(2),
+            AstNode::Pow(_, _) => Some(4),
+            _ => None,
+        }
+    }
 
+    fn wrap_with_parentheses(
+        sub_tree_str: String,
+        precedence: Option<u32>,
+        parent_precedence: Option<u32>,
+    ) -> String {
+        if parent_precedence > precedence {
+            format!("\\left({}\\right)", sub_tree_str)
+        } else {
+            sub_tree_str
+        }
+    }
+
+    fn ast_to_latex(ast: &AstNode, parent_precedence: Option<u32>) -> String {
+        let precedence = ast.operator_precedence();
+
+        match ast {
+            AstNode::Constant(value) => value.to_string(),
+            AstNode::NamedValue(name) => Self::fancy_name(name),
+            AstNode::Negate(node) => {
+                format!("-{}", Self::ast_to_latex(node, precedence))
+            }
+            AstNode::Add(lhs, rhs) => Self::wrap_with_parentheses(
+                format!(
+                    "{} + {}",
+                    Self::ast_to_latex(lhs, precedence),
+                    Self::ast_to_latex(rhs, precedence)
+                ),
+                precedence,
+                parent_precedence,
+            ),
+            AstNode::Sub(lhs, rhs) => Self::wrap_with_parentheses(
+                format!(
+                    "{} - {}",
+                    Self::ast_to_latex(lhs, precedence),
+                    Self::ast_to_latex(rhs, precedence)
+                ),
+                precedence,
+                parent_precedence,
+            ),
+            AstNode::Mul(lhs, rhs) => {
                 let lhs_str = Self::ast_to_latex(lhs, precedence);
                 let rhs_str = Self::ast_to_latex(rhs, precedence);
 
-                let sub_tree_disp = match op {
-                    BinaryOp::Add => format!("{} + {}", lhs_str, rhs_str),
-                    BinaryOp::Sub => format!("{} - {}", lhs_str, rhs_str),
-                    BinaryOp::Mul => {
-                        if lhs.is_numeric() && rhs.is_numeric() {
-                            format!("{} \\cdot {}", lhs_str, rhs_str)
-                        } else {
-                            format!("{} {}", lhs_str, rhs_str)
-                        }
-                    }
-                    BinaryOp::Div => format!("\\frac{{{}}}{{{}}}", lhs_str, rhs_str),
-                    BinaryOp::Pow => format!("{}^{{{}}}", lhs_str, rhs_str),
+                let sub_tree_disp = if lhs.is_numeric() && rhs.is_numeric() {
+                    format!("{} \\cdot {}", lhs_str, rhs_str)
+                } else {
+                    format!("{} {}", lhs_str, rhs_str)
                 };
 
-                if parent_precedence > precedence && precedence.is_some() {
-                    format!("\\left({}\\right)", sub_tree_disp)
-                } else {
-                    sub_tree_disp
-                }
+                Self::wrap_with_parentheses(sub_tree_disp, precedence, parent_precedence)
+            }
+            AstNode::Div(lhs, rhs) => {
+                let lhs_str = Self::ast_to_latex(lhs, precedence);
+                let rhs_str = Self::ast_to_latex(rhs, precedence);
+
+                let sub_tree_disp = format!("\\frac{{{}}}{{{}}}", lhs_str, rhs_str);
+                Self::wrap_with_parentheses(sub_tree_disp, precedence, parent_precedence)
+            }
+            AstNode::Pow(lhs, rhs) => {
+                let lhs_str = Self::ast_to_latex(lhs, precedence);
+                let rhs_str = Self::ast_to_latex(rhs, precedence);
+
+                let sub_tree_disp = format!("{}^{{{}}}", lhs_str, rhs_str);
+                Self::wrap_with_parentheses(sub_tree_disp, precedence, parent_precedence)
+            }
+            AstNode::Sin(node) => {
+                let node_str = Self::ast_to_latex(node, precedence);
+                format!("\\sin\\left({}\\right)", node_str)
+            }
+            AstNode::Cos(node) => {
+                let node_str = Self::ast_to_latex(node, precedence);
+                format!("\\cos\\left({}\\right)", node_str)
+            }
+            AstNode::Tan(node) => {
+                let node_str = Self::ast_to_latex(node, precedence);
+                format!("\\tan\\left({}\\right)", node_str)
+            }
+            AstNode::Sqrt(node) => {
+                let node_str = Self::ast_to_latex(node, precedence);
+                format!("\\sqrt{{{}}}", node_str)
             }
             AstNode::FunctionCall { name, args } => {
                 let mut args_disp = Vec::new();
