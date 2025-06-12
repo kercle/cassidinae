@@ -171,7 +171,7 @@ impl AstNode {
                     if !block_str.is_empty() {
                         block_str.push_str(" \\\\\n");
                     }
-                    block_str.push_str(&Self::ast_to_latex(node, None));
+                    block_str.push_str(&Self::ast_to_latex(node, parent_precedence));
                 }
                 block_str
             }
