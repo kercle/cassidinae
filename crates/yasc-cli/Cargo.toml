@@ -5,4 +5,5 @@ edition = "2024"
 
 [dependencies]
 symbolics = { path = "../symbolics" }
+format = { path = "../format" }
 clap = { version = "4.5.40", features = ["derive"] }

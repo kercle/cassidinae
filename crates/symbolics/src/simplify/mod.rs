@@ -1,4 +1,4 @@
-// use crate::parser::ast::{AstNode, BinaryOp, UnaryOp};
+// use crate::parser::ast::AstNode;
 
 // pub fn coalesce_constants(node: &mut AstNode) {
 //     match node {
@@ -7,7 +7,6 @@
 //                 coalesce_constants(child);
 //             }
 //         }
-
 //     }
 // }
 

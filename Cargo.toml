@@ -1,3 +1,3 @@
 [workspace]
 resolver = "2"
-members = ["crates/numbers", "crates/symbolics", "crates/yasc-cli"]
+members = [ "crates/format","crates/numbers", "crates/symbolics", "crates/yasc-cli"]

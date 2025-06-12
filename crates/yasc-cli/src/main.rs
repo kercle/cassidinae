@@ -1,4 +1,5 @@
 use clap::Parser;
+use format::LatexDisplay;
 use symbolics::parser::parse;
 
 #[derive(Parser, Debug)]
