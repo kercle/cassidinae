@@ -18,6 +18,22 @@ impl ops::Add for &BigInteger {
     }
 }
 
+impl ops::Sub for BigInteger {
+    type Output = Self;
+
+    fn sub(self, other: Self) -> Self::Output {
+        BigInteger::sub(&self, &other)
+    }
+}
+
+impl ops::Sub for &BigInteger {
+    type Output = BigInteger;
+
+    fn sub(self, other: &BigInteger) -> Self::Output {
+        BigInteger::sub(self, other)
+    }
+}
+
 impl ops::Mul for BigInteger {
     type Output = Self;
 

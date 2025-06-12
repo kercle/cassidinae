@@ -21,6 +21,14 @@ pub enum Scalar {
 }
 
 impl RealScalar {
+    pub fn zero() -> Self {
+        RealScalar::Integer(BigInteger::from_u64(0))
+    }
+
+    pub fn one() -> Self {
+        RealScalar::Integer(BigInteger::from_u64(1))
+    }
+
     pub fn from_f64(_value: f64) -> Self {
         todo!()
     }
@@ -32,6 +40,14 @@ impl RealScalar {
             Ok(RealScalar::Rational(r))
         } else {
             Err(format!("Invalid real scalar: {}", s))
+        }
+    }
+
+    pub fn is_zero(&self) -> bool {
+        match self {
+            RealScalar::Integer(i) => i.is_zero(),
+            RealScalar::Rational(r) => r.is_zero(),
+            RealScalar::Pi | RealScalar::EulerNumber => false,
         }
     }
 }

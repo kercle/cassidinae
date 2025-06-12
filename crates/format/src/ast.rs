@@ -80,6 +80,14 @@ fn ast_to_latex(ast: &AstNode, parent_precedence: Option<u32>) -> String {
             precedence,
             parent_precedence,
         ),
+        AddSeq(nodes) => {
+            let mut add_str = nodes
+                .iter()
+                .map(|node| ast_to_latex(node, precedence))
+                .collect::<Vec<_>>()
+                .join(" + ");
+            wrap_with_parentheses(add_str, precedence, parent_precedence)
+        }
         Sub(lhs, rhs) => wrap_with_parentheses(
             format!(
                 "{} - {}",
@@ -92,12 +100,20 @@ fn ast_to_latex(ast: &AstNode, parent_precedence: Option<u32>) -> String {
         Mul(lhs, rhs) => {
             let lhs_str = ast_to_latex(lhs, precedence);
             let rhs_str = ast_to_latex(rhs, precedence);
-            let mul_str = if lhs.is_numeric() && rhs.is_numeric() {
+            let mul_str = if lhs.is_constant() && rhs.is_constant() {
                 format!("{} \\cdot {}", lhs_str, rhs_str)
             } else {
                 format!("{} {}", lhs_str, rhs_str)
             };
 
+            wrap_with_parentheses(mul_str, precedence, parent_precedence)
+        }
+        MulSeq(nodes) => {
+            let mul_str = nodes
+                .iter()
+                .map(|node| ast_to_latex(node, precedence))
+                .collect::<Vec<_>>()
+                .join(" \\cdot ");
             wrap_with_parentheses(mul_str, precedence, parent_precedence)
         }
         Div(lhs, rhs) => {

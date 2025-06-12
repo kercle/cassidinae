@@ -45,6 +45,14 @@ impl Rational {
     pub fn denominator(&self) -> &BigInteger {
         &self.denominator
     }
+
+    pub fn is_zero(&self) -> bool {
+        self.numerator.is_zero()
+    }
+
+    pub fn reduce(&self) -> Self {
+        todo!()
+    }
 }
 
 impl PartialEq for Rational {

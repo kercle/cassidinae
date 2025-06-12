@@ -1,6 +1,6 @@
 use clap::Parser;
 use format::LatexDisplay;
-use symbolics::parser::parse;
+use symbolics::{parser::parse, simplify::simplify_ast};
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
@@ -16,6 +16,9 @@ fn print_markdown(input: &str) {
         eprintln!("Error parsing input: {}", err);
         std::process::exit(1);
     });
+
+    let ast = simplify_ast(ast);
+    dbg!(&ast);
 
     let latex = ast.to_latex();
     println!("$$\n{}\n$$", latex);

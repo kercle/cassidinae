@@ -52,8 +52,10 @@ pub enum AstNode {
     NamedValue(String),
     Negate(Box<AstNode>),
     Add(Box<AstNode>, Box<AstNode>),
+    AddSeq(Vec<AstNode>),
     Sub(Box<AstNode>, Box<AstNode>),
     Mul(Box<AstNode>, Box<AstNode>),
+    MulSeq(Vec<AstNode>),
     Div(Box<AstNode>, Box<AstNode>),
     Pow(Box<AstNode>, Box<AstNode>),
     Sin(Box<AstNode>),
@@ -109,7 +111,87 @@ impl AstNode {
         result
     }
 
-    pub fn is_numeric(&self) -> bool {
+    pub fn map<F>(self, mut f: F) -> AstNode
+    where
+        F: FnMut(AstNode) -> AstNode,
+    {
+        self.map_inner(&mut f)
+    }
+
+    fn map_inner<F>(self, f: &mut F) -> AstNode
+    where
+        F: FnMut(AstNode) -> AstNode,
+    {
+        use AstNode::*;
+        let mapped = match self {
+            Negate(x) => Negate(Box::new(x.map_inner(f))),
+            Add(l, r) => Add(Box::new(l.map_inner(f)), Box::new(r.map_inner(f))),
+            AddSeq(nodes) => AddSeq(nodes.into_iter().map(|n| n.map_inner(f)).collect()),
+            Sub(l, r) => Sub(Box::new(l.map_inner(f)), Box::new(r.map_inner(f))),
+            Mul(l, r) => Mul(Box::new(l.map_inner(f)), Box::new(r.map_inner(f))),
+            MulSeq(nodes) => MulSeq(nodes.into_iter().map(|n| n.map_inner(f)).collect()),
+            Div(l, r) => Div(Box::new(l.map_inner(f)), Box::new(r.map_inner(f))),
+            Pow(l, r) => Pow(Box::new(l.map_inner(f)), Box::new(r.map_inner(f))),
+            Sin(x) => Sin(Box::new(x.map_inner(f))),
+            Cos(x) => Cos(Box::new(x.map_inner(f))),
+            Tan(x) => Tan(Box::new(x.map_inner(f))),
+            Sqrt(x) => Sqrt(Box::new(x.map_inner(f))),
+            FunctionCall { name, args } => FunctionCall {
+                name,
+                args: args.into_iter().map(|a| a.map_inner(f)).collect(),
+            },
+            Block(nodes) => Block(nodes.into_iter().map(|n| n.map_inner(f)).collect()),
+            Constant(_) | NamedValue(_) => self,
+        };
+        f(mapped)
+    }
+
+    pub fn iter(&self) -> AstNodeIter {
+        AstNodeIter::new(self)
+    }
+
+    pub fn is_constant(&self) -> bool {
         matches!(self, AstNode::Constant(_))
+    }
+}
+
+pub struct AstNodeIter<'a> {
+    stack: Vec<&'a AstNode>,
+}
+
+impl<'a> AstNodeIter<'a> {
+    pub fn new(root: &'a AstNode) -> Self {
+        AstNodeIter { stack: vec![root] }
+    }
+}
+
+impl<'a> Iterator for AstNodeIter<'a> {
+    type Item = &'a AstNode;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let node = self.stack.pop()?;
+
+        use AstNode::*;
+        match node {
+            Negate(x) | Sin(x) | Cos(x) | Tan(x) | Sqrt(x) => {
+                self.stack.push(x);
+            }
+            Add(lhs, rhs) | Sub(lhs, rhs) | Mul(lhs, rhs) | Div(lhs, rhs) | Pow(lhs, rhs) => {
+                self.stack.push(rhs);
+                self.stack.push(lhs);
+            }
+            AddSeq(args) | MulSeq(args) => {
+                for arg in args.iter().rev() {
+                    self.stack.push(arg);
+                }
+            }
+            FunctionCall { args, .. } | Block(args) => {
+                for arg in args.iter().rev() {
+                    self.stack.push(arg);
+                }
+            }
+            Constant(_) | NamedValue(_) => {}
+        }
+        Some(node)
     }
 }
