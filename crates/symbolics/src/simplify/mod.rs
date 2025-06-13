@@ -167,13 +167,12 @@ fn flatten_commutative(node: AstNode) -> AstNode {
                 return Constant(RealScalar::zero());
             } else if flattened_nodes.len() == 1 {
                 return flattened_nodes.pop().unwrap();
-            } else if flattened_nodes.len() == 2 {
-                let rhs = flattened_nodes.pop().unwrap();
-                let lhs = flattened_nodes.pop().unwrap();
-                return Add(Box::new(lhs), Box::new(rhs));
             } else {
                 return AddSeq(flattened_nodes);
             }
+        }
+        Sub(lhs, rhs) => {
+            return flatten_commutative(AddSeq(vec![*lhs.to_owned(), Negate(rhs.to_owned())]));
         }
         Mul(lhs, rhs) => {
             return flatten_commutative(MulSeq(vec![*lhs.to_owned(), *rhs.to_owned()]));
@@ -191,10 +190,6 @@ fn flatten_commutative(node: AstNode) -> AstNode {
                 return Constant(RealScalar::one());
             } else if flattened_nodes.len() == 1 {
                 return flattened_nodes.pop().unwrap();
-            } else if flattened_nodes.len() == 2 {
-                let rhs = flattened_nodes.pop().unwrap();
-                let lhs = flattened_nodes.pop().unwrap();
-                return Mul(Box::new(lhs), Box::new(rhs));
             } else {
                 return MulSeq(flattened_nodes);
             }
@@ -218,6 +213,6 @@ fn coalesce_constants(mut tree: AstNode) -> AstNode {
 }
 
 pub fn simplify_ast(tree: AstNode) -> AstNode {
-    let tree = flatten_commutative(tree);
+    let tree = tree.map(flatten_commutative);
     coalesce_constants(tree)
 }
