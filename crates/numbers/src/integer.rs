@@ -132,6 +132,14 @@ impl BigInteger {
         self.eq(&BigInteger::from_u64(1))
     }
 
+    pub fn is_negative(&self) -> bool {
+        self.sign == Sign::Negative
+    }
+
+    pub fn is_positive(&self) -> bool {
+        self.sign == Sign::Positive
+    }
+
     pub fn eq(&self, other: &Self) -> bool {
         self.sign == other.sign
             && Self::cmp_digits(CompareFunction::Equal, &self.digits, &other.digits)
@@ -171,6 +179,17 @@ impl BigInteger {
 
     pub fn abs(&self) -> Self {
         BigInteger::from_vec(Sign::Positive, self.digits.clone())
+    }
+
+    pub fn sign(&self) -> Sign {
+        self.sign
+    }
+
+    pub fn flip_sign(&mut self) {
+        self.sign = match self.sign {
+            Sign::Positive => Sign::Negative,
+            Sign::Negative => Sign::Positive,
+        };
     }
 
     pub fn digit(&self, index: usize) -> Digit {

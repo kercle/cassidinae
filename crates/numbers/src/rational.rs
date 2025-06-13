@@ -1,15 +1,22 @@
+use std::fmt::{Debug, Display};
+
 use crate::{alg::gcd, integer::BigInteger};
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct Rational {
     numerator: BigInteger,
     denominator: BigInteger,
 }
 
 impl Rational {
-    pub fn new(numerator: BigInteger, denominator: BigInteger) -> Result<Self, String> {
+    pub fn new(mut numerator: BigInteger, mut denominator: BigInteger) -> Result<Self, String> {
         if denominator.is_zero() {
             return Err("Denominator cannot be zero".to_string());
+        }
+
+        if denominator.is_negative() {
+            numerator.flip_sign();
+            denominator.flip_sign();
         }
 
         let mut r = Self {
@@ -69,6 +76,22 @@ impl Rational {
 impl PartialEq for Rational {
     fn eq(&self, other: &Self) -> bool {
         &self.numerator * &other.denominator == &other.numerator * &self.denominator
+    }
+}
+
+impl Display for Rational {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if self.denominator.is_one() {
+            write!(f, "{}", self.numerator)
+        } else {
+            write!(f, "{}/{}", self.numerator, self.denominator)
+        }
+    }
+}
+
+impl Debug for Rational {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.to_string())
     }
 }
 
