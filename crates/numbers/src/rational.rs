@@ -50,6 +50,10 @@ impl Rational {
         self.numerator.is_zero()
     }
 
+    pub fn is_one(&self) -> bool {
+        self.numerator == self.denominator
+    }
+
     pub fn reduce(&self) -> Self {
         todo!()
     }

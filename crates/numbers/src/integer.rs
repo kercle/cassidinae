@@ -128,6 +128,10 @@ impl BigInteger {
         true
     }
 
+    pub fn is_one(&self) -> bool {
+        self.eq(&BigInteger::from_u64(1))
+    }
+
     pub fn eq(&self, other: &Self) -> bool {
         self.sign == other.sign
             && Self::cmp_digits(CompareFunction::Equal, &self.digits, &other.digits)

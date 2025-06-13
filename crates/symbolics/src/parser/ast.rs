@@ -67,6 +67,14 @@ pub enum AstNode {
 }
 
 impl AstNode {
+    pub fn from_named_value(name: String) -> Self {
+        match name.as_str() {
+            "pi" | "π" => AstNode::Constant(RealScalar::Pi),
+            "e" => AstNode::Constant(RealScalar::EulerNumber),
+            _ => AstNode::NamedValue(name),
+        }
+    }
+
     pub fn from_function_call(name: String, mut args: Vec<AstNode>) -> Result<Self, String> {
         let initial_args_len = args.len();
 

@@ -9,30 +9,30 @@ impl LatexDisplay for AstNode {
 
 fn greek_letter(name: &str) -> String {
     match name {
-        "alpha" => "\\alpha".to_string(),
-        "beta" => "\\beta".to_string(),
-        "gamma" => "\\gamma".to_string(),
-        "delta" => "\\delta".to_string(),
-        "epsilon" => "\\epsilon".to_string(),
-        "zeta" => "\\zeta".to_string(),
-        "eta" => "\\eta".to_string(),
-        "theta" => "\\theta".to_string(),
-        "iota" => "\\iota".to_string(),
-        "kappa" => "\\kappa".to_string(),
-        "lambda" => "\\lambda".to_string(),
-        "mu" => "\\mu".to_string(),
-        "nu" => "\\nu".to_string(),
-        "xi" => "\\xi".to_string(),
-        "omicron" => "\\omicron".to_string(),
-        "pi" => "\\pi".to_string(),
-        "rho" => "\\rho".to_string(),
-        "sigma" => "\\sigma".to_string(),
-        "tau" => "\\tau".to_string(),
-        "upsilon" => "\\upsilon".to_string(),
-        "phi" => "\\phi".to_string(),
-        "chi" => "\\chi".to_string(),
-        "psi" => "\\psi".to_string(),
-        "omega" => "\\omega".to_string(),
+        "alpha" | "α" => "\\alpha".to_string(),
+        "beta" | "β" => "\\beta".to_string(),
+        "gamma" | "γ" => "\\gamma".to_string(),
+        "delta" | "δ" => "\\delta".to_string(),
+        "epsilon" | "ε" => "\\epsilon".to_string(),
+        "zeta" | "ζ" => "\\zeta".to_string(),
+        "eta" | "η" => "\\eta".to_string(),
+        "theta" | "θ" => "\\theta".to_string(),
+        "iota" | "ι" => "\\iota".to_string(),
+        "kappa" | "κ" => "\\kappa".to_string(),
+        "lambda" | "λ" => "\\lambda".to_string(),
+        "mu" | "μ" => "\\mu".to_string(),
+        "nu" | "ν" => "\\nu".to_string(),
+        "xi" | "ξ" => "\\xi".to_string(),
+        "omicron" | "ο" => "\\omicron".to_string(),
+        "pi" | "π" => "\\pi".to_string(),
+        "rho" | "ρ" => "\\rho".to_string(),
+        "sigma" | "σ" | "ς" => "\\sigma".to_string(),
+        "tau" | "τ" => "\\tau".to_string(),
+        "upsilon" | "υ" => "\\upsilon".to_string(),
+        "phi" | "φ" | "ϕ" => "\\phi".to_string(),
+        "chi" | "χ" => "\\chi".to_string(),
+        "psi" | "ψ" => "\\psi".to_string(),
+        "omega" | "ω" => "\\omega".to_string(),
         _ => name.to_string(),
     }
 }
@@ -66,7 +66,7 @@ fn ast_to_latex(ast: &AstNode, parent_precedence: Option<u32>) -> String {
 
     use AstNode::*;
     match ast {
-        Constant(value) => value.to_string(),
+        Constant(value) => greek_letter(&value.to_string()),
         NamedValue(name) => greek_letter(name),
         Negate(node) => {
             format!("-{}", ast_to_latex(node, precedence))
@@ -81,7 +81,7 @@ fn ast_to_latex(ast: &AstNode, parent_precedence: Option<u32>) -> String {
             parent_precedence,
         ),
         AddSeq(nodes) => {
-            let mut add_str = nodes
+            let add_str = nodes
                 .iter()
                 .map(|node| ast_to_latex(node, precedence))
                 .collect::<Vec<_>>()
@@ -199,7 +199,7 @@ mod tests {
 
     #[test]
     fn test_ast_to_latex_with_function_call() {
-        let ast = parse("5*pi^2/4*cos[pi*x/2]*sin[pi*y/2]").unwrap();
+        let ast = parse("5*pi^2/4*cos[pi*x/2]*sin[π*y/2]").unwrap();
         assert_eq!(
             ast.to_latex(),
             "\\frac{5 \\pi^{2}}{4} \\cos\\left(\\frac{\\pi x}{2}\\right) \\sin\\left(\\frac{\\pi y}{2}\\right)"

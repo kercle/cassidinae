@@ -50,6 +50,14 @@ impl RealScalar {
             RealScalar::Pi | RealScalar::EulerNumber => false,
         }
     }
+
+    pub fn is_one(&self) -> bool {
+        match self {
+            RealScalar::Integer(i) => i.is_one(),
+            RealScalar::Rational(r) => r.is_one(),
+            RealScalar::Pi | RealScalar::EulerNumber => false,
+        }
+    }
 }
 
 impl fmt::Display for RealScalar {

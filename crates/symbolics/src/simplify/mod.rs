@@ -6,9 +6,7 @@ fn simplify_constant_expression(node: AstNode) -> AstNode {
     use AstNode::*;
     match &node {
         Add(lhs, rhs) => {
-            if let (Constant(l), Constant(r)) = (lhs.as_ref(), rhs.as_ref()) {
-                return (l + r).map_or_else(|| node, |val| Constant(val));
-            }
+            return simplify_constant_expression(AddSeq(vec![*lhs.to_owned(), *rhs.to_owned()]));
         }
         Sub(lhs, rhs) => {
             if let (Constant(l), Constant(r)) = (lhs.as_ref(), rhs.as_ref()) {
@@ -16,9 +14,7 @@ fn simplify_constant_expression(node: AstNode) -> AstNode {
             }
         }
         Mul(lhs, rhs) => {
-            if let (Constant(l), Constant(r)) = (lhs.as_ref(), rhs.as_ref()) {
-                return (l * r).map_or_else(|| node, |val| Constant(val));
-            }
+            return simplify_constant_expression(MulSeq(vec![*lhs.to_owned(), *rhs.to_owned()]));
         }
         AddSeq(nodes) => {
             let mut sum = RealScalar::zero();
@@ -42,6 +38,10 @@ fn simplify_constant_expression(node: AstNode) -> AstNode {
 
             if non_constant_nodes.len() == 1 {
                 return non_constant_nodes.pop().unwrap();
+            } else if non_constant_nodes.len() == 2 {
+                let rhs = non_constant_nodes.pop().unwrap();
+                let lhs = non_constant_nodes.pop().unwrap();
+                return Add(Box::new(lhs), Box::new(rhs));
             } else {
                 return AddSeq(non_constant_nodes);
             }
@@ -66,10 +66,16 @@ fn simplify_constant_expression(node: AstNode) -> AstNode {
                 }
             }
 
-            new_nodes.insert(0, Constant(product.clone()));
+            if !product.is_one() {
+                new_nodes.insert(0, Constant(product.clone()));
+            }
 
             if new_nodes.len() == 1 {
                 return new_nodes.pop().unwrap();
+            } else if new_nodes.len() == 2 {
+                let rhs = new_nodes.pop().unwrap();
+                let lhs = new_nodes.pop().unwrap();
+                return Mul(Box::new(lhs), Box::new(rhs));
             } else {
                 return MulSeq(new_nodes);
             }
@@ -118,6 +124,10 @@ fn flatten_commutative(node: AstNode) -> AstNode {
                 return Constant(RealScalar::zero());
             } else if flattened_nodes.len() == 1 {
                 return flattened_nodes.pop().unwrap();
+            } else if flattened_nodes.len() == 2 {
+                let rhs = flattened_nodes.pop().unwrap();
+                let lhs = flattened_nodes.pop().unwrap();
+                return Add(Box::new(lhs), Box::new(rhs));
             } else {
                 return AddSeq(flattened_nodes);
             }
@@ -138,6 +148,10 @@ fn flatten_commutative(node: AstNode) -> AstNode {
                 return Constant(RealScalar::one());
             } else if flattened_nodes.len() == 1 {
                 return flattened_nodes.pop().unwrap();
+            } else if flattened_nodes.len() == 2 {
+                let rhs = flattened_nodes.pop().unwrap();
+                let lhs = flattened_nodes.pop().unwrap();
+                return Mul(Box::new(lhs), Box::new(rhs));
             } else {
                 return MulSeq(flattened_nodes);
             }
