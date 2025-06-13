@@ -64,6 +64,14 @@ impl BigInteger {
         BigInteger::from_vec(Sign::Positive, vec![value])
     }
 
+    pub fn zero() -> Self {
+        BigInteger::from_u64(0)
+    }
+
+    pub fn one() -> Self {
+        BigInteger::from_u64(1)
+    }
+
     pub fn from_str_radix(s: &str, radix: u32) -> Result<Self, String> {
         if radix != 10 {
             return Err(format!("Unsupported radix: {}", radix));
@@ -413,6 +421,10 @@ impl BigInteger {
         }
     }
 
+    pub fn increment(&mut self) -> Self {
+        Self::add(self, &BigInteger::from_u64(1))
+    }
+
     pub fn sub(lhs: &Self, rhs: &Self) -> Self {
         let (lhs, rhs, flipped) =
             if Self::cmp_digits(CompareFunction::Greater, &lhs.digits, &rhs.digits) {
@@ -450,6 +462,10 @@ impl BigInteger {
         res
     }
 
+    pub fn decrement(&mut self) -> Self {
+        Self::sub(self, &BigInteger::from_u64(1))
+    }
+
     pub fn mul(lhs: &Self, rhs: &Self) -> Self {
         let (lhs, rhs) = if Self::cmp_digits(CompareFunction::Greater, &lhs.digits, &rhs.digits) {
             (lhs, rhs)
@@ -485,6 +501,20 @@ impl BigInteger {
             BigInteger::from_vec(sign, digits),
             BigInteger::from_vec(lhs.sign, rem),
         ))
+    }
+
+    pub fn pow(&self, mut exp: Self) -> Result<Self, String> {
+        if exp.gt(&BigInteger::from_u64(20)) {
+            return Err("Failsafe: Exponent too large".to_string());
+        }
+
+        let mut result = BigInteger::from_u64(1);
+        while !exp.is_zero() {
+            result = BigInteger::mul(&result, &self);
+            exp = exp.decrement();
+        }
+
+        Ok(result)
     }
 }
 

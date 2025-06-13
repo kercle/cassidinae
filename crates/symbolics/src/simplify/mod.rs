@@ -1,4 +1,4 @@
-use numbers::{RealScalar, rational::Rational};
+use numbers::{RealScalar, integer::BigInteger, rational::Rational};
 
 use crate::parser::ast::AstNode;
 
@@ -91,6 +91,31 @@ fn simplify_constant_expression(node: AstNode) -> AstNode {
                 return Mul(Box::new(lhs), Box::new(rhs));
             } else {
                 return MulSeq(new_nodes);
+            }
+        }
+        Pow(lhs, rhs) => {
+            if let (Constant(RealScalar::Integer(base)), Constant(RealScalar::Integer(exp))) =
+                (lhs.as_ref(), rhs.as_ref())
+            {
+                if exp.is_zero() {
+                    return Constant(RealScalar::one());
+                } else if exp.is_one() {
+                    return Constant(RealScalar::Integer(base.clone()));
+                }
+
+                let abs_exp = exp.abs();
+                let result = base.pow(abs_exp.abs());
+
+                if let Ok(result) = result {
+                    if exp.is_positive() {
+                        return Constant(RealScalar::Integer(result));
+                    }
+
+                    return Constant(RealScalar::Rational(
+                        Rational::new(BigInteger::one(), result)
+                            .expect("todo: handle invalid rational"),
+                    ));
+                }
             }
         }
         _ => {}
