@@ -1,5 +1,5 @@
-use numbers::RealScalar;
 use crate::parser::ast::AstNode;
+use numbers::RealScalar;
 
 fn greek_letter(name: &str) -> String {
     match name {
@@ -61,7 +61,7 @@ pub fn ast_to_latex(ast: &AstNode, parent_precedence: Option<u32>) -> String {
 
     use AstNode::*;
     match ast {
-        Constant(value) => {
+        Constant { value, .. } => {
             if let RealScalar::Rational(rational) = value {
                 if rational.is_zero() {
                     "0".to_string()
@@ -78,7 +78,7 @@ pub fn ast_to_latex(ast: &AstNode, parent_precedence: Option<u32>) -> String {
                 greek_letter(&value.to_string())
             }
         }
-        NamedValue(name) => greek_letter(name),
+        NamedValue { name, .. } => greek_letter(name),
         Negation(node) => {
             format!("-{}", ast_to_latex(node, precedence))
         }

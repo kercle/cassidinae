@@ -4,9 +4,18 @@ use crate::format::MathDisplay;
 use numbers::RealScalar;
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum AstNode {
-    Constant(RealScalar),
-    NamedValue(String),
+pub enum AstNode<Annotation = ()>
+where
+    Annotation: Clone,
+{
+    Constant {
+        value: RealScalar,
+        annotation: Annotation,
+    },
+    NamedValue {
+        name: String,
+        annotation: Annotation,
+    },
     Add(Box<AstNode>, Box<AstNode>),
     AddSeq(Vec<AstNode>),
     Negation(Box<AstNode>),
@@ -20,8 +29,30 @@ pub enum AstNode {
     Cos(Box<AstNode>),
     Tan(Box<AstNode>),
     Sqrt(Box<AstNode>),
-    FunctionCall { name: String, args: Vec<AstNode> },
+    FunctionCall {
+        name: String,
+        args: Vec<AstNode>,
+    },
     Block(Vec<AstNode>),
+}
+
+impl<Annotation> AstNode<Annotation>
+where
+    Annotation: Default + Clone,
+{
+    pub fn constant(value: RealScalar) -> Self {
+        AstNode::Constant {
+            annotation: Annotation::default(),
+            value,
+        }
+    }
+
+    pub fn named_value(name: String) -> Self {
+        AstNode::NamedValue {
+            annotation: Annotation::default(),
+            name,
+        }
+    }
 }
 
 impl AstNode {
@@ -100,7 +131,7 @@ impl AstNode {
                 args: args.into_iter().map(|a| a.map_inner(f)).collect(),
             },
             Block(nodes) => Block(nodes.into_iter().map(|n| n.map_inner(f)).collect()),
-            Constant(_) | NamedValue(_) => self,
+            Constant { .. } | NamedValue { .. } => self,
         };
         f(mapped)
     }
@@ -110,7 +141,7 @@ impl AstNode {
     }
 
     pub fn is_constant(&self) -> bool {
-        matches!(self, AstNode::Constant(_))
+        matches!(self, AstNode::Constant { .. })
     }
 }
 
@@ -118,9 +149,9 @@ impl cmp::PartialOrd for AstNode {
     fn partial_cmp(&self, other: &Self) -> Option<cmp::Ordering> {
         use AstNode::*;
         match (self, other) {
-            (Constant(a), Constant(b)) => a.partial_cmp(b),
-            (Constant(_), _) => Some(Ordering::Less),
-            (_, Constant(_)) => Some(Ordering::Greater),
+            (Constant { value: a, .. }, Constant { value: b, .. }) => a.partial_cmp(b),
+            (Constant { .. }, _) => Some(Ordering::Less),
+            (_, Constant { .. }) => Some(Ordering::Greater),
             (a, b) => a.to_yasc().partial_cmp(&b.to_yasc()),
         }
     }
@@ -161,7 +192,7 @@ impl<'a> Iterator for AstNodeIter<'a> {
                     self.stack.push(arg);
                 }
             }
-            Constant(_) | NamedValue(_) => {}
+            Constant { .. } | NamedValue { .. } => {}
         }
         Some(node)
     }

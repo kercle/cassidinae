@@ -37,7 +37,7 @@ fn flatten_commutative(node: AstNode) -> AstNode {
             });
 
             if flattened_nodes.is_empty() {
-                return Constant(RealScalar::zero());
+                return AstNode::constant(RealScalar::zero());
             } else if flattened_nodes.len() == 1 {
                 return flattened_nodes.pop().unwrap();
             } else {
@@ -46,7 +46,7 @@ fn flatten_commutative(node: AstNode) -> AstNode {
         }
         Negation(node) => {
             return flatten_commutative(MulSeq(vec![
-                Constant(RealScalar::minus_one()),
+                AstNode::constant(RealScalar::minus_one()),
                 *node.to_owned(),
             ]));
         }
@@ -63,7 +63,7 @@ fn flatten_commutative(node: AstNode) -> AstNode {
             });
 
             if flattened_nodes.is_empty() {
-                return Constant(RealScalar::one());
+                return AstNode::constant(RealScalar::one());
             } else if flattened_nodes.len() == 1 {
                 return flattened_nodes.pop().unwrap();
             } else {

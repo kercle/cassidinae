@@ -38,15 +38,15 @@ impl PatternRewrite for AstNode {
                 matches.insert(name.to_string(), self.clone());
             }
             AstPattern::Number(name) => {
-                if let AstNode::Constant(_) = self {
+                if let AstNode::Constant { .. } = self {
                     matches.insert(name.to_string(), self.clone());
                 } else {
                     return None;
                 }
             }
-            AstPattern::Constant(value) => {
-                if let AstNode::Constant(node_value) = self {
-                    if node_value != value {
+            AstPattern::Constant(pattern_value) => {
+                if let AstNode::Constant { value, .. } = self {
+                    if value != pattern_value {
                         return None;
                     }
                 } else {

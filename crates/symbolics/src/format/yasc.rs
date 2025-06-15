@@ -9,7 +9,10 @@ fn operator_precedence(ast: &AstNode) -> Option<u32> {
         AstNode::Sub(_, _) => Some(1),
         AstNode::Mul(_, _) => Some(2),
         AstNode::Div(_, _) => Some(2),
-        AstNode::Constant(RealScalar::Rational(_)) => Some(2),
+        AstNode::Constant {
+            value: RealScalar::Rational(_),
+            ..
+        } => Some(2),
         AstNode::Pow(_, _) => Some(4),
         _ => None,
     }
@@ -32,11 +35,12 @@ pub fn ast_to_yasc(ast: &AstNode, parent_precedence: Option<u32>) -> String {
 
     use AstNode::*;
     match ast {
-        Constant(RealScalar::Rational(value)) => {
-            wrap_with_parentheses(value.to_string(), precedence, parent_precedence)
-        }
-        Constant(value) => value.to_string(),
-        NamedValue(name) => name.to_string(),
+        Constant {
+            value: RealScalar::Rational(value),
+            ..
+        } => wrap_with_parentheses(value.to_string(), precedence, parent_precedence),
+        Constant { value, .. } => value.to_string(),
+        NamedValue { name, .. } => name.to_string(),
         Negation(node) => {
             format!("-{}", ast_to_yasc(node, precedence))
         }

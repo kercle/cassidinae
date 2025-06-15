@@ -9,16 +9,26 @@ fn fold_constants(node: AstNode) -> AstNode {
             return fold_constants(AddSeq(vec![*lhs.to_owned(), *rhs.to_owned()]));
         }
         Sub(lhs, rhs) => {
-            if let (Constant(l), Constant(r)) = (lhs.as_ref(), rhs.as_ref()) {
-                return (l - r).map_or_else(|| node, |val| Constant(val));
+            if let (Constant { value: l, .. }, Constant { value: r, .. }) =
+                (lhs.as_ref(), rhs.as_ref())
+            {
+                return (l - r).map_or_else(|| node, |value| AstNode::constant(value));
             }
         }
         Mul(lhs, rhs) => {
             return fold_constants(MulSeq(vec![*lhs.to_owned(), *rhs.to_owned()]));
         }
         Div(lhs, rhs) => {
-            if let (Constant(RealScalar::Integer(l)), Constant(RealScalar::Integer(r))) =
-                (lhs.as_ref(), rhs.as_ref())
+            if let (
+                Constant {
+                    value: RealScalar::Integer(l),
+                    ..
+                },
+                Constant {
+                    value: RealScalar::Integer(r),
+                    ..
+                },
+            ) = (lhs.as_ref(), rhs.as_ref())
             {
                 if r.is_zero() {
                     todo!("Handle division by zero");
@@ -26,7 +36,7 @@ fn fold_constants(node: AstNode) -> AstNode {
                 let rational = Rational::new(l.clone().into(), r.clone().into())
                     .expect("todo: handle invalid rational");
 
-                return Constant(RealScalar::Rational(rational));
+                return AstNode::constant(RealScalar::Rational(rational));
             }
         }
         AddSeq(nodes) => {
@@ -34,15 +44,15 @@ fn fold_constants(node: AstNode) -> AstNode {
             let mut new_nodes = vec![];
 
             for node in nodes.iter() {
-                if let Constant(val) = node {
-                    sum = val + &sum;
+                if let Constant { value, .. } = node {
+                    sum = value + &sum;
                 } else {
                     new_nodes.push(node.clone());
                 }
             }
 
             if !sum.is_zero() || new_nodes.is_empty() {
-                new_nodes.insert(0, Constant(sum.clone()));
+                new_nodes.insert(0, AstNode::constant(sum.clone()));
             }
 
             if new_nodes.len() == 1 {
@@ -56,8 +66,8 @@ fn fold_constants(node: AstNode) -> AstNode {
             let mut new_nodes = vec![];
 
             for node in nodes.iter() {
-                if let Constant(val) = node {
-                    if let Some(value) = val * &product {
+                if let Constant { value, .. } = node {
+                    if let Some(value) = value * &product {
                         product = value;
                     } else {
                         new_nodes.push(node.clone());
@@ -67,12 +77,12 @@ fn fold_constants(node: AstNode) -> AstNode {
                 }
 
                 if product.is_zero() {
-                    return Constant(RealScalar::zero());
+                    return AstNode::constant(RealScalar::zero());
                 }
             }
 
             if !product.is_one() || new_nodes.is_empty() {
-                new_nodes.insert(0, Constant(product.clone()));
+                new_nodes.insert(0, AstNode::constant(product.clone()));
             }
 
             if new_nodes.len() == 1 {
@@ -82,13 +92,21 @@ fn fold_constants(node: AstNode) -> AstNode {
             }
         }
         Pow(lhs, rhs) => {
-            if let (Constant(RealScalar::Integer(base)), Constant(RealScalar::Integer(exp))) =
-                (lhs.as_ref(), rhs.as_ref())
+            if let (
+                Constant {
+                    value: RealScalar::Integer(base),
+                    ..
+                },
+                Constant {
+                    value: RealScalar::Integer(exp),
+                    ..
+                },
+            ) = (lhs.as_ref(), rhs.as_ref())
             {
                 if exp.is_zero() {
-                    return Constant(RealScalar::one());
+                    return AstNode::constant(RealScalar::one());
                 } else if exp.is_one() {
-                    return Constant(RealScalar::Integer(base.clone()));
+                    return AstNode::constant(RealScalar::Integer(base.clone()));
                 }
 
                 let abs_exp = exp.abs();
@@ -96,10 +114,10 @@ fn fold_constants(node: AstNode) -> AstNode {
 
                 if let Ok(result) = result {
                     if exp.is_positive() {
-                        return Constant(RealScalar::Integer(result));
+                        return AstNode::constant(RealScalar::Integer(result));
                     }
 
-                    return Constant(RealScalar::Rational(
+                    return AstNode::constant(RealScalar::Rational(
                         Rational::new(BigInteger::one(), result)
                             .expect("todo: handle invalid rational"),
                     ));
@@ -107,8 +125,8 @@ fn fold_constants(node: AstNode) -> AstNode {
             }
         }
         Negation(node) => {
-            if let Constant(val) = node.as_ref() {
-                return Constant(-val.clone());
+            if let Constant { value, .. } = node.as_ref() {
+                return AstNode::constant(-value.clone());
             }
         }
         _ => {}
@@ -123,8 +141,8 @@ fn gather_common_terms(node: AstNode) -> AstNode {
     fn split_multiple_of_constant(node: AstNode) -> (RealScalar, AstNode) {
         if let MulSeq(nodes) = &node {
             if let Some((constant, rest)) = nodes.split_first() {
-                if let Constant(val) = constant {
-                    return (val.clone(), flatten_commutative(MulSeq(rest.to_vec())));
+                if let Constant { value, .. } = constant {
+                    return (value.clone(), flatten_commutative(MulSeq(rest.to_vec())));
                 }
             }
         } else if let Mul(lhs, rhs) = &node {
@@ -162,7 +180,7 @@ fn gather_common_terms(node: AstNode) -> AstNode {
                         if factor.is_one() {
                             term
                         } else {
-                            MulSeq(vec![Constant(factor), term])
+                            MulSeq(vec![AstNode::constant(factor), term])
                         }
                     })
                     .collect(),
@@ -224,7 +242,7 @@ fn flatten_commutative(node: AstNode) -> AstNode {
             });
 
             if flattened_nodes.is_empty() {
-                return Constant(RealScalar::zero());
+                return AstNode::constant(RealScalar::zero());
             } else if flattened_nodes.len() == 1 {
                 return flattened_nodes.pop().unwrap();
             } else {
@@ -233,7 +251,7 @@ fn flatten_commutative(node: AstNode) -> AstNode {
         }
         Negation(node) => {
             return flatten_commutative(MulSeq(vec![
-                Constant(RealScalar::minus_one()),
+                AstNode::constant(RealScalar::minus_one()),
                 *node.to_owned(),
             ]));
         }
@@ -250,7 +268,7 @@ fn flatten_commutative(node: AstNode) -> AstNode {
             });
 
             if flattened_nodes.is_empty() {
-                return Constant(RealScalar::one());
+                return AstNode::constant(RealScalar::one());
             } else if flattened_nodes.len() == 1 {
                 return flattened_nodes.pop().unwrap();
             } else {
@@ -331,10 +349,10 @@ fn simplify_add_neg_to_sub(node: AstNode) -> AstNode {
             }
         }
         Mul(lhs, rhs) => {
-            if let Constant(value) = *lhs.clone() {
+            if let Constant { value, .. } = *lhs.clone() {
                 if value < RealScalar::zero() {
                     return Negation(Box::new(Mul(
-                        Box::new(Constant(-value.clone())),
+                        Box::new(AstNode::constant(-value.clone())),
                         Box::new(simplify_add_neg_to_sub(*rhs.to_owned())),
                     )));
                 }
