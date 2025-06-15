@@ -17,68 +17,68 @@ where
         annotation: Annotation,
     },
     Add {
-        lhs: Box<AstNode>,
-        rhs: Box<AstNode>,
+        lhs: Box<AstNode<Annotation>>,
+        rhs: Box<AstNode<Annotation>>,
         annotation: Annotation,
     },
     AddSeq {
-        nodes: Vec<AstNode>,
+        nodes: Vec<AstNode<Annotation>>,
         annotation: Annotation,
     },
     Negation {
-        arg: Box<AstNode>,
+        arg: Box<AstNode<Annotation>>,
         annotation: Annotation,
     },
     Sub {
-        lhs: Box<AstNode>,
-        rhs: Box<AstNode>,
+        lhs: Box<AstNode<Annotation>>,
+        rhs: Box<AstNode<Annotation>>,
         annotation: Annotation,
     },
     Mul {
-        lhs: Box<AstNode>,
-        rhs: Box<AstNode>,
+        lhs: Box<AstNode<Annotation>>,
+        rhs: Box<AstNode<Annotation>>,
         annotation: Annotation,
     },
     MulSeq {
-        nodes: Vec<AstNode>,
+        nodes: Vec<AstNode<Annotation>>,
         annotation: Annotation,
     },
     Reciprocal {
-        arg: Box<AstNode>,
+        arg: Box<AstNode<Annotation>>,
         annotation: Annotation,
     },
     Div {
-        lhs: Box<AstNode>,
-        rhs: Box<AstNode>,
+        lhs: Box<AstNode<Annotation>>,
+        rhs: Box<AstNode<Annotation>>,
         annotation: Annotation,
     },
     Pow {
-        lhs: Box<AstNode>,
-        rhs: Box<AstNode>,
+        lhs: Box<AstNode<Annotation>>,
+        rhs: Box<AstNode<Annotation>>,
         annotation: Annotation,
     },
     Sin {
-        arg: Box<AstNode>,
+        arg: Box<AstNode<Annotation>>,
         annotation: Annotation,
     },
     Cos {
-        arg: Box<AstNode>,
+        arg: Box<AstNode<Annotation>>,
         annotation: Annotation,
     },
     Tan {
-        arg: Box<AstNode>,
+        arg: Box<AstNode<Annotation>>,
         annotation: Annotation,
     },
     Sqrt {
-        arg: Box<AstNode>,
+        arg: Box<AstNode<Annotation>>,
         annotation: Annotation,
     },
     FunctionCall {
         name: String,
-        args: Vec<AstNode>,
+        args: Vec<AstNode<Annotation>>,
         annotation: Annotation,
     },
-    Block(Vec<AstNode>),
+    Block(Vec<AstNode<Annotation>>),
 }
 
 impl<Annotation> AstNode<Annotation>
@@ -99,7 +99,7 @@ where
         }
     }
 
-    pub fn add(lhs: AstNode, rhs: AstNode) -> Self {
+    pub fn add(lhs: AstNode<Annotation>, rhs: AstNode<Annotation>) -> Self {
         AstNode::Add {
             lhs: Box::new(lhs),
             rhs: Box::new(rhs),
@@ -107,21 +107,21 @@ where
         }
     }
 
-    pub fn add_seq(nodes: Vec<AstNode>) -> Self {
+    pub fn add_seq(nodes: Vec<AstNode<Annotation>>) -> Self {
         AstNode::AddSeq {
             nodes,
             annotation: Annotation::default(),
         }
     }
 
-    pub fn negation(arg: AstNode) -> Self {
+    pub fn negation(arg: AstNode<Annotation>) -> Self {
         AstNode::Negation {
             arg: Box::new(arg),
             annotation: Annotation::default(),
         }
     }
 
-    pub fn sub(lhs: AstNode, rhs: AstNode) -> Self {
+    pub fn sub(lhs: AstNode<Annotation>, rhs: AstNode<Annotation>) -> Self {
         AstNode::Sub {
             lhs: Box::new(lhs),
             rhs: Box::new(rhs),
@@ -129,7 +129,7 @@ where
         }
     }
 
-    pub fn mul(lhs: AstNode, rhs: AstNode) -> Self {
+    pub fn mul(lhs: AstNode<Annotation>, rhs: AstNode<Annotation>) -> Self {
         AstNode::Mul {
             lhs: Box::new(lhs),
             rhs: Box::new(rhs),
@@ -137,21 +137,21 @@ where
         }
     }
 
-    pub fn mul_seq(nodes: Vec<AstNode>) -> Self {
+    pub fn mul_seq(nodes: Vec<AstNode<Annotation>>) -> Self {
         AstNode::MulSeq {
             nodes,
             annotation: Annotation::default(),
         }
     }
 
-    pub fn reciprocal(arg: AstNode) -> Self {
+    pub fn reciprocal(arg: AstNode<Annotation>) -> Self {
         AstNode::Reciprocal {
             arg: Box::new(arg),
             annotation: Annotation::default(),
         }
     }
 
-    pub fn div(lhs: AstNode, rhs: AstNode) -> Self {
+    pub fn div(lhs: AstNode<Annotation>, rhs: AstNode<Annotation>) -> Self {
         AstNode::Div {
             lhs: Box::new(lhs),
             rhs: Box::new(rhs),
@@ -159,7 +159,7 @@ where
         }
     }
 
-    pub fn pow(lhs: AstNode, rhs: AstNode) -> Self {
+    pub fn pow(lhs: AstNode<Annotation>, rhs: AstNode<Annotation>) -> Self {
         AstNode::Pow {
             lhs: Box::new(lhs),
             rhs: Box::new(rhs),
@@ -167,35 +167,35 @@ where
         }
     }
 
-    pub fn sin(arg: AstNode) -> Self {
+    pub fn sin(arg: AstNode<Annotation>) -> Self {
         AstNode::Sin {
             arg: Box::new(arg),
             annotation: Annotation::default(),
         }
     }
 
-    pub fn cos(arg: AstNode) -> Self {
+    pub fn cos(arg: AstNode<Annotation>) -> Self {
         AstNode::Cos {
             arg: Box::new(arg),
             annotation: Annotation::default(),
         }
     }
 
-    pub fn tan(arg: AstNode) -> Self {
+    pub fn tan(arg: AstNode<Annotation>) -> Self {
         AstNode::Tan {
             arg: Box::new(arg),
             annotation: Annotation::default(),
         }
     }
 
-    pub fn sqrt(arg: AstNode) -> Self {
+    pub fn sqrt(arg: AstNode<Annotation>) -> Self {
         AstNode::Sqrt {
             arg: Box::new(arg),
             annotation: Annotation::default(),
         }
     }
 
-    pub fn function_call(name: String, args: Vec<AstNode>) -> Self {
+    pub fn function_call(name: String, args: Vec<AstNode<Annotation>>) -> Self {
         AstNode::FunctionCall {
             name,
             args,
@@ -203,13 +203,16 @@ where
         }
     }
 
-    pub fn block(nodes: Vec<AstNode>) -> Self {
+    pub fn block(nodes: Vec<AstNode<Annotation>>) -> Self {
         AstNode::Block(nodes)
     }
 }
 
-impl AstNode {
-    pub fn from_function_call(name: String, mut args: Vec<AstNode>) -> Result<Self, String> {
+impl<A> AstNode<A>
+where
+    A: Clone + Default,
+{
+    pub fn from_function_call(name: String, mut args: Vec<AstNode<A>>) -> Result<Self, String> {
         let initial_args_len = args.len();
 
         let result = match name.as_str() {
@@ -244,16 +247,16 @@ impl AstNode {
         result
     }
 
-    pub fn map<F>(self, mut f: F) -> AstNode
+    pub fn map<F>(self, mut f: F) -> Self
     where
-        F: FnMut(AstNode) -> AstNode,
+        F: FnMut(Self) -> Self,
     {
         self.map_inner(&mut f)
     }
 
-    fn map_inner<F>(self, f: &mut F) -> AstNode
+    fn map_inner<F>(self, f: &mut F) -> AstNode<A>
     where
-        F: FnMut(AstNode) -> AstNode,
+        F: FnMut(AstNode<A>) -> AstNode<A>,
     {
         use AstNode::*;
         let mapped = match self {
@@ -278,13 +281,9 @@ impl AstNode {
                 AstNode::function_call(name, args.into_iter().map(|a| a.map_inner(f)).collect())
             }
             Block(nodes) => Block(nodes.into_iter().map(|n| n.map_inner(f)).collect()),
-            Constant { .. } | NamedValue { .. } => self,
+            Constant { .. } | NamedValue { .. } => return f(self),
         };
         f(mapped)
-    }
-
-    pub fn iter(&self) -> AstNodeIter {
-        AstNodeIter::new(self)
     }
 
     pub fn is_constant(&self) -> bool {
@@ -304,52 +303,3 @@ impl cmp::PartialOrd for AstNode {
     }
 }
 
-pub struct AstNodeIter<'a> {
-    stack: Vec<&'a AstNode>,
-}
-
-impl<'a> AstNodeIter<'a> {
-    pub fn new(root: &'a AstNode) -> Self {
-        AstNodeIter { stack: vec![root] }
-    }
-}
-
-impl<'a> Iterator for AstNodeIter<'a> {
-    type Item = &'a AstNode;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        let node = self.stack.pop()?;
-
-        use AstNode::*;
-        match node {
-            Negation { arg, .. }
-            | Reciprocal { arg, .. }
-            | Sin { arg, .. }
-            | Cos { arg, .. }
-            | Tan { arg, .. }
-            | Sqrt { arg, .. } => {
-                self.stack.push(arg);
-            }
-            Add { lhs, rhs, .. }
-            | Sub { lhs, rhs, .. }
-            | Mul { lhs, rhs, .. }
-            | Div { lhs, rhs, .. }
-            | Pow { lhs, rhs, .. } => {
-                self.stack.push(rhs);
-                self.stack.push(lhs);
-            }
-            AddSeq { nodes, .. } | MulSeq { nodes, .. } => {
-                for arg in nodes.iter().rev() {
-                    self.stack.push(arg);
-                }
-            }
-            FunctionCall { args, .. } | Block(args) => {
-                for arg in args.iter().rev() {
-                    self.stack.push(arg);
-                }
-            }
-            Constant { .. } | NamedValue { .. } => {}
-        }
-        Some(node)
-    }
-}

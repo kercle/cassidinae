@@ -11,16 +11,6 @@ pub enum AstPattern<'a> {
     Add(Box<AstPattern<'a>>, Box<AstPattern<'a>>),
 }
 
-pub trait PatternRewrite
-where
-    Self: Sized,
-{
-    fn matches(&self, pattern: &AstPattern) -> Option<HashMap<String, Self>>;
-    fn rewrite<F>(&self, pattern: &AstPattern, apply_func: F) -> Self
-    where
-        F: Fn(&Self) -> Self;
-}
-
 impl ops::Add for AstPattern<'_> {
     type Output = Self;
 
@@ -29,23 +19,23 @@ impl ops::Add for AstPattern<'_> {
     }
 }
 
-impl PatternRewrite for AstNode {
-    fn matches(&self, pattern: &AstPattern) -> Option<HashMap<String, Self>> {
+impl AstPattern<'_> {
+    pub fn matches<A: Clone>(&self, tree: &AstNode<A>) -> Option<HashMap<String, AstNode<A>>> {
         let mut matches = HashMap::new();
 
-        match pattern {
+        match self {
             AstPattern::Any(name) => {
-                matches.insert(name.to_string(), self.clone());
+                matches.insert(name.to_string(), tree.clone());
             }
             AstPattern::Number(name) => {
-                if let AstNode::Constant { .. } = self {
-                    matches.insert(name.to_string(), self.clone());
+                if let AstNode::Constant { .. } = tree {
+                    matches.insert(name.to_string(), tree.clone());
                 } else {
                     return None;
                 }
             }
             AstPattern::Constant(pattern_value) => {
-                if let AstNode::Constant { value, .. } = self {
+                if let AstNode::Constant { value, .. } = tree {
                     if value != pattern_value {
                         return None;
                     }
@@ -54,9 +44,9 @@ impl PatternRewrite for AstNode {
                 }
             }
             AstPattern::Add(left_pattern, right_pattern) => {
-                if let AstNode::Add { lhs, rhs, .. } = self {
-                    let left_matches = lhs.matches(left_pattern);
-                    let right_matches = rhs.matches(right_pattern);
+                if let AstNode::Add { lhs, rhs, .. } = tree {
+                    let left_matches = left_pattern.matches(&lhs);
+                    let right_matches = right_pattern.matches(&rhs);
 
                     if left_matches.is_none() || right_matches.is_none() {
                         return None;
@@ -72,13 +62,10 @@ impl PatternRewrite for AstNode {
 
         Some(matches)
     }
+}
 
-    fn rewrite<F>(&self, _pattern: &AstPattern, _apply_func: F) -> Self
-    where
-        F: Fn(&Self) -> Self,
-    {
-        todo!()
-    }
+struct PatternRewriter {
+    flagged_ast: AstNode<bool>,
 }
 
 #[cfg(test)]
@@ -93,7 +80,7 @@ mod tests {
         use AstPattern::*;
         let pattern = Any("X") + Any("Y");
 
-        let matches = ast.matches(&pattern);
+        let matches = pattern.matches(&ast);
         assert!(matches.is_some());
 
         let matches = matches.unwrap();
