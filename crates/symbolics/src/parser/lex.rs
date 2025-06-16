@@ -568,7 +568,8 @@ mod tests {
         assert_eq!(token_stream.tokens.len(), 1);
         let expected = vec![Token::CodeBlock {
             language: "python".to_string(),
-            code: "\n            let x = 42;\n            print(\"Hello, world {x}!\")\n        ".to_string(),
+            code: "\n            let x = 42;\n            print(\"Hello, world {x}!\")\n        "
+                .to_string(),
         }];
         for ((token, _), expected_token) in token_stream.tokens.iter().zip(expected.iter()) {
             assert_eq!(
