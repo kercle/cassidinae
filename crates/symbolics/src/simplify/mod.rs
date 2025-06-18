@@ -36,6 +36,27 @@ static RW_RULES: LazyLock<Vec<RwRule<'static>>> = LazyLock::new(|| {
                 (k + 1) * a
             }
         }),
+        rw_rule!(Any("a") * Any("k") + Any("a") => |k, a| {
+            if let Some(k_val) = k.value_from_constant() {
+                AstNode::new_constant(k_val + 1) * a
+            } else {
+                (k + 1) * a
+            }
+        }),
+        rw_rule!(Any("a") + Any("k") * Any("a") => |k, a| {
+            if let Some(k_val) = k.value_from_constant() {
+                AstNode::new_constant(k_val + 1) * a
+            } else {
+                (k + 1) * a
+            }
+        }),
+        rw_rule!(Any("a") + Any("a") * Any("k") => |k, a| {
+            if let Some(k_val) = k.value_from_constant() {
+                AstNode::new_constant(k_val + 1) * a
+            } else {
+                (k + 1) * a
+            }
+        }),
         rw_rule!(Number("a") + Number("b") => |a, b| {
             let a_val = a.value_from_constant().unwrap();
             let b_val = b.value_from_constant().unwrap();
@@ -174,7 +195,13 @@ mod tests {
 
     #[test]
     fn test_simplify_ast() {
-        let ast = parse("f[x]+f[x]*2").unwrap();
+        let ast = parse("1+2+3+4+5+6+7+8+9+10+11+12").unwrap();
+
+        let ast = ast
+            .flatten_commutative()
+            .fold_constants()
+            .unflatten_commutative();
+
         let simplified_ast = simplify_exhaustive(ast);
         println!("Simplified: {}", simplified_ast.to_yasc());
     }

@@ -17,8 +17,16 @@ fn print_markdown(input: &str) {
         std::process::exit(1);
     });
 
-    let ast = simplify_exhaustive(ast);
-    // println!(" -- {}", ast.to_string());
+    let ast = ast
+        .flatten_commutative()
+        .fold_constants()
+        .unflatten_commutative();
+
+    let ast = simplify_exhaustive(ast)
+        .flatten_commutative()
+        .fold_constants()
+        .cannonical_order()
+        .unflatten_commutative();
 
     let latex = ast.to_latex();
     println!("$$\n{}\n$$", latex);
