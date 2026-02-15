@@ -113,7 +113,7 @@ where
 
             format!("{name}[{args_str}]")
         }
-        Block(nodes) => {
+        Block { nodes, .. } => {
             let mut block_str = Vec::new();
             for node in nodes {
                 block_str.push(ast_to_yasc(node, parent_precedence));

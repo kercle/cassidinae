@@ -74,7 +74,10 @@ where
         args: Vec<AstNode<Annotation>>,
         annotation: Annotation,
     },
-    Block(Vec<AstNode<Annotation>>),
+    Block {
+        nodes: Vec<AstNode<Annotation>>,
+        annotation: Annotation,
+    },
 }
 
 impl<A> AstNode<A>
@@ -193,7 +196,10 @@ where
     }
 
     pub fn new_block(nodes: Vec<AstNode<A>>) -> Self {
-        AstNode::Block(nodes)
+        AstNode::Block {
+            nodes,
+            annotation: A::default(),
+        }
     }
 
     pub fn drop_annotation(self) -> AstNode {
@@ -241,12 +247,12 @@ where
                 args,
                 annotation,
             },
-            AstNode::Block(nodes) => AstNode::Block(nodes),
+            AstNode::Block { nodes, annotation } => AstNode::Block { nodes, annotation },
         }
     }
 
-    pub fn annotation(&self) -> Option<&A> {
-        Some(match self {
+    pub fn annotation(&self) -> &A {
+        match self {
             AstNode::Constant { annotation, .. } => annotation,
             AstNode::NamedValue { annotation, .. } => annotation,
             AstNode::Add { annotation, .. } => annotation,
@@ -262,8 +268,8 @@ where
             AstNode::Tan { annotation, .. } => annotation,
             AstNode::Sqrt { annotation, .. } => annotation,
             AstNode::FunctionCall { annotation, .. } => annotation,
-            AstNode::Block(..) => return None,
-        })
+            AstNode::Block { annotation, .. } => annotation,
+        }
     }
 
     pub fn from_function_call(name: String, mut args: Vec<AstNode<A>>) -> Result<Self, String> {
@@ -410,8 +416,11 @@ where
                 args: args.into_iter().map(|a| a.map_inner(f)).collect(),
                 annotation,
             },
-            Block(nodes) => Block(nodes.into_iter().map(|n| n.map_inner(f)).collect()),
-            node @ Constant { .. } | node @ NamedValue { .. } => node.clone(),
+            Block { nodes, annotation } => Block {
+                nodes: nodes.into_iter().map(|n| n.map_inner(f)).collect(),
+                annotation,
+            },
+            node @ Constant { .. } | node @ NamedValue { .. } => node,
         };
 
         f(mapped)
@@ -522,9 +531,10 @@ where
                 args: args.into_iter().map(|a| a.map_annotation(f)).collect(),
                 annotation: f(annotation),
             },
-            AstNode::Block(nodes) => {
-                AstNode::Block(nodes.into_iter().map(|n| n.map_annotation(f)).collect())
-            }
+            AstNode::Block { nodes, annotation } => AstNode::Block {
+                nodes: nodes.into_iter().map(|n| n.map_annotation(f)).collect(),
+                annotation: f(annotation),
+            },
         }
     }
 }

@@ -166,7 +166,7 @@ where
             .annotated_ast
             .clone()
             .map(&mut |node: AstNode<Option<usize>>| {
-                if let Some(Some(index)) = node.annotation() {
+                if let Some(index) = node.annotation() {
                     if index == &self.iter_index {
                         f(&self.bindings[*index]).map_annotation(&mut |_| None)
                     } else {

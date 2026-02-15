@@ -171,7 +171,7 @@ where
 
             format!("{name}\\left[{args_str}\\right]")
         }
-        Block(nodes) => {
+        Block { nodes, .. } => {
             let mut block_str = String::new();
             for node in nodes {
                 if !block_str.is_empty() {

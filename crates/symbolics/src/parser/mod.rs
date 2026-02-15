@@ -208,7 +208,7 @@ fn parse_block(stream: &mut TokenStream) -> Result<AstNode, ParseError> {
         } else if nodes.len() == 1 {
             Ok(nodes.pop().unwrap())
         } else {
-            Ok(AstNode::Block(nodes))
+            Ok(AstNode::new_block(nodes))
         }
     }
 }
@@ -234,7 +234,6 @@ pub fn parse(input: &str) -> Result<AstNode, BoxedError> {
 
 #[cfg(test)]
 mod tests {
-    use super::ast::AstNode::*;
     use super::*;
 
     #[test]
@@ -427,7 +426,7 @@ mod tests {
 
         assert_eq!(
             ast,
-            Block(vec![
+            AstNode::new_block(vec![
                 AstNode::new_add(
                     AstNode::new_constant(RealScalar::from_str("3").unwrap()),
                     AstNode::new_constant(RealScalar::from_str("4").unwrap()),
