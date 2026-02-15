@@ -166,7 +166,10 @@ where
             let lhs = transform_inverses(*lhs.to_owned());
             let rhs = transform_inverses(*rhs.to_owned());
 
-            return AstNode::new_mul(lhs, AstNode::new_reciprocal(rhs));
+            return AstNode::new_mul(
+                lhs,
+                AstNode::new_pow(rhs, AstNode::new_constant(RealScalar::minus_one())),
+            );
         }
         _ => {}
     }

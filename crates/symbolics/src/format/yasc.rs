@@ -7,7 +7,6 @@ where
 {
     match ast {
         AstNode::Negation { .. } => Some(3),
-        AstNode::Reciprocal { .. } => Some(3),
         AstNode::Add { .. } => Some(1),
         AstNode::Sub { .. } => Some(1),
         AstNode::Mul { .. } => Some(2),
@@ -49,9 +48,6 @@ where
         NamedValue { name, .. } => name.to_string(),
         Negation { arg, .. } => {
             format!("-{}", ast_to_yasc(arg, precedence))
-        }
-        Reciprocal { arg, .. } => {
-            format!("1/{}", ast_to_yasc(arg, precedence))
         }
         Sub { lhs, rhs, .. } => wrap_with_parentheses(
             format!(

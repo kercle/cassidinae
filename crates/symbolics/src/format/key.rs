@@ -16,9 +16,6 @@ where
         Negation { arg, .. } => {
             format!("neg[{}]", ast_to_key_string(arg))
         }
-        Reciprocal { arg, .. } => {
-            format!("/ 1 {}", ast_to_key_string(arg))
-        }
         Add { lhs, rhs, .. }
         | Sub { lhs, rhs, .. }
         | Mul { lhs, rhs, .. }

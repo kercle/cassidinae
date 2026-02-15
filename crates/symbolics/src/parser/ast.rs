@@ -43,10 +43,6 @@ where
         nodes: Vec<AstNode<Annotation>>,
         annotation: Annotation,
     },
-    Reciprocal {
-        arg: Box<AstNode<Annotation>>,
-        annotation: Annotation,
-    },
     Div {
         lhs: Box<AstNode<Annotation>>,
         rhs: Box<AstNode<Annotation>>,
@@ -144,13 +140,6 @@ where
         }
     }
 
-    pub fn new_reciprocal(arg: AstNode<A>) -> Self {
-        AstNode::Reciprocal {
-            arg: Box::new(arg),
-            annotation: A::default(),
-        }
-    }
-
     pub fn new_div(lhs: AstNode<A>, rhs: AstNode<A>) -> Self {
         AstNode::Div {
             lhs: Box::new(lhs),
@@ -233,7 +222,6 @@ where
                 annotation,
             },
             AstNode::MulSeq { nodes, .. } => AstNode::MulSeq { nodes, annotation },
-            AstNode::Reciprocal { arg, .. } => AstNode::Reciprocal { arg, annotation },
             AstNode::Div { lhs, rhs, .. } => AstNode::Div {
                 lhs,
                 rhs,
@@ -267,7 +255,6 @@ where
             AstNode::Sub { annotation, .. } => annotation,
             AstNode::Mul { annotation, .. } => annotation,
             AstNode::MulSeq { annotation, .. } => annotation,
-            AstNode::Reciprocal { annotation, .. } => annotation,
             AstNode::Div { annotation, .. } => annotation,
             AstNode::Pow { annotation, .. } => annotation,
             AstNode::Sin { annotation, .. } => annotation,
@@ -380,10 +367,6 @@ where
                 nodes: nodes.into_iter().map(|n| n.map_inner(f)).collect(),
                 annotation,
             },
-            Reciprocal { arg, annotation } => Reciprocal {
-                arg: Box::new(arg.map_inner(f)),
-                annotation,
-            },
             Div {
                 lhs,
                 rhs,
@@ -494,10 +477,6 @@ where
             },
             AstNode::MulSeq { nodes, annotation } => AstNode::MulSeq {
                 nodes: nodes.into_iter().map(|n| n.map_annotation(f)).collect(),
-                annotation: f(annotation),
-            },
-            AstNode::Reciprocal { arg, annotation } => AstNode::Reciprocal {
-                arg: Box::new(arg.map_annotation(f)),
                 annotation: f(annotation),
             },
             AstNode::Div {
