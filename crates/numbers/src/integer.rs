@@ -536,7 +536,7 @@ impl BigInteger {
     }
 
     pub fn pow(&self, exp: &Self) -> Result<Self, String> {
-        if exp.gt_inner(&BigInteger::from_u64(20)) {
+        if exp.gt_inner(&BigInteger::from_u64(1000)) {
             return Err("Failsafe: Exponent too large".to_string());
         }
 
