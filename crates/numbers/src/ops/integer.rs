@@ -116,12 +116,20 @@ impl cmp::PartialEq for BigInteger {
 
 impl cmp::PartialOrd for BigInteger {
     fn partial_cmp(&self, other: &Self) -> Option<cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for BigInteger {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         if self.eq_inner(other) {
-            Some(cmp::Ordering::Equal)
+            cmp::Ordering::Equal
         } else if self.lt_inner(other) {
-            Some(cmp::Ordering::Less)
+            cmp::Ordering::Less
         } else {
-            Some(cmp::Ordering::Greater)
+            cmp::Ordering::Greater
         }
     }
 }
+
+impl Eq for BigInteger {}

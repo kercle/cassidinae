@@ -1,4 +1,7 @@
-use std::fmt::{Debug, Display};
+use std::{
+    cmp::Ordering,
+    fmt::{Debug, Display},
+};
 
 use crate::{alg::gcd, integer::BigInteger};
 
@@ -97,9 +100,30 @@ impl Rational {
 
 impl PartialEq for Rational {
     fn eq(&self, other: &Self) -> bool {
-        &self.numerator * &other.denominator == &other.numerator * &self.denominator
+        self.cmp(other) == Ordering::Equal
     }
 }
+
+impl PartialOrd for Rational {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for Rational {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        let v = &self.numerator * &other.denominator - &other.numerator * &self.denominator;
+        if v.is_zero() {
+            Ordering::Equal
+        } else if v.is_negative() {
+            Ordering::Less
+        } else {
+            Ordering::Greater
+        }
+    }
+}
+
+impl Eq for Rational {}
 
 impl Display for Rational {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
