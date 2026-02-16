@@ -1,4 +1,4 @@
-use std::cmp::Ordering;
+use std::{cmp::Ordering, fmt::Debug, ops::Deref};
 
 use numbers::RealScalar;
 
@@ -51,6 +51,174 @@ where
         nodes: Vec<AstNode<Annotation>>,
         annotation: Annotation,
     },
+}
+
+#[repr(transparent)]
+#[derive(Debug, Clone, PartialEq)]
+pub struct NormalizedAstNode<A>(AstNode<A>)
+where
+    A: Clone + PartialEq;
+
+impl<A> Deref for NormalizedAstNode<A>
+where
+    A: Clone + PartialEq,
+{
+    type Target = AstNode<A>;
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl<A: Clone + PartialEq> NormalizedAstNode<A> {
+    fn new_unchecked(node: AstNode<A>) -> Self {
+        NormalizedAstNode(node)
+    }
+
+    pub fn into_inner(self) -> AstNode<A> {
+        self.0
+    }
+}
+
+impl<A: Clone + PartialEq + Default + Debug> NormalizedAstNode<A> {
+    pub fn collect_like_terms(self) -> Self {
+        self.into_inner()
+            .fold_constants()
+            .normalize()
+            .collect_like_terms_inner()
+    }
+
+    fn split_coefficient(self) -> (RealScalar, Self) {
+        use AstNode::*;
+
+        let inner = self.into_inner();
+
+        let mut coeff = RealScalar::one();
+        let rest;
+
+        if let Mul { nodes, .. } = inner {
+            // in normalized ASTs, nodes has at least 2 elements.
+            let v = nodes.first().unwrap();
+
+            if let Constant { value, .. } = v {
+                coeff = value.clone();
+
+                if nodes.len() == 2 {
+                    rest = nodes.last().unwrap().clone();
+                } else {
+                    rest = AstNode::new_mul(nodes[1..].to_vec());
+                }
+            } else {
+                rest = AstNode::new_mul(nodes);
+            }
+        } else {
+            rest = inner;
+        }
+
+        (coeff, NormalizedAstNode::new_unchecked(rest))
+    }
+
+    fn collect_like_terms_inner(self) -> Self {
+        use AstNode::*;
+        let inner = self.into_inner();
+
+        match inner {
+            Constant { value, .. } => {
+                NormalizedAstNode::new_unchecked(AstNode::new_constant(value))
+            }
+            NamedValue { name, .. } => {
+                NormalizedAstNode::new_unchecked(AstNode::new_named_value(name))
+            }
+            Add { nodes, .. } => {
+                let mut terms: Vec<(RealScalar, NormalizedAstNode<A>)> = vec![];
+
+                for v in nodes.into_iter() {
+                    let v = NormalizedAstNode::new_unchecked(v)
+                        .collect_like_terms()
+                        .into_inner();
+                    let (cn, ct) = NormalizedAstNode::new_unchecked(v).split_coefficient();
+
+                    let mut merged = false;
+
+                    // Todo: could use binary search to find and add nodes to terms -> O(log n) instead of O(n)
+                    for (c, t) in terms.iter_mut() {
+                        if t.cmp_nodes(&ct).is_eq() {
+                            *c += cn.clone();
+                            merged = true;
+                            break;
+                        }
+                    }
+
+                    if !merged {
+                        terms.push((cn, ct));
+                    }
+                }
+
+                let new_nodes = terms
+                    .into_iter()
+                    .filter_map(|(c, t)| {
+                        if c.is_zero() {
+                            None
+                        } else if c.is_one() {
+                            Some(t.into_inner())
+                        } else {
+                            Some(
+                                AstNode::new_mul(vec![AstNode::new_constant(c), t.into_inner()])
+                                    .normalize()
+                                    .into_inner(),
+                            )
+                        }
+                    })
+                    .collect();
+                NormalizedAstNode::new_unchecked(AstNode::new_add(new_nodes))
+            }
+            Negation { .. } => unreachable!("Negation should not exist in normalized AST"),
+            Sub { .. } => unreachable!("Sub should not exist in normalized AST"),
+            Mul { nodes, .. } => {
+                let nodes = nodes
+                    .into_iter()
+                    .map(|n| {
+                        NormalizedAstNode::new_unchecked(n)
+                            .collect_like_terms()
+                            .into_inner()
+                    })
+                    .collect();
+                AstNode::new_mul(nodes).normalize()
+            }
+            Div { .. } => unreachable!("Div should not exist in normalized AST"),
+            Pow { lhs, rhs, .. } => {
+                let lhs = NormalizedAstNode::new_unchecked(*lhs)
+                    .collect_like_terms()
+                    .into_inner();
+                let rhs = NormalizedAstNode::new_unchecked(*rhs)
+                    .collect_like_terms()
+                    .into_inner();
+
+                NormalizedAstNode::new_unchecked(AstNode::new_pow(lhs, rhs))
+            }
+            FunctionCall { name, args, .. } => {
+                let args = args
+                    .into_iter()
+                    .map(|n| {
+                        NormalizedAstNode::new_unchecked(n)
+                            .collect_like_terms()
+                            .into_inner()
+                    })
+                    .collect();
+                NormalizedAstNode::new_unchecked(AstNode::new_function_call(name, args))
+            }
+            Block { nodes, .. } => {
+                let nodes = nodes
+                    .into_iter()
+                    .map(|n| {
+                        NormalizedAstNode::new_unchecked(n)
+                            .collect_like_terms()
+                            .into_inner()
+                    })
+                    .collect();
+                NormalizedAstNode::new_unchecked(AstNode::new_block(nodes))
+            }
+        }
+    }
 }
 
 #[repr(u8)]
@@ -313,23 +481,33 @@ where
         f(mapped)
     }
 
-    pub fn normalize(self) -> Self {
+    pub fn normalize(self) -> NormalizedAstNode<A> {
+        NormalizedAstNode::new_unchecked(self.normalize_inner())
+    }
+
+    fn normalize_inner(self) -> Self {
         use AstNode::*;
 
         match self {
             Constant { value, .. } => AstNode::new_constant(value),
             NamedValue { name, .. } => AstNode::new_named_value(name),
             Block { nodes, .. } => {
-                let normalized_nodes = nodes.iter().map(|a| a.to_owned().normalize()).collect();
+                let normalized_nodes = nodes
+                    .iter()
+                    .map(|a| a.to_owned().normalize_inner())
+                    .collect();
                 AstNode::new_block(normalized_nodes)
             }
             FunctionCall { name, args, .. } => {
-                let normalized_args = args.iter().map(|a| a.to_owned().normalize()).collect();
+                let normalized_args = args
+                    .iter()
+                    .map(|a| a.to_owned().normalize_inner())
+                    .collect();
                 AstNode::new_function_call(name, normalized_args)
             }
             Add { nodes, .. } => {
                 let mut flattened_nodes = Vec::new();
-                for n in nodes.into_iter().map(|n| n.normalize()) {
+                for n in nodes.into_iter().map(|n| n.normalize_inner()) {
                     match n {
                         Add { nodes, .. } => flattened_nodes.extend(nodes),
                         other => flattened_nodes.push(other),
@@ -347,12 +525,17 @@ where
             }
             Negation { arg, .. } => {
                 AstNode::new_mul_pair(AstNode::new_constant(RealScalar::minus_one()), *arg)
-                    .normalize()
+                    .normalize_inner()
             }
             Mul { nodes, .. } => {
                 let mut flattened_nodes = Vec::new();
-                for n in nodes.into_iter().map(|n| n.normalize()) {
+                for n in nodes.into_iter().map(|n| n.normalize_inner()) {
                     match n {
+                        Constant { value, .. } => {
+                            if !value.is_one() {
+                                flattened_nodes.push(AstNode::new_constant(value))
+                            }
+                        }
                         Mul { nodes, .. } => flattened_nodes.extend(nodes),
                         other => flattened_nodes.push(other),
                     }
@@ -371,13 +554,13 @@ where
                 *lhs,
                 AstNode::new_mul_pair(AstNode::new_constant(RealScalar::minus_one()), *rhs),
             )
-            .normalize(),
+            .normalize_inner(),
             Div { lhs, rhs, .. } => AstNode::new_mul_pair(
                 *lhs,
                 AstNode::new_pow(*rhs, AstNode::new_constant(RealScalar::minus_one())),
             )
-            .normalize(),
-            Pow { lhs, rhs, .. } => AstNode::new_pow(lhs.normalize(), rhs.normalize()),
+            .normalize_inner(),
+            Pow { lhs, rhs, .. } => AstNode::new_pow(lhs.normalize_inner(), rhs.normalize_inner()),
         }
     }
 
@@ -477,16 +660,6 @@ where
                     AstNode::new_mul(new_nodes)
                 }
             }
-        }
-    }
-
-    pub fn collect_like_terms(self) -> Self {
-        self.normalize().fold_constants().collect_like_terms_inner()
-    }
-
-    fn collect_like_terms_inner(self) -> Self {
-        match self {
-            _ => self,
         }
     }
 }
@@ -778,8 +951,8 @@ mod tests {
     #[test]
     fn test_normalize_is_idempotent() {
         let ast = parse("((x + 2) + (1 + 2)) + (y + 0)").unwrap();
-        let n1 = ast.normalize();
-        let n2 = n1.clone().normalize();
+        let n1 = ast.normalize().into_inner();
+        let n2 = n1.clone().normalize().into_inner();
         assert_struct_eq(&n1, &n2);
     }
 
