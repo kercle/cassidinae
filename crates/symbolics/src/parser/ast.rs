@@ -590,8 +590,14 @@ where
                     lhs
                 } else if rhs.is_zero() && !lhs.is_zero() {
                     AstNode::new_constant_one()
-                } else if let (Constant { .. }, Constant { .. }) = (&lhs, &rhs) {
-                    todo!("Handle power of constants");
+                } else if let (Constant { value: a, .. }, Constant { value: b, .. }) = (&lhs, &rhs) {
+                    let res = a.pow(b);
+
+                    if let Ok(res) = res {
+                        AstNode::new_constant(res)
+                    } else {
+                        AstNode::new_pow(lhs, rhs)
+                    }
                 } else {
                     AstNode::new_pow(lhs, rhs)
                 }

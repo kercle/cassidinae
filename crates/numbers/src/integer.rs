@@ -535,11 +535,16 @@ impl BigInteger {
         ))
     }
 
-    pub fn pow(&self, mut exp: Self) -> Result<Self, String> {
+    pub fn pow(&self, exp: &Self) -> Result<Self, String> {
         if exp.gt_inner(&BigInteger::from_u64(20)) {
             return Err("Failsafe: Exponent too large".to_string());
         }
 
+        if exp.is_negative() {
+            return Err("Integers not closed under powers with negative exponents.".to_string());
+        }
+
+        let mut exp = exp.clone();
         let mut result = BigInteger::one();
         while !exp.is_zero() {
             result = BigInteger::mul(&result, self);

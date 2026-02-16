@@ -48,6 +48,26 @@ impl Number {
             Self::Rational(r) => r.is_one(),
         }
     }
+
+    pub fn to_rational(self) -> Result<BigRational, String> {
+        use Number::*;
+        match self {
+            Integer(v) => Ok(BigRational::from_big_integer(v)),
+            Rational(v) => Ok(v),
+        }
+    }
+
+    pub fn pow(&self, exp: &Number) -> Result<Self, String> {
+        let base = self.clone().to_rational()?;
+        let exp = exp.clone().to_rational()?;
+
+        let res = base.pow(&exp)?;
+        if res.denominator().is_one() {
+            Ok(Number::Integer(res.take_numerator()))
+        } else {
+            Ok(Number::Rational(res))
+        }
+    }
 }
 
 impl FromStr for Number {
@@ -76,8 +96,8 @@ impl Ord for Number {
         match (self, other) {
             (Integer(i1), Integer(i2)) => i1.cmp(i2),
             (Rational(r1), Rational(r2)) => r1.cmp(r2),
-            (Integer(i1), Rational(r2)) => BigRational::from_big_integer(i1).cmp(r2),
-            (Rational(r1), Integer(i2)) => r1.cmp(&BigRational::from_big_integer(i2)),
+            (Integer(i1), Rational(r2)) => BigRational::from_big_integer(i1.clone()).cmp(r2),
+            (Rational(r1), Integer(i2)) => r1.cmp(&BigRational::from_big_integer(i2.clone())),
         }
     }
 }

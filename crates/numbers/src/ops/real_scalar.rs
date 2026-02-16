@@ -1,27 +1,32 @@
-use crate::{Number, integer::BigInteger};
+use crate::{Number, integer::BigInteger, rational::BigRational};
 use std::ops;
+
+impl ops::Add for Number {
+    type Output = Number;
+
+    fn add(self, other: Self) -> Self::Output {
+        use Number::*;
+        match (self, other) {
+            (Integer(a), Integer(b)) => Integer(a + b),
+            (Rational(a), Rational(b)) => {
+                let ret = a + b;
+                if ret.is_integer() {
+                    Integer(ret.take_numerator())
+                } else {
+                    Rational(ret)
+                }
+            }
+            (Integer(a), Rational(b)) => Rational(BigRational::from_big_integer(a)) + Rational(b),
+            (Rational(a), Integer(b)) => Rational(a) + Rational(BigRational::from_big_integer(b)),
+        }
+    }
+}
 
 impl ops::Add for &Number {
     type Output = Number;
 
     fn add(self, other: Self) -> Self::Output {
-        match (self, other) {
-            (Number::Integer(a), Number::Integer(b)) => Number::Integer(a + b),
-            (Number::Rational(_a), Number::Rational(_b)) => {
-                todo!("Implement addition for Rational")
-            }
-            _ => {
-                todo!("Handle mixed types or unsupported operations")
-            }
-        }
-    }
-}
-
-impl ops::Add for Number {
-    type Output = Self;
-
-    fn add(self, other: Self) -> Self::Output {
-        &self + &other
+        self.clone() + other.clone()
     }
 }
 
@@ -67,25 +72,33 @@ impl ops::Sub for Number {
     }
 }
 
-impl ops::Mul for &Number {
-    type Output = Number;
-
-    fn mul(self, other: Self) -> Self::Output {
-        match (self, other) {
-            (Number::Integer(a), Number::Integer(b)) => Number::Integer(a * b),
-            (Number::Rational(_a), Number::Rational(_b)) => {
-                todo!("Implement multiplication for Rational")
-            }
-            _ => todo!("Implement multiplication for mixed types")
-        }
-    }
-}
-
 impl ops::Mul for Number {
     type Output = Number;
 
     fn mul(self, other: Self) -> Self::Output {
-        &self * &other
+        use Number::*;
+
+        match (self, other) {
+            (Integer(a), Integer(b)) => Integer(a * b),
+            (Rational(a), Rational(b)) => {
+                let ret = a * b;
+                if ret.is_integer() {
+                    Integer(ret.take_numerator())
+                } else {
+                    Rational(ret)
+                }
+            }
+            (Integer(a), Rational(b)) => Rational(BigRational::from_big_integer(a)) * Rational(b),
+            (Rational(a), Integer(b)) => Rational(a) * Rational(BigRational::from_big_integer(b)),
+        }
+    }
+}
+
+impl ops::Mul for &Number {
+    type Output = Number;
+
+    fn mul(self, other: Self) -> Self::Output {
+        self.clone() * other.clone()
     }
 }
 

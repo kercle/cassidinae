@@ -31,8 +31,8 @@ impl BigRational {
         Ok(r)
     }
 
-    pub fn from_big_integer(value: &BigInteger) -> Self {
-        BigRational::new(value.clone(), BigInteger::one()).unwrap()
+    pub fn from_big_integer(value: BigInteger) -> Self {
+        BigRational::new(value, BigInteger::one()).unwrap()
     }
 
     pub fn from_decimal_str(value: &str) -> Result<Self, String> {
@@ -70,12 +70,24 @@ impl BigRational {
         }
     }
 
+    pub fn take_numerator(self) -> BigInteger {
+        return self.numerator;
+    }
+
+    pub fn take_denominator(self) -> BigInteger {
+        return self.denominator;
+    }
+
     pub fn numerator(&self) -> &BigInteger {
         &self.numerator
     }
 
     pub fn denominator(&self) -> &BigInteger {
         &self.denominator
+    }
+
+    pub fn is_integer(&self) -> bool {
+        self.denominator.is_one()
     }
 
     pub fn is_zero(&self) -> bool {
@@ -91,6 +103,79 @@ impl BigRational {
 
         self.numerator = (&self.numerator / &q).unwrap_or(self.numerator.clone());
         self.denominator = (&self.denominator / &q).unwrap_or(self.denominator.clone());
+    }
+
+    pub fn add(&self, other: &BigRational) -> BigRational {
+        let nf1 = self.numerator() * other.denominator();
+        let nf2 = other.numerator() * self.denominator();
+        let df = self.denominator() * other.denominator();
+
+        let num = nf1 + nf2;
+        let den = df;
+
+        BigRational::new(num, den).unwrap()
+    }
+
+    pub fn neg(&self) -> BigRational {
+        let mut ret = self.clone();
+        ret.numerator.flip_sign();
+        ret
+    }
+
+    pub fn sub(&self, other: &BigRational) -> BigRational {
+        self.add(&other.neg())
+    }
+
+    pub fn mul(&self, other: &BigRational) -> BigRational {
+        BigRational::new(
+            self.numerator() * other.numerator(),
+            self.denominator() * other.denominator(),
+        )
+        .unwrap()
+    }
+
+    pub fn div(&self, other: &BigRational) -> Option<BigRational> {
+        if other.is_zero() {
+            return None;
+        }
+
+        Some(
+            BigRational::new(
+                self.denominator() * other.denominator(),
+                self.numerator() * other.numerator(),
+            )
+            .unwrap(),
+        )
+    }
+
+    pub fn pow(&self, exp: &BigRational) -> Result<Self, String> {
+        if !exp.denominator().is_one() {
+            todo!("Implement non-trivial exponentiation of rationals");
+        }
+
+        let exp = exp.numerator();
+
+        if exp.is_one() {
+            return Ok(self.clone());
+        } else if exp.is_zero() {
+            if self.is_zero() {
+                return Err("Base and exponent are zero.".to_string());
+            } else {
+                return Ok(Self::one());
+            }
+        }
+
+        let neg_exp = exp.is_negative();
+        let exp = exp.abs();
+
+        let a = self.numerator.pow(&exp)?;
+        let b = self.denominator.pow(&exp)?;
+
+        if neg_exp {
+            Self::new(b, a)
+        } else {
+            Self::new(a, b)
+        }
     }
 
     pub fn to_hex_string(&self) -> String {

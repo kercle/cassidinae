@@ -133,3 +133,44 @@ impl Ord for BigInteger {
 }
 
 impl Eq for BigInteger {}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_addition() {
+        let a = BigInteger::from_i64(100);
+        let b = BigInteger::from_i64(200);
+
+        assert_eq!(&a + &b, BigInteger::from_i64(300));
+        assert_eq!(a + b, BigInteger::from_i64(300));
+    }
+
+    #[test]
+    fn test_subtraction() {
+        let a = BigInteger::from_i64(500);
+        let b = BigInteger::from_i64(100);
+        assert_eq!(&a - &b, BigInteger::from_i64(400));
+        assert_eq!(a - b, BigInteger::from_i64(400));
+    }
+
+    #[test]
+    fn test_negation() {
+        let a = BigInteger::from_i64(100);
+        assert_eq!(-&a, BigInteger::from_i64(-100));
+        assert_eq!(-a, BigInteger::from_i64(-100));
+    }
+
+    #[test]
+    fn test_division_and_remainder() {
+        let a = BigInteger::from_i64(10);
+        let b = BigInteger::from_i64(3);
+
+        assert_eq!((&a / &b).unwrap(), BigInteger::from_i64(3));
+        assert_eq!((&a % &b).unwrap(), BigInteger::from_i64(1));
+
+        let zero = BigInteger::from_i64(0);
+        assert!((&a / &zero).is_none());
+    }
+}
