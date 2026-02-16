@@ -55,7 +55,7 @@ where
 
 #[repr(u8)]
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
-enum Kind {
+enum OrderRank {
     Constant = 0,
     NamedValue = 1,
     Negation = 2,
@@ -79,8 +79,16 @@ where
         }
     }
 
-    pub fn constant_from_i64(value: i64) -> Self {
+    pub fn new_constant_from_i64(value: i64) -> Self {
         AstNode::new_constant(RealScalar::from_i64(value))
+    }
+
+    pub fn new_constant_one() -> Self {
+        Self::new_constant_from_i64(1)
+    }
+
+    pub fn new_constant_zero() -> Self {
+        Self::new_constant_from_i64(0)
     }
 
     pub fn new_named_value<T: ToString>(name: T) -> Self {
@@ -387,24 +395,25 @@ where
                 }
             }
             Sub { lhs, rhs, .. } => {
-                if let (Constant { value: a, .. }, Constant { value: b, .. }) = (&*lhs, &*rhs) {
-                    AstNode::new_constant(a - b)
-                } else {
-                    AstNode::new_sub(*lhs, *rhs)
-                }
+                // Note: in normalized AST this node type does not appear
+                AstNode::new_sub(lhs.fold_constants(), rhs.fold_constants())
             }
             Div { lhs, rhs, .. } => {
-                if let (Constant { .. }, Constant { .. }) = (&*lhs, &*rhs) {
-                    todo!("Handle division of constants");
-                } else {
-                    AstNode::new_div(*lhs, *rhs)
-                }
+                // Note: in normalized AST this node type does not appear
+                AstNode::new_div(lhs.fold_constants(), rhs.fold_constants())
             }
             Pow { lhs, rhs, .. } => {
-                if let (Constant { .. }, Constant { .. }) = (&*lhs, &*rhs) {
-                    todo!("Handle division of constants");
+                let lhs = lhs.fold_constants();
+                let rhs = rhs.fold_constants();
+
+                if rhs.is_one() {
+                    lhs
+                } else if rhs.is_zero() && !lhs.is_zero() {
+                    AstNode::new_constant_one()
+                } else if let (Constant { .. }, Constant { .. }) = (&lhs, &rhs) {
+                    todo!("Handle power of constants");
                 } else {
-                    AstNode::new_pow(*lhs, *rhs)
+                    AstNode::new_pow(lhs, rhs)
                 }
             }
             Block { nodes, .. } => {
@@ -435,7 +444,7 @@ where
                 }
 
                 if new_nodes.is_empty() {
-                    AstNode::constant_from_i64(0)
+                    AstNode::new_constant_zero()
                 } else if new_nodes.len() == 1 {
                     new_nodes.pop().unwrap()
                 } else {
@@ -455,13 +464,13 @@ where
                 }
 
                 if running_constant.is_zero() {
-                    return AstNode::constant_from_i64(0);
+                    return AstNode::new_constant_zero();
                 } else if !running_constant.is_one() {
                     new_nodes.push(AstNode::new_constant(running_constant));
                 }
 
                 if new_nodes.is_empty() {
-                    AstNode::constant_from_i64(1)
+                    AstNode::new_constant_one()
                 } else if new_nodes.len() == 1 {
                     new_nodes.pop().unwrap()
                 } else {
@@ -478,6 +487,22 @@ where
 {
     pub fn is_constant(&self) -> bool {
         matches!(self, AstNode::Constant { .. })
+    }
+
+    pub fn is_one(&self) -> bool {
+        if let AstNode::Constant { value, .. } = self {
+            value.is_one()
+        } else {
+            false
+        }
+    }
+
+    pub fn is_zero(&self) -> bool {
+        if let AstNode::Constant { value, .. } = self {
+            value.is_zero()
+        } else {
+            false
+        }
     }
 
     pub fn map_annotation<B, F>(self, f: &mut F) -> AstNode<B>
@@ -550,19 +575,19 @@ where
         }
     }
 
-    fn kind(&self) -> Kind {
+    fn operator_rank(&self) -> OrderRank {
         use AstNode::*;
         match self {
-            Constant { .. } => Kind::Constant,
-            NamedValue { .. } => Kind::NamedValue,
-            Negation { .. } => Kind::Negation,
-            Pow { .. } => Kind::Pow,
-            Mul { .. } => Kind::Mul,
-            Div { .. } => Kind::Div,
-            Add { .. } => Kind::Add,
-            Sub { .. } => Kind::Sub,
-            FunctionCall { .. } => Kind::FunctionCall,
-            Block { .. } => Kind::Block,
+            Constant { .. } => OrderRank::Constant,
+            NamedValue { .. } => OrderRank::NamedValue,
+            Negation { .. } => OrderRank::Negation,
+            Pow { .. } => OrderRank::Pow,
+            Mul { .. } => OrderRank::Mul,
+            Div { .. } => OrderRank::Div,
+            Add { .. } => OrderRank::Add,
+            Sub { .. } => OrderRank::Sub,
+            FunctionCall { .. } => OrderRank::FunctionCall,
+            Block { .. } => OrderRank::Block,
         }
     }
 
@@ -581,7 +606,7 @@ where
             Ordering::Equal
         }
 
-        let k = self.kind().cmp(&other.kind());
+        let k = self.operator_rank().cmp(&other.operator_rank());
         if k != Ordering::Equal {
             return k;
         }
@@ -637,7 +662,7 @@ mod tests {
     use crate::parser::parse;
 
     fn c(n: i64) -> AstNode<()> {
-        AstNode::constant_from_i64(n)
+        AstNode::new_constant_from_i64(n)
     }
 
     fn x() -> AstNode<()> {
