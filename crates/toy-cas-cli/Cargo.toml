@@ -1,5 +1,5 @@
 [package]
-name = "yasc-cli"
+name = "toy-cas-cli"
 version = "0.1.0"
 edition = "2024"
 
