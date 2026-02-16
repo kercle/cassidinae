@@ -179,4 +179,36 @@ mod gcd_tests {
         let g = gcd(bi(-48), bi(180));
         assert!(g.is_positive() || g.is_zero());
     }
+
+    #[test]
+    fn test_gcd_more_cases() {
+        fn bi(x: i64) -> BigInteger {
+            BigInteger::from_i64(x)
+        }
+
+        let cases = [
+            (0, 0, 0),
+            (0, 15, 15),
+            (15, 0, 15),
+            (12, 18, 6),
+            (48, 180, 12),
+            (-48, 180, 12),
+            (48, -180, 12),
+            (-48, -180, 12),
+            (17, 31, 1),
+            (270, 192, 6),
+        ];
+
+        for (a, b, g) in cases {
+            let got = gcd(bi(a), bi(b));
+            assert!(
+                got.eq_inner(&bi(g)),
+                "gcd({}, {}) = {}, expected {}",
+                a,
+                b,
+                got,
+                g
+            );
+        }
+    }
 }

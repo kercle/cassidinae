@@ -158,7 +158,13 @@ impl BigInteger {
             return self.sign == Sign::Positive;
         }
 
-        Self::cmp_digits(CompareFunction::Greater, &self.digits, &other.digits)
+        let ret = Self::cmp_digits(CompareFunction::Greater, &self.digits, &other.digits);
+
+        if self.sign == Sign::Negative {
+            !ret
+        } else {
+            ret
+        }
     }
 
     pub fn lt_inner(&self, other: &Self) -> bool {
@@ -166,7 +172,13 @@ impl BigInteger {
             return self.sign == Sign::Negative;
         }
 
-        Self::cmp_digits(CompareFunction::Less, &self.digits, &other.digits)
+        let ret = Self::cmp_digits(CompareFunction::Less, &self.digits, &other.digits);
+
+        if self.sign == Sign::Negative {
+            !ret
+        } else {
+            ret
+        }
     }
 
     pub fn ge_inner(&self, other: &Self) -> bool {
@@ -782,5 +794,205 @@ mod tests {
 
         let a = BigInteger::from_slice(Sign::Positive, &[1, 2, 3]);
         assert_eq!(a.to_hex_string(), "0x300000000000000020000000000000001");
+    }
+
+    #[test]
+    fn test_comparisons_with_negatives() {
+        let n5 = BigInteger::from_i64(-5);
+        let n8 = BigInteger::from_i64(-8);
+        let p5 = BigInteger::from_i64(5);
+        let p8 = BigInteger::from_i64(8);
+        let z = BigInteger::from_i64(0);
+
+        assert!(n5.gt_inner(&n8));
+        assert!(n8.lt_inner(&n5));
+
+        assert!(n8.lt_inner(&n5));
+
+        assert!(n5.lt_inner(&z));
+        assert!(z.lt_inner(&p5));
+
+        assert!(p5.gt_inner(&n5));
+        assert!(n5.lt_inner(&p5));
+
+        assert!(p8.ge_inner(&p8));
+        assert!(p8.le_inner(&p8));
+        assert!(p8.eq_inner(&BigInteger::from_i64(8)));
+    }
+
+    #[test]
+    fn test_division_zero_cases() {
+        let z = BigInteger::from_i64(0);
+        let n7 = BigInteger::from_i64(7);
+        let mn7 = BigInteger::from_i64(-7);
+
+        let (q, r) = BigInteger::div(&z, &n7).expect("0/7 should succeed");
+        assert!(q.eq_inner(&z));
+        assert!(r.eq_inner(&z));
+
+        let (q, r) = BigInteger::div(&z, &mn7).expect("0/-7 should succeed");
+        assert!(q.eq_inner(&z));
+        assert!(r.eq_inner(&z));
+
+        assert!(BigInteger::div(&n7, &z).is_none());
+        assert!(BigInteger::div(&z, &z).is_none());
+    }
+
+    #[test]
+    fn test_division_invariant_qbr_small_set() {
+        let cases = [
+            (123, 7),
+            (123, -7),
+            (-123, 7),
+            (-123, -7),
+            (9223372036854775807i64, 97),
+            (-9223372036854775807i64, 97),
+            (1000, 1),
+            (1000, -1),
+        ];
+
+        for (a, b) in cases {
+            let a = BigInteger::from_i64(a);
+            let b = BigInteger::from_i64(b);
+
+            assert_ne!(b, BigInteger::from_i64(0));
+
+            let (q, r) = BigInteger::div(&a, &b).expect("division failed unexpectedly");
+
+            let qb = BigInteger::mul(&q, &b);
+            let rhs = BigInteger::add(&qb, &r);
+            assert!(
+                rhs.eq_inner(&a),
+                "invariant a=q*b+r failed\n a={}\n b={}\n q={}\n r={}\n q*b+r={}",
+                a,
+                b,
+                q,
+                r,
+                rhs
+            );
+
+            // Check |r| < |b| (works for truncating remainder too)
+            let ar = r.abs();
+            let ab = b.abs();
+            assert!(
+                ar.lt_inner(&ab) || ar.eq_inner(&BigInteger::from_u64(0)),
+                "remainder magnitude too large\n a={}\n b={}\n r={}\n |r|={}\n |b|={}",
+                a,
+                b,
+                r,
+                ar,
+                ab
+            );
+        }
+    }
+
+    #[test]
+    fn test_division_multi_limb_known_results() {
+        let a = BigInteger::from_str_radix("18446744073709551616", 10).unwrap();
+        let b = BigInteger::from_u64(3);
+        let (q, r) = BigInteger::div(&a, &b).unwrap();
+
+        assert!(q.eq_inner(&BigInteger::from_str_radix("6148914691236517205", 10).unwrap()));
+        assert!(r.eq_inner(&BigInteger::from_u64(1)));
+
+        let a = BigInteger::from_str_radix("340282366920938463463374607431768211456", 10).unwrap();
+        let b = BigInteger::from_str_radix("18446744073709551616", 10).unwrap();
+        let (q, r) = BigInteger::div(&a, &b).unwrap();
+
+        assert!(q.eq_inner(&b));
+        assert!(r.eq_inner(&BigInteger::from_u64(0)));
+    }
+
+    #[test]
+    fn test_mul_distributive_small() {
+        fn bi(x: i64) -> BigInteger {
+            BigInteger::from_i64(x)
+        }
+
+        let a = bi(12345);
+        let b = bi(678);
+        let c = bi(-90);
+
+        let bc = BigInteger::add(&b, &c);
+        let left = BigInteger::mul(&a, &bc);
+
+        let ab = BigInteger::mul(&a, &b);
+        let ac = BigInteger::mul(&a, &c);
+        let right = BigInteger::add(&ab, &ac);
+
+        assert!(left.eq_inner(&right));
+    }
+
+    #[test]
+    fn test_roundtrip_decimal_parse_display() {
+        let inputs = [
+            "0",
+            "-0",
+            "1",
+            "-1",
+            "10",
+            "-10",
+            "18446744073709551616",
+            "-18446744073709551616",
+            "123456789012345678901234567890",
+            "-123456789012345678901234567890",
+        ];
+
+        for s in inputs {
+            let x = BigInteger::from_str_radix(s, 10).unwrap();
+            let s2 = format!("{}", x);
+            let y = BigInteger::from_str_radix(&s2, 10).unwrap();
+            assert!(x.eq_inner(&y), "roundtrip failed: in={}, out={}", s, s2);
+
+            if s == "-0" {
+                assert_eq!(s2, "0");
+            }
+        }
+    }
+
+    #[test]
+    fn test_no_negative_zero_invariant() {
+        let z1 = BigInteger::from_i64(0);
+        assert!(z1.is_zero());
+        assert!(z1.is_positive());
+
+        let z2 = BigInteger::from_vec(Sign::Negative, vec![0]);
+        assert!(z2.is_zero());
+        assert!(z2.is_positive(), "zero should always be positive sign");
+    }
+
+    #[test]
+    fn test_div_mult_limb() {
+        let a = BigInteger::from_vec(
+            Sign::Positive,
+            vec![
+                52278, 831776, 700918, 692733, 286021, 246328, 220077, 806682, 374954, 6464,
+                697051, 19522, 425920, 585270, 274739,
+            ],
+        );
+        let b = BigInteger::from_vec(
+            Sign::Positive,
+            vec![70327, 463338, 227530, 519575, 637288, 58611, 314888],
+        );
+
+        let (q, r) = BigInteger::div(&a, &b).unwrap();
+
+        // q = BASE^4 => digits [0,0,0,0,1] (5 digits)
+        let expected_q = BigInteger::from_str_radix(
+            "116982792067798683497881656656520388270385078252689639723\
+            9405026943276151096150241294193654711076255544992622749629418\
+            1992233312503353989754382825995955612",
+            10,
+        )
+        .unwrap();
+        let expected_r = BigInteger::from_str_radix(
+            "12302556959215319080439869486705260436435669956771286732638\
+            961083170069626250041609128570238081515621916430973969104763314",
+            10,
+        )
+        .unwrap();
+
+        assert!(q.eq_inner(&expected_q), "q was {}", q);
+        assert!(r.eq_inner(&expected_r), "r was {}", r);
     }
 }
