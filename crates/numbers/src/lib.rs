@@ -20,20 +20,24 @@ pub enum Scalar {
 }
 
 impl RealScalar {
-    pub fn zero() -> Self {
-        RealScalar::Integer(BigInteger::from_u64(0))
-    }
-
-    pub fn one() -> Self {
-        RealScalar::Integer(BigInteger::from_u64(1))
-    }
-
-    pub fn minus_one() -> Self {
-        RealScalar::Integer(BigInteger::from_i64(-1))
+    pub fn from_i64(value: i64) -> Self {
+        RealScalar::Integer(BigInteger::from_i64(value))
     }
 
     pub fn from_f64(_value: f64) -> Self {
         todo!()
+    }
+
+    pub fn zero() -> Self {
+        Self::from_i64(0)
+    }
+
+    pub fn one() -> Self {
+        Self::from_i64(1)
+    }
+
+    pub fn minus_one() -> Self {
+        Self::from_i64(-1)
     }
 
     pub fn is_zero(&self) -> bool {

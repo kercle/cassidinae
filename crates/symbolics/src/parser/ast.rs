@@ -79,10 +79,14 @@ where
         }
     }
 
-    pub fn new_named_value(name: String) -> Self {
+    pub fn constant_from_i64(value: i64) -> Self {
+        AstNode::new_constant(RealScalar::from_i64(value))
+    }
+
+    pub fn new_named_value<T: ToString>(name: T) -> Self {
         AstNode::NamedValue {
+            name: name.to_string(),
             annotation: A::default(),
-            name,
         }
     }
 
@@ -155,9 +159,9 @@ where
         Self::new_function_call("sqrt".to_string(), vec![arg])
     }
 
-    pub fn new_function_call(name: String, args: Vec<AstNode<A>>) -> Self {
+    pub fn new_function_call<T: ToString>(name: T, args: Vec<AstNode<A>>) -> Self {
         AstNode::FunctionCall {
-            name,
+            name: name.to_string(),
             args,
             annotation: A::default(),
         }
@@ -526,5 +530,151 @@ where
             ) => an.cmp(bn).then_with(|| cmp_vec(aa, ba)),
             _ => Ordering::Equal,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::parser::parse;
+
+    fn c(n: i64) -> AstNode<()> {
+        AstNode::constant_from_i64(n)
+    }
+
+    fn x() -> AstNode<()> {
+        AstNode::new_named_value("x")
+    }
+
+    fn y() -> AstNode<()> {
+        AstNode::new_named_value("y")
+    }
+
+    fn sin(a: AstNode<()>) -> AstNode<()> {
+        AstNode::new_function_call("sin", vec![a])
+    }
+
+    fn assert_struct_eq(a: &AstNode<()>, b: &AstNode<()>) {
+        assert!(
+            a.cmp_struct(b).is_eq(),
+            "ASTs not structurally equal.\nleft:  {:#?}\nright: {:#?}",
+            a,
+            b
+        );
+    }
+
+    #[test]
+    fn test_normalize_flattens_add_and_sorts() {
+        let ast = parse("(x + 2) + (1 + 2)").unwrap();
+        let expected = AstNode::new_add(vec![c(1), c(2), c(2), x()]);
+        assert_struct_eq(&ast.normalize(), &expected);
+    }
+
+    #[test]
+    fn test_normalize_flattens_mul_and_sorts() {
+        let ast = parse("(x * 2) * (y * 3)").unwrap();
+        let expected = AstNode::new_mul(vec![c(2), c(3), x(), y()]);
+        assert_struct_eq(&ast.normalize(), &expected);
+    }
+
+    #[test]
+    fn test_normalize_collapses_singleton_add_and_mul() {
+        let add1 = AstNode::new_add(vec![x()]);
+        let mul1 = AstNode::new_mul(vec![x()]);
+
+        assert_struct_eq(&add1.normalize(), &x());
+        assert_struct_eq(&mul1.normalize(), &x());
+    }
+
+    #[test]
+    fn test_normalize_empty_add_is_zero_empty_mul_is_one() {
+        let add0 = AstNode::new_add(vec![]);
+        let mul0 = AstNode::new_mul(vec![]);
+
+        assert_struct_eq(&add0.normalize(), &c(0));
+        assert_struct_eq(&mul0.normalize(), &c(1));
+    }
+
+    #[test]
+    fn test_normalize_rewrites_negation_to_mul_minus_one() {
+        let ast = parse("-(x + 1)").unwrap();
+        let expected = c(-1) * (c(1) + x());
+
+        assert_struct_eq(&ast.normalize(), &expected);
+    }
+
+    #[test]
+    fn test_normalize_rewrites_sub_to_add_with_negated_rhs() {
+        let ast = parse("x - (y + 2)").unwrap();
+        let expected = x() + c(-1) * (c(2) + y());
+
+        assert_struct_eq(&ast.normalize(), &expected);
+    }
+
+    #[test]
+    fn test_normalize_pow_normalizes_children() {
+        let ast = parse("(x + 2) ^ (1 + 3)").unwrap();
+        let expected = AstNode::new_pow(c(2) + x(), c(1) + c(3));
+
+        assert_struct_eq(&ast.normalize(), &expected);
+    }
+
+    #[test]
+    fn test_normalize_function_call_normalizes_args() {
+        let ast = parse("sin[(x + 2) + (1 + 2)]").unwrap();
+        let expected = sin(AstNode::new_add(vec![c(1), c(2), c(2), x()]));
+
+        assert_struct_eq(&ast.normalize(), &expected);
+    }
+
+    #[test]
+    fn test_normalize_block_normalizes_each_statement() {
+        let ast = AstNode::new_block(vec![
+            AstNode::new_add(vec![x(), c(2), c(1)]),
+            AstNode::new_mul(vec![y(), c(3), c(2)]),
+        ]);
+
+        let expected = AstNode::new_block(vec![
+            AstNode::new_add(vec![c(1), c(2), x()]),
+            AstNode::new_mul(vec![c(2), c(3), y()]),
+        ]);
+
+        assert_struct_eq(&ast.normalize(), &expected);
+    }
+
+    #[test]
+    fn test_normalize_is_idempotent() {
+        let ast = parse("((x + 2) + (1 + 2)) + (y + 0)").unwrap();
+        let n1 = ast.normalize();
+        let n2 = n1.clone().normalize();
+        assert_struct_eq(&n1, &n2);
+    }
+
+    #[test]
+    fn test_normalize_nested_negations_flatten_into_mul_chain() {
+        let ast = parse("-(-x)").unwrap();
+        let expected = AstNode::new_mul(vec![c(-1), c(-1), x()]);
+        assert_struct_eq(&ast.normalize(), &expected);
+    }
+
+    #[test]
+    fn test_normalize_div_rewrites_to_mul_with_pow_minus_one() {
+        let ast = parse("x / (y * 2)").unwrap();
+        let expected = AstNode::new_mul(vec![x(), AstNode::new_pow(c(2) * y(), c(-1))]);
+
+        assert_struct_eq(&ast.normalize(), &expected);
+    }
+
+    #[test]
+    fn test_normalize_add_and_mul_sorting_is_deterministic() {
+        let a1 = parse("y + x + 2 + 1").unwrap().normalize();
+        let a2 = parse("(2 + y) + (x + 1)").unwrap().normalize();
+
+        assert_struct_eq(&a1, &a2);
+
+        let m1 = parse("y * x * 2 * 1").unwrap().normalize();
+        let m2 = parse("(2 * y) * (x * 1)").unwrap().normalize();
+
+        assert_struct_eq(&m1, &m2);
     }
 }
