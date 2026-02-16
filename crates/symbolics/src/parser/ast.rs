@@ -42,22 +42,6 @@ where
         rhs: Box<AstNode<Annotation>>,
         annotation: Annotation,
     },
-    Sin {
-        arg: Box<AstNode<Annotation>>,
-        annotation: Annotation,
-    },
-    Cos {
-        arg: Box<AstNode<Annotation>>,
-        annotation: Annotation,
-    },
-    Tan {
-        arg: Box<AstNode<Annotation>>,
-        annotation: Annotation,
-    },
-    Sqrt {
-        arg: Box<AstNode<Annotation>>,
-        annotation: Annotation,
-    },
     FunctionCall {
         name: String,
         args: Vec<AstNode<Annotation>>,
@@ -80,12 +64,8 @@ enum Kind {
     Div = 5,
     Add = 6,
     Sub = 7,
-    Sin = 8,
-    Cos = 9,
-    Tan = 10,
-    Sqrt = 11,
-    FunctionCall = 12,
-    Block = 13,
+    FunctionCall = 8,
+    Block = 9,
 }
 
 impl<A> AstNode<A>
@@ -159,32 +139,20 @@ where
         }
     }
 
-    pub fn new_sin(arg: AstNode<A>) -> Self {
-        AstNode::Sin {
-            arg: Box::new(arg),
-            annotation: A::default(),
-        }
+    pub fn new_cos(arg: AstNode<A>) -> Self {
+        Self::new_function_call("cos".to_string(), vec![arg])
     }
 
-    pub fn new_cos(arg: AstNode<A>) -> Self {
-        AstNode::Cos {
-            arg: Box::new(arg),
-            annotation: A::default(),
-        }
+    pub fn new_sin(arg: AstNode<A>) -> Self {
+        Self::new_function_call("sin".to_string(), vec![arg])
     }
 
     pub fn new_tan(arg: AstNode<A>) -> Self {
-        AstNode::Tan {
-            arg: Box::new(arg),
-            annotation: A::default(),
-        }
+        Self::new_function_call("tan".to_string(), vec![arg])
     }
 
     pub fn new_sqrt(arg: AstNode<A>) -> Self {
-        AstNode::Sqrt {
-            arg: Box::new(arg),
-            annotation: A::default(),
-        }
+        Self::new_function_call("sqrt".to_string(), vec![arg])
     }
 
     pub fn new_function_call(name: String, args: Vec<AstNode<A>>) -> Self {
@@ -229,10 +197,6 @@ where
                 rhs,
                 annotation,
             },
-            Sin { arg, .. } => Sin { arg, annotation },
-            Cos { arg, .. } => Cos { arg, annotation },
-            Tan { arg, .. } => Tan { arg, annotation },
-            Sqrt { arg, .. } => Sqrt { arg, annotation },
             FunctionCall { name, args, .. } => FunctionCall {
                 name,
                 args,
@@ -253,54 +217,9 @@ where
             Mul { annotation, .. } => annotation,
             Div { annotation, .. } => annotation,
             Pow { annotation, .. } => annotation,
-            Sin { annotation, .. } => annotation,
-            Cos { annotation, .. } => annotation,
-            Tan { annotation, .. } => annotation,
-            Sqrt { annotation, .. } => annotation,
             FunctionCall { annotation, .. } => annotation,
             Block { annotation, .. } => annotation,
         }
-    }
-
-    pub fn from_function_call(name: String, mut args: Vec<AstNode<A>>) -> Result<Self, String> {
-        let initial_args_len = args.len();
-
-        let result = match name.as_str() {
-            "sin" => Ok(AstNode::new_sin(
-                args.pop().ok_or("sin requires one argument")?,
-            )),
-            "cos" => Ok(AstNode::new_cos(
-                args.pop().ok_or("cos requires one argument")?,
-            )),
-            "tan" => Ok(AstNode::new_tan(
-                args.pop().ok_or("tan requires one argument")?,
-            )),
-            "sqrt" => Ok(AstNode::new_sqrt(
-                args.pop().ok_or("sqrt requires one argument")?,
-            )),
-            _ => {
-                return Ok(AstNode::new_function_call(name.clone(), args));
-            }
-        };
-
-        if !args.is_empty() {
-            let expected_arg_count = initial_args_len - args.len();
-
-            let arguments = if expected_arg_count == 1 {
-                "argument"
-            } else {
-                "arguments"
-            };
-
-            return Err(format!(
-                "Function {} takes {} {arguments} but {} given.",
-                name,
-                initial_args_len - args.len(),
-                initial_args_len
-            ));
-        }
-
-        result
     }
 
     pub fn value_from_constant(&self) -> Option<RealScalar> {
@@ -361,22 +280,6 @@ where
             } => Pow {
                 lhs: Box::new(lhs.map_inner(f)),
                 rhs: Box::new(rhs.map_inner(f)),
-                annotation,
-            },
-            Sin { arg, annotation } => Sin {
-                arg: Box::new(arg.map_inner(f)),
-                annotation,
-            },
-            Cos { arg, annotation } => Cos {
-                arg: Box::new(arg.map_inner(f)),
-                annotation,
-            },
-            Tan { arg, annotation } => Tan {
-                arg: Box::new(arg.map_inner(f)),
-                annotation,
-            },
-            Sqrt { arg, annotation } => Sqrt {
-                arg: Box::new(arg.map_inner(f)),
                 annotation,
             },
             FunctionCall {
@@ -535,22 +438,6 @@ where
                 rhs: Box::new(rhs.map_annotation(f)),
                 annotation: f(annotation),
             },
-            Sin { arg, annotation } => Sin {
-                arg: Box::new(arg.map_annotation(f)),
-                annotation: f(annotation),
-            },
-            Cos { arg, annotation } => Cos {
-                arg: Box::new(arg.map_annotation(f)),
-                annotation: f(annotation),
-            },
-            Tan { arg, annotation } => Tan {
-                arg: Box::new(arg.map_annotation(f)),
-                annotation: f(annotation),
-            },
-            Sqrt { arg, annotation } => Sqrt {
-                arg: Box::new(arg.map_annotation(f)),
-                annotation: f(annotation),
-            },
             FunctionCall {
                 name,
                 args,
@@ -578,10 +465,6 @@ where
             Div { .. } => Kind::Div,
             Add { .. } => Kind::Add,
             Sub { .. } => Kind::Sub,
-            Sin { .. } => Kind::Sin,
-            Cos { .. } => Kind::Cos,
-            Tan { .. } => Kind::Tan,
-            Sqrt { .. } => Kind::Sqrt,
             FunctionCall { .. } => Kind::FunctionCall,
             Block { .. } => Kind::Block,
         }
@@ -639,10 +522,6 @@ where
             (Add { nodes: a, .. }, Add { nodes: b, .. })
             | (Mul { nodes: a, .. }, Mul { nodes: b, .. })
             | (Block { nodes: a, .. }, Block { nodes: b, .. }) => cmp_vec(a, b),
-            (Sin { arg: a, .. }, Sin { arg: b, .. })
-            | (Cos { arg: a, .. }, Cos { arg: b, .. })
-            | (Tan { arg: a, .. }, Tan { arg: b, .. })
-            | (Sqrt { arg: a, .. }, Sqrt { arg: b, .. }) => a.cmp_struct(b),
             (
                 FunctionCall {
                     name: an, args: aa, ..

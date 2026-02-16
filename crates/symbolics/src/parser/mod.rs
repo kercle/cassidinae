@@ -19,7 +19,6 @@ fn parse_identifier_or_call(stream: &mut TokenStream) -> Result<AstNode, ParseEr
     //    | <identifier> "(" ")"
     //    | <identifier> "(" <block> { "," <block> }* ")"
 
-    let start_token = stream.peek().cloned();
     let identifier = stream.next_if_identifier();
 
     if identifier.is_none() {
@@ -36,10 +35,7 @@ fn parse_identifier_or_call(stream: &mut TokenStream) -> Result<AstNode, ParseEr
     }
 
     if stream.next_if_matches_token(&Token::RightBracket).is_some() {
-        return AstNode::from_function_call(identifier, vec![]).map_err(|message| ParseError {
-            message,
-            at_token: start_token,
-        });
+        return Ok(AstNode::new_function_call(identifier, vec![]));
     }
 
     let mut args = vec![parse_block(stream)?];
@@ -58,10 +54,7 @@ fn parse_identifier_or_call(stream: &mut TokenStream) -> Result<AstNode, ParseEr
         });
     }
 
-    AstNode::from_function_call(identifier, args).map_err(|message| ParseError {
-        message,
-        at_token: start_token,
-    })
+    Ok(AstNode::new_function_call(identifier, args))
 }
 
 fn parse_atom(stream: &mut TokenStream) -> Result<AstNode, ParseError> {

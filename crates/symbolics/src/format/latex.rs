@@ -130,17 +130,29 @@ where
 
             wrap_with_parentheses(pow_str, precedence, parent_precedence)
         }
-        Sin { arg, .. } => {
-            format!("\\sin\\left({}\\right)", ast_to_latex(arg, precedence))
+        FunctionCall { name, args, .. } if name == "sin" && args.len() == 1 => {
+            format!(
+                "\\sin\\left({}\\right)",
+                ast_to_latex(args.first().unwrap(), precedence)
+            )
         }
-        Cos { arg, .. } => {
-            format!("\\cos\\left({}\\right)", ast_to_latex(arg, precedence))
+        FunctionCall { name, args, .. } if name == "cos" && args.len() == 1 => {
+            format!(
+                "\\cos\\left({}\\right)",
+                ast_to_latex(args.first().unwrap(), precedence)
+            )
         }
-        Tan { arg, .. } => {
-            format!("\\tan\\left({}\\right)", ast_to_latex(arg, precedence))
+        FunctionCall { name, args, .. } if name == "tan" && args.len() == 1 => {
+            format!(
+                "\\tan\\left({}\\right)",
+                ast_to_latex(args.first().unwrap(), precedence)
+            )
         }
-        Sqrt { arg, .. } => {
-            format!("\\sqrt{{{}}}", ast_to_latex(arg, precedence))
+        FunctionCall { name, args, .. } if name == "sqrt" && args.len() == 1 => {
+            format!(
+                "\\sqrt{{{}}}",
+                ast_to_latex(args.first().unwrap(), precedence)
+            )
         }
         FunctionCall { name, args, .. } => {
             let args_str = args
