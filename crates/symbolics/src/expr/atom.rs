@@ -17,19 +17,17 @@ impl Atom {
     }
 
     fn cmp_atom(&self, other: &Self) -> Ordering {
-        match self.rank().cmp(&other.rank()) {
-            Ordering::Equal => {}
-            ord => return ord,
-        }
-
         match (self, other) {
-            (Atom::Number(a), Atom::Number(b)) => {
-                // Assumes Number supports partial_cmp; if it's total, even better.
-                // If Number is floating, NaN would make this None, so you may want a total wrapper.
-                a.partial_cmp(b).unwrap_or(Ordering::Equal)
-            }
+            (Atom::Number(a), Atom::Number(b)) => a.cmp(b),
             (Atom::Symbol(a), Atom::Symbol(b)) => a.cmp(b),
-            _ => Ordering::Equal, // unreachable due to rank check
+            _ => {
+                let r = self.rank().cmp(&other.rank());
+                if r.is_eq() {
+                    unreachable!("If atoms are of same type, cmp must be handled explicitly")
+                } else {
+                    r
+                }
+            }
         }
     }
 }
