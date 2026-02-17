@@ -19,7 +19,7 @@ impl<A: Clone + PartialEq> Debug for Expr<A> {
             Expr::Atom { entry, .. } => format!("{entry:?}"),
             Expr::App { head, args, .. } => {
                 let head_str = if matches!(**head, Expr::App { .. }) {
-                    format!("{head:?}")
+                    format!("({head:?})")
                 } else {
                     format!("{head:?}")
                 };

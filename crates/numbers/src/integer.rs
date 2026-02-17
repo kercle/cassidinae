@@ -485,8 +485,6 @@ impl BigInteger {
             return lhs.clone();
         } else if lhs.is_zero() {
             return BigInteger::zero();
-        } else if rhs.is_zero() {
-            return BigInteger::zero();
         }
 
         let (lhs, rhs) = if Self::cmp_digits(CompareFunction::Greater, &lhs.digits, &rhs.digits) {

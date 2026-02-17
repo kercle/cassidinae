@@ -71,11 +71,11 @@ impl BigRational {
     }
 
     pub fn take_numerator(self) -> BigInteger {
-        return self.numerator;
+        self.numerator
     }
 
     pub fn take_denominator(self) -> BigInteger {
-        return self.denominator;
+        self.denominator
     }
 
     pub fn numerator(&self) -> &BigInteger {
