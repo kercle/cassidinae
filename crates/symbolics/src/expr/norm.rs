@@ -2,7 +2,8 @@ use crate::expr::Expr;
 
 impl<A: Clone + PartialEq + Default> Expr<A> {
     pub fn normalize(self) -> Self {
-        todo!()
+        self.flatten(|e| e.is_symbol("Add") || e.is_symbol("Mul"))
+            .sort_args(|e| e.is_symbol("Add") || e.is_symbol("Mul"))
     }
 
     /// Flattens nested applications whenever `head_predicate`

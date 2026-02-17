@@ -24,6 +24,12 @@ where
     },
 }
 
+#[repr(transparent)]
+#[derive(Debug, Clone, PartialEq)]
+pub struct NormalizedExpr<A = ()>(Expr<A>)
+where
+    A: Clone + PartialEq;
+
 impl<A, T: Into<Atom>> From<T> for Expr<A>
 where
     A: Default + Clone + PartialEq,
@@ -33,6 +39,12 @@ where
             entry: x.into(),
             ann: A::default(),
         }
+    }
+}
+
+impl<A: Clone + PartialEq + Default> NormalizedExpr<A> {
+    pub fn new(expr: Expr<A>) -> Self {
+        NormalizedExpr(expr.normalize())
     }
 }
 
