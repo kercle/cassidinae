@@ -3,6 +3,7 @@ pub mod fmt;
 pub mod hash;
 pub mod norm;
 pub mod ops;
+pub mod pattern;
 
 use atom::Atom;
 use numbers::Number;

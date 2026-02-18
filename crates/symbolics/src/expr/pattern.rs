@@ -1,22 +1,48 @@
+use std::collections::HashMap;
+
 use crate::expr::Expr;
 
-const BLANK: &'static str = "Blank";
-const BLANK_SEQ: &'static str = "BlankSeq";
-const PATTERN: &'static str = "Pattern";
+type SymbolId = String;
+
+enum BindingVar {
+    Named(SymbolId),
+    Anonymous(usize),
+}
+
+pub struct MatchContext<'a, A>
+where
+    A: Clone + PartialEq,
+{
+    bindings: HashMap<BindingVar, &'a Expr<A>>,
+}
+
+impl<'a, A: Clone + PartialEq + Default> MatchContext<'a, A> {
+    pub fn new() -> Self {
+        MatchContext {
+            bindings: HashMap::new(),
+        }
+    }
+}
 
 impl<A: Clone + PartialEq + Default> Expr<A> {
-    pub fn matches(&self, other: &Self) -> bool {
-        // use Expr::*;
+    pub fn matches<'a>(&'a self, pattern: &Self) -> Option<MatchContext<'a, A>> {
+        let mut match_ctx = MatchContext::<'a, A>::new();
 
-        // match self {
-        //     Atom { entry: e, .. } => {
-        //         if let Atom { entry: oe, .. } = other {
-        //             e == oe
-        //         } else {
-        //             false
-        //         }
-        //     }
-        // }
-        todo!()
+        if self.matches_inner(&mut match_ctx, pattern) {
+            Some(match_ctx)
+        } else {
+            None
+        }
+    }
+
+    fn matches_inner<'a>(&'a self, ctx: &mut MatchContext<'a, A>, pattern: &Self) -> bool {
+        use Expr::*;
+
+        match (self, pattern) {
+            (Atom { entry: e, .. }, Atom { entry: oe, .. }) => e == oe,
+            (Atom { .. }, Compound { .. }) => todo!(),
+            (Compound { .. }, Compound { .. }) => todo!(),
+            _ => unimplemented!(),
+        }
     }
 }
