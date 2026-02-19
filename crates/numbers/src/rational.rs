@@ -125,6 +125,15 @@ impl BigRational {
         }
     }
 
+    pub fn flip_sign(&mut self) {
+        if self.denominator.is_negative() {
+            self.denominator.flip_sign();
+            self.numerator.flip_sign();
+        }
+
+        self.numerator.flip_sign();
+    }
+
     pub fn add(&self, other: &BigRational) -> BigRational {
         let nf1 = self.numerator() * other.denominator();
         let nf2 = other.numerator() * self.denominator();

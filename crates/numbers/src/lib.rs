@@ -92,6 +92,14 @@ impl Number {
         }
     }
 
+    pub fn flip_sign(&mut self) {
+        use Number::*;
+        match self {
+            Integer(v) => v.flip_sign(),
+            Rational(v) => v.flip_sign(),
+        }
+    }
+
     pub fn pow(&self, exp: &Number) -> Result<Self, String> {
         let base = self.clone().to_rational()?;
         let exp = exp.clone().to_rational()?;

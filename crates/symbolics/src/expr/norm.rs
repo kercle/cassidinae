@@ -6,8 +6,8 @@ use std::{
 use numbers::Number;
 
 use crate::{
-    expr::{Expr, NormalizedExpr, generator::pow},
-    parser::ast::{ADD_HEAD, MUL_HEAD, POW_HEAD},
+    expr::{Expr, NormalizedExpr, atom::Atom, generator::pow},
+    parser::ast::{ADD_HEAD, DIV_HEAD, MUL_HEAD, NEG_HEAD, POW_HEAD, SUB_HEAD},
 };
 
 fn cannonical_fold_ac_with_neutral_el<A: Default + Clone + PartialEq>(
@@ -226,12 +226,145 @@ impl<A: Clone + PartialEq + Default> Expr<A> {
 }
 
 impl<A: Clone + PartialEq + Default> NormalizedExpr<A> {
+    fn resugar_add(mut args: Vec<Expr<A>>, annotation: A) -> Expr<A> {
+        args.reverse();
+
+        let mut new_args = Vec::with_capacity(args.len());
+
+        let (coeff, term) = NormalizedExpr::new(args.pop().unwrap()).split_coefficient();
+        if coeff.is_one() {
+            new_args.push(term);
+        } else if coeff.is_minus_one() {
+            new_args.push(Expr::new_compound(NEG_HEAD, vec![term]));
+        } else if coeff.is_zero() {
+            // In normalized expression, this should not happen
+            unreachable!()
+        } else {
+            new_args.push(Expr::new_compound(MUL_HEAD, vec![coeff.into(), term]));
+        }
+
+        while let Some(arg) = args.pop() {
+            let (coeff, term) = NormalizedExpr::new(arg).split_coefficient();
+
+            if coeff.is_one() {
+                new_args.push(term);
+            } else if coeff.is_minus_one() {
+                let lhs = new_args.pop().unwrap();
+                new_args.push(Expr::new_compound(SUB_HEAD, vec![lhs, term]));
+            } else if coeff.is_negative() {
+                let lhs = new_args.pop().unwrap();
+                new_args.push(Expr::new_compound(
+                    SUB_HEAD,
+                    vec![
+                        lhs,
+                        Expr::new_compound(MUL_HEAD, vec![coeff.abs().into(), term]),
+                    ],
+                ));
+            } else if coeff.is_zero() {
+                // In normalized expression, this should not happen
+                unreachable!()
+            } else {
+                new_args.push(Expr::new_compound(MUL_HEAD, vec![coeff.into(), term]));
+            }
+        }
+
+        if new_args.len() == 1 {
+            new_args.pop().unwrap().with_annotation(annotation)
+        } else {
+            Expr::new_compound(ADD_HEAD, new_args).with_annotation(annotation)
+        }
+    }
+
+    fn resugar_mul(args: Vec<Expr<A>>, annotation: A) -> Expr<A> {
+        let mut numerator = Vec::with_capacity(args.len());
+        let mut denominator = Vec::with_capacity(args.len());
+
+        for a in args.into_iter() {
+            if let Some((lhs, rhs)) = a.unpack_binary_node(POW_HEAD) {
+                let (mut coeff, rhs_rest) = NormalizedExpr(rhs.clone()).split_coefficient();
+                if coeff.is_negative() {
+                    coeff.flip_sign();
+                    denominator.push(Expr::new_compound(
+                        POW_HEAD,
+                        vec![
+                            lhs.clone(),
+                            Expr::new_compound(MUL_HEAD, vec![coeff.into(), rhs_rest]),
+                        ],
+                    ));
+                } else {
+                    numerator.push(a);
+                }
+            } else {
+                numerator.push(a);
+            }
+        }
+
+        if denominator.is_empty() {
+            Expr::new_compound(MUL_HEAD, numerator).with_annotation(annotation)
+        } else if numerator.is_empty() {
+            Expr::new_compound(
+                DIV_HEAD,
+                vec![
+                    Expr::new_number(Number::one()),
+                    Expr::new_compound(MUL_HEAD, denominator),
+                ],
+            )
+            .with_annotation(annotation)
+        } else {
+            let lhs = if numerator.len() >= 2 {
+                Expr::new_compound(MUL_HEAD, numerator)
+            } else {
+                numerator.pop().unwrap()
+            };
+
+            let rhs = if denominator.len() >= 2 {
+                Expr::new_compound(MUL_HEAD, denominator)
+            } else {
+                denominator.pop().unwrap()
+            };
+
+            Expr::new_compound(DIV_HEAD, vec![lhs, rhs]).with_annotation(annotation)
+        }
+    }
+
+    pub fn resugar(self) -> Expr<A> {
+        let expr = self.take_expr();
+        match expr {
+            Expr::Compound {
+                head,
+                args,
+                annotation,
+            } if head.matches_symbol(ADD_HEAD) && !args.is_empty() => {
+                Self::resugar_add(args, annotation)
+            }
+            Expr::Compound {
+                head,
+                args,
+                annotation,
+            } if head.matches_symbol(MUL_HEAD) && !args.is_empty() => {
+                Self::resugar_mul(args, annotation)
+            }
+            Expr::Compound {
+                head,
+                args,
+                annotation,
+            } if head.matches_symbol(POW_HEAD) => {
+                Self::resugar_mul(vec![Expr::new_compound(POW_HEAD, args)], annotation)
+            }
+            _ => expr,
+        }
+    }
+
     pub fn split_coefficient(self) -> (Number, Expr<A>) {
         // We are normalized, so if there is a constant, it's the first arg
         // in a commutative operation.
 
         let expr = self.take_expr();
         match expr {
+            Expr::Atom {
+                entry: Atom::Number(val),
+                ..
+            } => (val, Number::one().into()),
             Expr::Compound { head, mut args, .. } if head.matches_symbol(MUL_HEAD) => {
                 if let Some(coeff) = args.first().map(|e| e.get_number()).flatten() {
                     let coeff = coeff.clone();
