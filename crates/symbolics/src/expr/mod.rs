@@ -166,6 +166,15 @@ impl<A> Expr<A> {
             _ => None,
         }
     }
+
+    pub fn is_application_of<T: AsRef<str>>(self, head_sym: T, arity: usize) -> bool {
+        match self {
+            Expr::Atom { .. } => false,
+            Expr::Compound { head, args, .. } => {
+                head.matches_symbol(head_sym) && args.len() == arity
+            }
+        }
+    }
 }
 
 impl<A> Expr<A>
