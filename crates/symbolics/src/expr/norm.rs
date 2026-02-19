@@ -127,7 +127,7 @@ impl<A: Clone + PartialEq + Default> Expr<A> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::test::common::*;
+    use crate::{expr::generator::*, symbol};
 
     fn mul(s: &[Expr<()>]) -> Expr<()> {
         Expr::new_compound(Expr::new_symbol("Mul"), s.to_vec())
@@ -139,47 +139,56 @@ mod tests {
 
     #[test]
     fn test_expr_flatten() {
-        let expr: Expr<()> = 2 + x() + 3 * (5 + (1 + (1 + y())));
+        let (x, y) = symbol!("x", "y");
+        let expr: Expr<()> = 2 + x + 3 * (5 + (1 + (1 + y)));
 
         assert_eq!(
             expr.flatten(|e| e.matches_symbol("Add")),
             add(&[
                 2.into(),
-                x(),
-                mul(&[3.into(), add(&[5.into(), 1.into(), 1.into(), y()])])
+                x.build(),
+                mul(&[3.into(), add(&[5.into(), 1.into(), 1.into(), y.build()])])
             ])
         );
     }
 
     #[test]
     fn test_expr_sorting() {
+        let (x, y) = symbol!("x", "y");
+
         let expr1 = add(&[
-            x(),
+            x.build(),
             2.into(),
-            mul(&[3.into(), add(&[5.into(), y(), 1.into(), 1.into()])]),
+            mul(&[3.into(), add(&[5.into(), y.build(), 1.into(), 1.into()])]),
         ]);
 
         assert_eq!(
             expr1.sort_args(|e| e.matches_symbol("Add")),
             add(&[
                 2.into(),
-                x(),
-                mul(&[3.into(), add(&[1.into(), 1.into(), 5.into(), y()])]),
+                x.build(),
+                mul(&[3.into(), add(&[1.into(), 1.into(), 5.into(), y.build()])]),
             ])
         );
     }
 
     #[test]
     fn test_expr_normalizing() {
+        let (x, y) = symbol!("x", "y");
+
         let expr1 = add(&[
-            x(),
+            x.build(),
             2.into(),
-            mul(&[3.into(), add(&[5.into(), y(), 1.into(), 1.into()])]),
+            mul(&[3.into(), add(&[5.into(), y.build(), 1.into(), 1.into()])]),
         ]);
 
         assert_eq!(
             expr1.normalize(),
-            add(&[2.into(), x(), mul(&[3.into(), add(&[7.into(), y()])]),])
+            add(&[
+                2.into(),
+                x.build(),
+                mul(&[3.into(), add(&[7.into(), y.build()])]),
+            ])
         );
     }
 }

@@ -1,17 +1,20 @@
+use std::ops;
+
 use crate::expr::Expr;
 
 pub trait ExprBuilder {
     fn build(&self) -> Expr<()>;
 }
 
+#[derive(Debug, Clone, Copy)]
 pub struct SymbolGenerator {
-    name: String,
+    name: &'static str,
 }
 
 impl SymbolGenerator {
-    pub fn new<T: AsRef<str>>(name: T) -> SymbolGenerator {
+    pub fn new(name: &'static str) -> SymbolGenerator {
         SymbolGenerator {
-            name: name.as_ref().to_string(),
+            name: name.as_ref(),
         }
     }
 }
@@ -44,4 +47,77 @@ pub fn sin(a: Expr) -> Expr<()> {
 
 pub fn exp(a: Expr) -> Expr<()> {
     Expr::new_compound(Expr::new_symbol("Exp"), vec![a])
+}
+
+pub fn blank(head: Option<Expr>) -> Expr<()> {
+    Expr::new_compound(
+        Expr::new_symbol("Head"),
+        if let Some(h) = head {
+            vec![h]
+        } else {
+            Vec::new()
+        },
+    )
+}
+
+pub fn blank_sequence(head: Option<Expr>) -> Expr<()> {
+    Expr::new_compound(
+        Expr::new_symbol("HeadSeq"),
+        if let Some(h) = head {
+            vec![h]
+        } else {
+            Vec::new()
+        },
+    )
+}
+
+pub fn pattern(bind_name: &str, arg: Expr) -> Expr<()> {
+    Expr::new_compound(
+        Expr::new_symbol("Pattern"),
+        vec![Expr::new_symbol(bind_name), arg],
+    )
+}
+
+///////////////
+// Operators //
+///////////////
+
+impl ops::Add for SymbolGenerator {
+    type Output = Expr;
+
+    fn add(self, other: Self) -> Self::Output {
+        self.build() + other.build()
+    }
+}
+
+impl ops::Add<SymbolGenerator> for Expr {
+    type Output = Expr;
+
+    fn add(self, other: SymbolGenerator) -> Self::Output {
+        self + other.build()
+    }
+}
+
+impl ops::Add<Expr> for SymbolGenerator {
+    type Output = Expr;
+
+    fn add(self, other: Expr) -> Self::Output {
+        self.build() + other
+    }
+}
+
+impl ops::Add<SymbolGenerator> for i32 {
+    type Output = Expr;
+
+    fn add(self, other: SymbolGenerator) -> Self::Output {
+        self + other.build()
+    }
+}
+
+impl ops::Add<i32> for SymbolGenerator {
+    type Output = Expr;
+
+    fn add(self, other: i32) -> Self::Output {
+        self.build() + other
+    }
 }
