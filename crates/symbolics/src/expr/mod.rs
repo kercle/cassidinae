@@ -1,14 +1,13 @@
 pub mod atom;
 pub mod fmt;
 pub mod hash;
+pub mod matcher;
 pub mod norm;
 pub mod ops;
 pub mod pattern;
 
 use atom::Atom;
 use numbers::Number;
-
-use crate::parser::ast::AstNode;
 
 #[derive(Clone, PartialEq)]
 pub enum Expr<A = ()> {
@@ -31,7 +30,7 @@ where
 
 impl<A, T: Into<Atom>> From<T> for Expr<A>
 where
-    A: Default + Clone + PartialEq,
+    A: Default,
 {
     fn from(x: T) -> Self {
         Expr::Atom {
@@ -47,7 +46,7 @@ impl<A: Clone + PartialEq + Default> NormalizedExpr<A> {
     }
 }
 
-impl<A: Clone + PartialEq> Expr<A> {
+impl<A> Expr<A> {
     pub fn new_compound_with_annotation(head: Expr<A>, args: Vec<Expr<A>>, ann: A) -> Self {
         Expr::Compound {
             head: Box::new(head),
@@ -56,12 +55,42 @@ impl<A: Clone + PartialEq> Expr<A> {
         }
     }
 
-    pub fn from_ast(_ast: &AstNode<A>) -> Self {
-        todo!()
+    pub fn as_atom(&self) -> Option<&Atom> {
+        match self {
+            Expr::Atom { entry, .. } => Some(entry),
+            Expr::Compound { .. } => None,
+        }
     }
 
-    pub fn is_symbol<T: AsRef<str>>(&self, s: T) -> bool {
+    pub fn as_compound(&self) -> Option<&Atom> {
+        match self {
+            Expr::Atom { entry, .. } => Some(entry),
+            Expr::Compound { .. } => None,
+        }
+    }
+
+    pub fn matches_symbol<T: AsRef<str>>(&self, s: T) -> bool {
         matches!(self, Expr::Atom { entry: Atom::Symbol(t), .. } if t == s.as_ref())
+    }
+
+    pub fn is_symbol(&self) -> bool {
+        matches!(
+            self,
+            Expr::Atom {
+                entry: Atom::Symbol(_),
+                ..
+            }
+        )
+    }
+
+    pub fn get_symbol(&self) -> Option<&str> {
+        match self {
+            Expr::Atom {
+                entry: Atom::Symbol(s),
+                ..
+            } => Some(s),
+            _ => None,
+        }
     }
 
     pub fn is_number(&self) -> bool {
@@ -72,6 +101,16 @@ impl<A: Clone + PartialEq> Expr<A> {
                 ..
             }
         )
+    }
+
+    pub fn get_number(&self) -> Option<&Number> {
+        match self {
+            Expr::Atom {
+                entry: Atom::Number(n),
+                ..
+            } => Some(n),
+            _ => None,
+        }
     }
 }
 
@@ -117,6 +156,35 @@ where
                 ann: A::default(),
             },
         }
+    }
+}
+
+pub struct ExprWalker<'a, A> {
+    stack: Vec<&'a Expr<A>>,
+}
+
+impl<'a, A> ExprWalker<'a, A>
+where
+    A: PartialEq,
+{
+    pub fn new(root: &'a Expr<A>) -> Self {
+        Self { stack: vec![root] }
+    }
+}
+
+impl<'a, A> Iterator for ExprWalker<'a, A> {
+    type Item = &'a Expr<A>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let node = self.stack.pop()?;
+        if let Expr::Compound { head, args, .. } = node {
+            for a in args.iter().rev() {
+                self.stack.push(a);
+            }
+            self.stack.push(head);
+        }
+
+        Some(node)
     }
 }
 

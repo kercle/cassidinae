@@ -4,17 +4,17 @@ use crate::expr::{Expr, atom::Atom};
 
 impl<A: Clone + PartialEq + Default> Expr<A> {
     pub fn normalize(self) -> Self {
-        self.flatten(|e: &Expr<A>| e.is_symbol("Add") || e.is_symbol("Mul"))
+        self.flatten(|e: &Expr<A>| e.matches_symbol("Add") || e.matches_symbol("Mul"))
             .fold_constants(|h: &Expr<A>, c_iter: &mut dyn Iterator<Item = &Number>| {
-                if h.is_symbol("Add") {
+                if h.matches_symbol("Add") {
                     Some(c_iter.sum())
-                } else if h.is_symbol("Mul") {
+                } else if h.matches_symbol("Mul") {
                     Some(c_iter.product())
                 } else {
                     None
                 }
             })
-            .sort_args(|e: &Expr<A>| e.is_symbol("Add") || e.is_symbol("Mul"))
+            .sort_args(|e: &Expr<A>| e.matches_symbol("Add") || e.matches_symbol("Mul"))
     }
 
     /// Flattens nested compounds whenever `head_predicate`
@@ -149,7 +149,7 @@ mod tests {
         let expr = 2 + x() + 3 * (5 + (1 + (1 + y())));
 
         assert_eq!(
-            expr.flatten(|e| e.is_symbol("Add")),
+            expr.flatten(|e| e.matches_symbol("Add")),
             add(&[
                 2.into(),
                 x(),
@@ -167,7 +167,7 @@ mod tests {
         ]);
 
         assert_eq!(
-            expr1.sort_args(|e| e.is_symbol("Add")),
+            expr1.sort_args(|e| e.matches_symbol("Add")),
             add(&[
                 2.into(),
                 x(),
