@@ -58,6 +58,12 @@ impl From<i32> for Atom {
     }
 }
 
+impl From<Number> for Atom {
+    fn from(n: Number) -> Self {
+        Atom::Number(n)
+    }
+}
+
 impl PartialOrd for Atom {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Some(self.cmp(other))

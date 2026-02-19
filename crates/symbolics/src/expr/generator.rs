@@ -58,7 +58,15 @@ pub fn exp(a: Expr) -> Expr<()> {
     Expr::new_compound(Expr::new_symbol("Exp"), vec![a])
 }
 
-pub fn blank(head: Option<Expr>) -> Expr<()> {
+pub fn log(a: Expr) -> Expr<()> {
+    Expr::new_compound(Expr::new_symbol("Log"), vec![a])
+}
+
+pub fn pow<S: Into<Expr>, T: Into<Expr>>(b: S, e: T) -> Expr {
+    Expr::new_compound(Expr::new_symbol("Pow"), vec![b.into(), e.into()])
+}
+
+pub fn blank<A: Default + Clone + PartialEq>(head: Option<Expr<A>>) -> Expr<A> {
     Expr::new_compound(
         Expr::new_symbol(BLANK_ONE_HEAD),
         if let Some(h) = head {

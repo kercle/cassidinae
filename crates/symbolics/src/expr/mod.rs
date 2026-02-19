@@ -1,4 +1,5 @@
 pub mod atom;
+pub mod derivative;
 pub mod fmt;
 pub mod generator;
 pub mod hash;
@@ -27,7 +28,10 @@ pub enum Expr<A = ()> {
 }
 
 #[repr(transparent)]
-pub struct NormalizedExpr<A = ()>(Expr<A>);
+#[derive(Debug)]
+pub struct NormalizedExpr<A = ()>(Expr<A>)
+where
+    A: Clone + PartialEq;
 
 impl<A, T: Into<Atom>> From<T> for Expr<A>
 where
@@ -41,13 +45,23 @@ where
     }
 }
 
+pub struct ParserAstToExprError;
+
+impl<A: Clone + PartialEq> TryFrom<ParserAst<A>> for Expr {
+    type Error = ParserAstToExprError;
+
+    fn try_from(_: ParserAst<A>) -> Result<Self, Self::Error> {
+        todo!()
+    }
+}
+
 impl<A: Clone + PartialEq + Default> NormalizedExpr<A> {
     pub fn new(expr: Expr<A>) -> Self {
         NormalizedExpr(expr.normalize())
     }
 }
 
-impl<A> NormalizedExpr<A> {
+impl<A: Clone + PartialEq> NormalizedExpr<A> {
     pub fn take_expr(self) -> Expr<A> {
         self.0
     }
@@ -123,11 +137,11 @@ impl<A> Expr<A> {
 
 impl<A> Expr<A>
 where
-    A: Default + Clone + PartialEq,
+    A: Default,
 {
-    pub fn new_compound(head: Expr<A>, args: Vec<Expr<A>>) -> Self {
+    pub fn new_compound<T: Into<Expr<A>>>(head: T, args: Vec<Expr<A>>) -> Self {
         Expr::Compound {
-            head: Box::new(head),
+            head: Box::new(head.into()),
             args,
             annotation: A::default(),
         }
@@ -144,6 +158,20 @@ where
         Expr::Atom {
             entry: Atom::Symbol(symb.as_ref().to_string()),
             annotation: A::default(),
+        }
+    }
+}
+
+impl<A> Expr<A>
+where
+    A: Default + Clone + PartialEq,
+{
+    pub fn matches_head<T: Into<Expr<A>>>(&self, test_head: T) -> bool {
+        if let Some(head) = self.head() {
+            let test_head = test_head.into();
+            *head == test_head
+        } else {
+            false
         }
     }
 
@@ -277,16 +305,6 @@ where
                 annotation,
             },
         }
-    }
-}
-
-pub struct ParserAstToExprError;
-
-impl<A: Clone + PartialEq> TryFrom<ParserAst<A>> for Expr {
-    type Error = ParserAstToExprError;
-
-    fn try_from(_: ParserAst<A>) -> Result<Self, Self::Error> {
-        todo!()
     }
 }
 
