@@ -11,18 +11,18 @@ pub mod pattern;
 use atom::Atom;
 use numbers::Number;
 
-use crate::parser::ast::ParserAst;
+use crate::parser::ast::{ADD_HEAD, MUL_HEAD, POW_HEAD, ParserAst};
 
 #[derive(Clone, PartialEq)]
 pub enum Expr<A = ()> {
     Atom {
         entry: Atom,
-        ann: A,
+        annotation: A,
     },
     Compound {
         head: Box<Expr<A>>,
         args: Vec<Expr<A>>,
-        ann: A,
+        annotation: A,
     },
 }
 
@@ -36,7 +36,7 @@ where
     fn from(x: T) -> Self {
         Expr::Atom {
             entry: x.into(),
-            ann: A::default(),
+            annotation: A::default(),
         }
     }
 }
@@ -58,7 +58,7 @@ impl<A> Expr<A> {
         Expr::Compound {
             head: Box::new(head),
             args,
-            ann,
+            annotation: ann,
         }
     }
 
@@ -129,21 +129,123 @@ where
         Expr::Compound {
             head: Box::new(head),
             args,
-            ann: A::default(),
+            annotation: A::default(),
         }
     }
 
     pub fn new_number(value: Number) -> Self {
         Expr::Atom {
             entry: Atom::Number(value),
-            ann: A::default(),
+            annotation: A::default(),
         }
     }
 
     pub fn new_symbol<T: AsRef<str>>(symb: T) -> Self {
         Expr::Atom {
             entry: Atom::Symbol(symb.as_ref().to_string()),
-            ann: A::default(),
+            annotation: A::default(),
+        }
+    }
+
+    pub fn from_parser_ast(parser_ast: &ParserAst<A>) -> Self {
+        match parser_ast {
+            ParserAst::Constant { value, annotation } => {
+                Self::new_number(value.clone()).with_annotation(annotation.clone())
+            }
+            ParserAst::Symbol { name, annotation } => {
+                Self::new_symbol(name.clone()).with_annotation(annotation.clone())
+            }
+            ParserAst::Add { nodes, annotation } => {
+                let head = Self::new_symbol(ADD_HEAD);
+                let args = nodes
+                    .iter()
+                    .map(|node| Self::from_parser_ast(node))
+                    .collect();
+                Self::new_compound(head, args).with_annotation(annotation.clone())
+            }
+            ParserAst::Sub {
+                lhs,
+                rhs,
+                annotation,
+            } => {
+                let head = Self::new_symbol(ADD_HEAD);
+                let lhs = Self::from_parser_ast(lhs.as_ref());
+                let rhs = Self::from_parser_ast(rhs.as_ref());
+
+                Self::new_compound(
+                    head,
+                    vec![
+                        lhs,
+                        Self::new_compound(
+                            Self::new_symbol(MUL_HEAD),
+                            vec![Self::new_number(Number::from_i64(-1)), rhs],
+                        ),
+                    ],
+                )
+                .with_annotation(annotation.clone())
+            }
+            ParserAst::Negation { arg, annotation } => {
+                let arg = Self::from_parser_ast(arg.as_ref());
+                Self::new_compound(
+                    Self::new_symbol(MUL_HEAD),
+                    vec![Self::new_number(Number::from_i64(-1)), arg],
+                )
+                .with_annotation(annotation.clone())
+            }
+            ParserAst::Mul { nodes, annotation } => {
+                let head = Self::new_symbol(MUL_HEAD);
+                let args = nodes
+                    .iter()
+                    .map(|node| Self::from_parser_ast(node))
+                    .collect();
+                Self::new_compound(head, args).with_annotation(annotation.clone())
+            }
+            ParserAst::Div {
+                lhs,
+                rhs,
+                annotation,
+            } => {
+                let head = Self::new_symbol(MUL_HEAD);
+                let lhs = Self::from_parser_ast(lhs.as_ref());
+                let rhs = Self::from_parser_ast(rhs.as_ref());
+
+                Self::new_compound(
+                    head,
+                    vec![
+                        lhs,
+                        Self::new_compound(
+                            Self::new_symbol(POW_HEAD),
+                            vec![rhs, Self::new_number(Number::from_i64(-1))],
+                        ),
+                    ],
+                )
+                .with_annotation(annotation.clone())
+            }
+            ParserAst::Pow {
+                lhs,
+                rhs,
+                annotation,
+            } => {
+                let head = Self::new_symbol(POW_HEAD);
+                let lhs = Self::from_parser_ast(lhs.as_ref());
+                let rhs = Self::from_parser_ast(rhs.as_ref());
+
+                Self::new_compound(head, vec![lhs, rhs]).with_annotation(annotation.clone())
+            }
+            ParserAst::FunctionCall {
+                name,
+                args,
+                annotation,
+            } => {
+                let head = Self::new_symbol(name);
+                let args = args
+                    .iter()
+                    .map(|node| Self::from_parser_ast(node))
+                    .collect();
+
+                Self::new_compound(head, args).with_annotation(annotation.clone())
+            }
+            ParserAst::Block { .. } => todo!(),
         }
     }
 
@@ -155,12 +257,24 @@ where
         match self {
             Expr::Atom { entry, .. } => Expr::Atom {
                 entry,
-                ann: A::default(),
+                annotation: A::default(),
             },
             Expr::Compound { head, args, .. } => Expr::Compound {
                 head,
                 args,
-                ann: A::default(),
+                annotation: A::default(),
+            },
+        }
+    }
+
+    pub fn with_annotation(self, annotation: A) -> Self {
+        use Expr::*;
+        match self {
+            Atom { entry, .. } => Atom { entry, annotation },
+            Compound { head, args, .. } => Compound {
+                head,
+                args,
+                annotation,
             },
         }
     }

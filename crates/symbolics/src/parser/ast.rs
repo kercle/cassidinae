@@ -308,46 +308,58 @@ where
         match expr {
             Expr::Atom {
                 entry: Atom::Number(x),
-                ann,
-            } => Ok(ParserAst::new_constant(x).with_annotation(ann)),
+                annotation,
+            } => Ok(ParserAst::new_constant(x).with_annotation(annotation)),
             Expr::Atom {
                 entry: Atom::Symbol(x),
-                ann,
-            } => Ok(ParserAst::new_named_value(x).with_annotation(ann)),
+                annotation,
+            } => Ok(ParserAst::new_named_value(x).with_annotation(annotation)),
             Expr::Atom {
                 entry: Atom::StringLiteral(_),
                 ..
             } => todo!(),
-            Expr::Compound { head, args, ann } if head.matches_symbol(ADD_HEAD) => {
+            Expr::Compound {
+                head,
+                args,
+                annotation,
+            } if head.matches_symbol(ADD_HEAD) => {
                 let args = args
                     .into_iter()
                     .map(|e| ParserAst::try_from_inner(e))
                     .collect::<Result<Vec<_>, _>>()?;
-                Ok(ParserAst::new_add(args).with_annotation(ann))
+                Ok(ParserAst::new_add(args).with_annotation(annotation))
             }
-            Expr::Compound { head, args, ann } if head.matches_symbol(MUL_HEAD) => {
+            Expr::Compound {
+                head,
+                args,
+                annotation,
+            } if head.matches_symbol(MUL_HEAD) => {
                 let args = args
                     .into_iter()
                     .map(|e| ParserAst::try_from_inner(e))
                     .collect::<Result<Vec<_>, _>>()?;
-                Ok(ParserAst::new_mul(args).with_annotation(ann))
+                Ok(ParserAst::new_mul(args).with_annotation(annotation))
             }
             Expr::Compound {
                 head,
                 mut args,
-                ann,
+                annotation,
             } if head.matches_symbol(POW_HEAD) && args.len() == 2 => {
                 let rhs = ParserAst::<A>::try_from_inner(args.pop().unwrap())?;
                 let lhs = ParserAst::try_from_inner(args.pop().unwrap())?;
-                Ok(ParserAst::new_pow(lhs, rhs).with_annotation(ann))
+                Ok(ParserAst::new_pow(lhs, rhs).with_annotation(annotation))
             }
-            Expr::Compound { head, args, ann } => {
+            Expr::Compound {
+                head,
+                args,
+                annotation,
+            } => {
                 let name = head.get_symbol().ok_or(ExprToParserAstError)?;
                 let args = args
                     .into_iter()
                     .map(|e| ParserAst::try_from_inner(e))
                     .collect::<Result<Vec<_>, _>>()?;
-                Ok(ParserAst::new_function_call(name, args).with_annotation(ann))
+                Ok(ParserAst::new_function_call(name, args).with_annotation(annotation))
             }
         }
     }
