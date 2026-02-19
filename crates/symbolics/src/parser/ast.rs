@@ -357,6 +357,16 @@ where
                 head,
                 mut args,
                 annotation,
+            } if head.matches_symbol(DIV_HEAD) && args.len() == 2 => {
+                let rhs = ParserAst::try_from_inner(args.pop().unwrap())?;
+                let lhs = ParserAst::try_from_inner(args.pop().unwrap())?;
+
+                Ok(ParserAst::new_div(lhs, rhs).with_annotation(annotation))
+            }
+            Expr::Compound {
+                head,
+                mut args,
+                annotation,
             } if head.matches_symbol(POW_HEAD) && args.len() == 2 => {
                 let rhs = ParserAst::<A>::try_from_inner(args.pop().unwrap())?;
                 let lhs = ParserAst::try_from_inner(args.pop().unwrap())?;

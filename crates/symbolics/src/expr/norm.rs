@@ -294,6 +294,9 @@ impl<A: Clone + PartialEq + Default> NormalizedExpr<A> {
                 } else {
                     numerator.push(a);
                 }
+            } else if let Some((lhs, rhs)) = a.unpack_binary_node(DIV_HEAD) {
+                numerator.push(lhs.clone());
+                denominator.push(rhs.clone());
             } else {
                 numerator.push(a);
             }
@@ -329,12 +332,17 @@ impl<A: Clone + PartialEq + Default> NormalizedExpr<A> {
 
     pub fn resugar(self) -> Expr<A> {
         let expr = self.take_expr();
+        dbg!(&expr);
         match expr {
             Expr::Compound {
                 head,
                 args,
                 annotation,
             } if head.matches_symbol(ADD_HEAD) && !args.is_empty() => {
+                let args = args
+                    .into_iter()
+                    .map(|e| NormalizedExpr::new(e).resugar())
+                    .collect();
                 Self::resugar_add(args, annotation)
             }
             Expr::Compound {
@@ -342,6 +350,11 @@ impl<A: Clone + PartialEq + Default> NormalizedExpr<A> {
                 args,
                 annotation,
             } if head.matches_symbol(MUL_HEAD) && !args.is_empty() => {
+                let args = args
+                    .into_iter()
+                    .map(|e| NormalizedExpr::new(e).resugar())
+                    .collect();
+
                 Self::resugar_mul(args, annotation)
             }
             Expr::Compound {
@@ -349,7 +362,34 @@ impl<A: Clone + PartialEq + Default> NormalizedExpr<A> {
                 args,
                 annotation,
             } if head.matches_symbol(POW_HEAD) => {
-                Self::resugar_mul(vec![Expr::new_compound(POW_HEAD, args)], annotation)
+                let args = args
+                    .into_iter()
+                    .map(|e| NormalizedExpr::new(e).resugar())
+                    .collect();
+
+                Self::resugar_mul(
+                    vec![Expr::Compound {
+                        head,
+                        args,
+                        annotation: A::default(),
+                    }],
+                    annotation,
+                )
+            }
+            Expr::Compound {
+                head,
+                args,
+                annotation,
+            } if head.matches_symbol(POW_HEAD) => {
+                let args = args
+                    .into_iter()
+                    .map(|e| NormalizedExpr::new(e).resugar())
+                    .collect();
+                Expr::Compound {
+                    head,
+                    args,
+                    annotation,
+                }
             }
             _ => expr,
         }
