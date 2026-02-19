@@ -127,6 +127,7 @@ impl<A: Clone + PartialEq + Default> Expr<A> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::test::common::*;
 
     fn mul(s: &[Expr<()>]) -> Expr<()> {
         Expr::new_compound(Expr::new_symbol("Mul"), s.to_vec())
@@ -134,14 +135,6 @@ mod tests {
 
     fn add(s: &[Expr<()>]) -> Expr<()> {
         Expr::new_compound(Expr::new_symbol("Add"), s.to_vec())
-    }
-
-    fn x() -> Expr<()> {
-        Expr::new_symbol("x")
-    }
-
-    fn y() -> Expr<()> {
-        Expr::new_symbol("y")
     }
 
     #[test]

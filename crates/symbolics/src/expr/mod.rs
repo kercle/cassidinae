@@ -62,10 +62,10 @@ impl<A> Expr<A> {
         }
     }
 
-    pub fn as_compound(&self) -> Option<&Atom> {
+    pub fn head(&self) -> Option<&Expr<A>> {
         match self {
-            Expr::Atom { entry, .. } => Some(entry),
-            Expr::Compound { .. } => None,
+            Expr::Atom { .. } => None,
+            Expr::Compound { head, .. } => Some(head),
         }
     }
 

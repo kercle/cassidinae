@@ -1,6 +1,6 @@
 use std::fmt::{Debug, Error, Formatter};
 
-use crate::expr::{Atom, Expr};
+use crate::expr::{Atom, Expr, pattern::Pattern};
 
 impl Debug for Atom {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
@@ -29,5 +29,23 @@ impl<A: Clone + PartialEq> Debug for Expr<A> {
         };
 
         write!(f, "{s}")
+    }
+}
+
+impl<'a, A: Clone + PartialEq> Debug for Pattern<'a, A> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
+        use Pattern::*;
+        match self {
+            Literal(e) => write!(f, "Literal{{{e:?}}}"),
+            Blank {
+                bind_name,
+                match_head,
+            }
+            | BlankSeq {
+                bind_name,
+                match_head,
+            } => write!(f, "Blank{{{bind_name:?}, {match_head:?}}}"),
+            Compound { head, args } => write!(f, "Compound{{{head:?}, {args:?}}}"),
+        }
     }
 }

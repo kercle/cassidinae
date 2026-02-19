@@ -22,7 +22,7 @@ pub enum Pattern<'a, A> {
 
 impl<'a, A> Pattern<'a, A>
 where
-    A: PartialEq,
+    A: PartialEq + Clone,
 {
     pub fn from_expr(expr: &'a Expr<A>) -> Self {
         Self::from_expr_inner(expr)
@@ -36,8 +36,9 @@ where
                 }
 
                 let e = args.get(1)?;
+                let h = e.head()?;
 
-                if e.matches_symbol(BLANK_ONE_HEAD) || e.matches_symbol(BLANK_SEQ_HEAD) {
+                if h.matches_symbol(BLANK_ONE_HEAD) || h.matches_symbol(BLANK_SEQ_HEAD) {
                     Some(Self::from_pattern_compound(e)?.with_bind_name(args.get(0)?.get_symbol()?))
                 } else {
                     unimplemented!()
@@ -108,5 +109,18 @@ where
             },
             _ => self,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::test::common::*;
+
+    #[test]
+    fn test_expr_to_pattern() {
+        let expr = 4 * (x() * blank() + pattern("x", blank()));
+        let pat = Pattern::from_expr(&expr);
+        dbg!(pat);
     }
 }
