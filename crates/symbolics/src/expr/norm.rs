@@ -5,31 +5,54 @@ use crate::{
     parser::ast::{ADD_HEAD, MUL_HEAD},
 };
 
+fn cannonical_fold_ac_with_neutral_el<A: Default + Clone + PartialEq>(
+    head: &Expr<A>,
+    value: Number,
+    is_neutral_element: bool,
+    args_rest: &mut Vec<Expr<A>>,
+) -> Expr<A> {
+    if args_rest.is_empty() {
+        // Only number left: collapse node
+        Expr::new_number(value)
+    } else if is_neutral_element {
+        // Constants fold to neutral
+        if args_rest.len() == 1 {
+            // Only one arg left: collapse node
+            args_rest.pop().unwrap()
+        } else {
+            // New node contains only remaining args
+            Expr::new_compound(head.clone(), args_rest.clone())
+        }
+    } else {
+        // Multiple remaining args and number is not neutral element
+        args_rest.push(Expr::new_number(value));
+        Expr::new_compound(head.clone(), args_rest.clone())
+    }
+}
+
 fn cannonical_fold_op<A: Default + Clone + PartialEq>(
     head: &Expr<A>,
     c_iter: &mut dyn Iterator<Item = &Number>,
     args_rest: &mut Vec<Expr<A>>,
 ) -> Option<Expr<A>> {
     if head.matches_symbol(ADD_HEAD) {
-        let s = c_iter.sum();
-
-        if args_rest.is_empty() {
-            Some(Expr::new_number(s))
-        } else {
-            args_rest.push(Expr::new_number(s));
-            Some(Expr::new_compound(head.clone(), args_rest.clone()))
-        }
+        let value: Number = c_iter.sum();
+        let is_neutral_element = value.is_zero();
+        Some(cannonical_fold_ac_with_neutral_el(
+            head,
+            value,
+            is_neutral_element,
+            args_rest,
+        ))
     } else if head.matches_symbol(MUL_HEAD) {
-        let p = c_iter.product();
-
-        if args_rest.is_empty() {
-            Some(Expr::new_number(p))
-        } else if p.is_one() {
-            Some(Expr::new_compound(head.clone(), args_rest.clone()))
-        } else {
-            args_rest.push(Expr::new_number(p));
-            Some(Expr::new_compound(head.clone(), args_rest.clone()))
-        }
+        let value: Number = c_iter.product();
+        let is_neutral_element = value.is_one();
+        Some(cannonical_fold_ac_with_neutral_el(
+            head,
+            value,
+            is_neutral_element,
+            args_rest,
+        ))
     } else {
         None
     }
