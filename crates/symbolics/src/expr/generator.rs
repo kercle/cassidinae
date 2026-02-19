@@ -1,6 +1,9 @@
 use std::ops;
 
-use crate::expr::Expr;
+use crate::expr::{
+    Expr,
+    pattern::{BLANK_ONE_HEAD, BLANK_SEQ_HEAD, PATTERN_HEAD},
+};
 
 pub trait ExprBuilder {
     fn build(&self) -> Expr<()>;
@@ -51,7 +54,7 @@ pub fn exp(a: Expr) -> Expr<()> {
 
 pub fn blank(head: Option<Expr>) -> Expr<()> {
     Expr::new_compound(
-        Expr::new_symbol("Head"),
+        Expr::new_symbol(BLANK_ONE_HEAD),
         if let Some(h) = head {
             vec![h]
         } else {
@@ -62,7 +65,7 @@ pub fn blank(head: Option<Expr>) -> Expr<()> {
 
 pub fn blank_sequence(head: Option<Expr>) -> Expr<()> {
     Expr::new_compound(
-        Expr::new_symbol("HeadSeq"),
+        Expr::new_symbol(BLANK_SEQ_HEAD),
         if let Some(h) = head {
             vec![h]
         } else {
@@ -73,7 +76,7 @@ pub fn blank_sequence(head: Option<Expr>) -> Expr<()> {
 
 pub fn pattern(bind_name: &str, arg: Expr) -> Expr<()> {
     Expr::new_compound(
-        Expr::new_symbol("Pattern"),
+        Expr::new_symbol(PATTERN_HEAD),
         vec![Expr::new_symbol(bind_name), arg],
     )
 }
