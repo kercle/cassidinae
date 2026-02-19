@@ -2,7 +2,7 @@ use std::{cmp::Ordering, ops};
 
 use numbers::Number;
 
-use crate::expr::Expr;
+use crate::{expr::Expr, parser::ast::ADD_HEAD};
 
 fn cmp_expr<A: Clone + PartialEq>(lhs: &Expr<A>, rhs: &Expr<A>) -> Ordering {
     use Expr::*;
@@ -60,7 +60,7 @@ impl<A: Clone + PartialEq + Default> ops::Add for Expr<A> {
     type Output = Expr<A>;
 
     fn add(self, other: Self) -> Self::Output {
-        Expr::new_compound(Expr::new_symbol("Add"), vec![self, other])
+        Expr::new_compound(Expr::new_symbol(ADD_HEAD), vec![self, other])
     }
 }
 

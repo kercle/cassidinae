@@ -370,10 +370,10 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{expr::generator::*, symbol};
+    use crate::{expr::generator::*, parser::ast::{ADD_HEAD, MUL_HEAD}, symbol};
 
     fn flatten(e: Expr) -> Expr {
-        e.flatten(|e: &Expr| e.matches_symbol("Add") || e.matches_symbol("Mul"))
+        e.flatten(|e: &Expr| e.matches_symbol(ADD_HEAD) || e.matches_symbol(MUL_HEAD))
     }
 
     fn collect<'a>(expr: &'a Expr<()>, pat: &'a Pattern<'a, ()>) -> Vec<MatchContext<'a, ()>> {

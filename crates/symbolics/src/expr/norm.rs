@@ -1,20 +1,45 @@
 use numbers::Number;
 
-use crate::expr::{Expr, atom::Atom};
+use crate::{
+    expr::{Expr, atom::Atom},
+    parser::ast::{ADD_HEAD, MUL_HEAD},
+};
+
+fn cannonical_fold_op<A: Default + Clone + PartialEq>(
+    head: &Expr<A>,
+    c_iter: &mut dyn Iterator<Item = &Number>,
+    args_rest: &mut Vec<Expr<A>>,
+) -> Option<Expr<A>> {
+    if head.matches_symbol(ADD_HEAD) {
+        let s = c_iter.sum();
+
+        if args_rest.is_empty() {
+            Some(Expr::new_number(s))
+        } else {
+            args_rest.push(Expr::new_number(s));
+            Some(Expr::new_compound(head.clone(), args_rest.clone()))
+        }
+    } else if head.matches_symbol(MUL_HEAD) {
+        let p = c_iter.product();
+
+        if args_rest.is_empty() {
+            Some(Expr::new_number(p))
+        } else if p.is_one() {
+            Some(Expr::new_compound(head.clone(), args_rest.clone()))
+        } else {
+            args_rest.push(Expr::new_number(p));
+            Some(Expr::new_compound(head.clone(), args_rest.clone()))
+        }
+    } else {
+        None
+    }
+}
 
 impl<A: Clone + PartialEq + Default> Expr<A> {
     pub fn normalize(self) -> Self {
-        self.flatten(|e: &Expr<A>| e.matches_symbol("Add") || e.matches_symbol("Mul"))
-            .fold_constants(|h: &Expr<A>, c_iter: &mut dyn Iterator<Item = &Number>| {
-                if h.matches_symbol("Add") {
-                    Some(c_iter.sum())
-                } else if h.matches_symbol("Mul") {
-                    Some(c_iter.product())
-                } else {
-                    None
-                }
-            })
-            .sort_args(|e: &Expr<A>| e.matches_symbol("Add") || e.matches_symbol("Mul"))
+        self.flatten(|e: &Expr<A>| e.matches_symbol(ADD_HEAD) || e.matches_symbol(MUL_HEAD))
+            .fold_constants(|head, c_iter, args_rest| cannonical_fold_op(head, c_iter, args_rest))
+            .sort_args(|e: &Expr<A>| e.matches_symbol(ADD_HEAD) || e.matches_symbol(MUL_HEAD))
     }
 
     /// Flattens nested compounds whenever `head_predicate`
@@ -91,13 +116,18 @@ impl<A: Clone + PartialEq + Default> Expr<A> {
 
     pub fn fold_constants(
         self,
-        fold_op: impl Fn(&Expr<A>, &mut dyn Iterator<Item = &Number>) -> Option<Number> + Copy,
+        fold_op: impl Fn(
+            &Expr<A>,
+            &mut dyn Iterator<Item = &Number>,
+            &mut Vec<Expr<A>>,
+        ) -> Option<Expr<A>>
+        + Copy,
     ) -> Self {
         match self {
             Expr::Atom { .. } => self.drop_annotation(),
             Expr::Compound { head, args, .. } => {
                 // Split constant and other arguments
-                let (mut c_args, mut args): (Vec<Expr<A>>, Vec<Expr<A>>) = args
+                let (c_args, mut args): (Vec<Expr<A>>, Vec<Expr<A>>) = args
                     .into_iter()
                     .map(|a| a.fold_constants(fold_op))
                     .partition(|e| e.is_number());
@@ -112,11 +142,10 @@ impl<A: Clone + PartialEq + Default> Expr<A> {
                 });
 
                 // If constants in compound can be folded, do so. Otherwise reconstruct initial expression.
-                if let Some(value) = fold_op(&head, &mut c_iter) {
-                    args.push(Expr::new_number(value));
-                    Expr::new_compound(*head, args)
+                if let Some(e) = fold_op(&head, &mut c_iter, &mut args) {
+                    e
                 } else {
-                    args.append(&mut c_args);
+                    args.extend(c_args);
                     Expr::new_compound(*head, args)
                 }
             }
@@ -130,11 +159,11 @@ mod tests {
     use crate::{expr::generator::*, symbol};
 
     fn mul(s: &[Expr<()>]) -> Expr<()> {
-        Expr::new_compound(Expr::new_symbol("Mul"), s.to_vec())
+        Expr::new_compound(Expr::new_symbol(MUL_HEAD), s.to_vec())
     }
 
     fn add(s: &[Expr<()>]) -> Expr<()> {
-        Expr::new_compound(Expr::new_symbol("Add"), s.to_vec())
+        Expr::new_compound(Expr::new_symbol(ADD_HEAD), s.to_vec())
     }
 
     #[test]
@@ -143,7 +172,7 @@ mod tests {
         let expr: Expr<()> = 2 + x + 3 * (5 + (1 + (1 + y)));
 
         assert_eq!(
-            expr.flatten(|e| e.matches_symbol("Add")),
+            expr.flatten(|e| e.matches_symbol(ADD_HEAD)),
             add(&[
                 2.into(),
                 x.build(),
@@ -163,7 +192,7 @@ mod tests {
         ]);
 
         assert_eq!(
-            expr1.sort_args(|e| e.matches_symbol("Add")),
+            expr1.sort_args(|e| e.matches_symbol(ADD_HEAD)),
             add(&[
                 2.into(),
                 x.build(),
