@@ -6,7 +6,7 @@ use std::{
 use numbers::Number;
 
 use crate::{
-    builtin::CANNONICAL_SYM_INDETERMINATE,
+    builtin::{CANNONICAL_HEAD_SQRT, CANNONICAL_SYM_INDETERMINATE},
     expr::{Expr, NormalizedExpr, atom::Atom, generator::pow},
     parser::ast::{ADD_HEAD, DIV_HEAD, MUL_HEAD, NEG_HEAD, POW_HEAD, SUB_HEAD},
 };
@@ -420,7 +420,21 @@ impl<A: Clone + PartialEq + Default> NormalizedExpr<A> {
                 head,
                 args,
                 annotation,
-            } if head.matches_symbol(POW_HEAD) => {
+            } if head.matches_symbol(POW_HEAD) && args.len() == 2 => {
+                let one_half = Number::new_rational_from_i64(1, 2).unwrap();
+                if args
+                    .last()
+                    .unwrap()
+                    .get_number()
+                    .map(|e| e == &one_half)
+                    .unwrap_or(false)
+                {
+                    return Expr::new_compound(
+                        CANNONICAL_HEAD_SQRT,
+                        vec![args.first().unwrap().clone()],
+                    );
+                }
+
                 let args = args
                     .into_iter()
                     .map(|e| NormalizedExpr::new(e).resugar())
