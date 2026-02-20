@@ -292,20 +292,24 @@ where
             Pattern::Blank {
                 bind_name,
                 match_head,
-                predicate: _,
+                predicate,
             } => {
                 if match_head.is_some() {
                     // match head constraint
                     todo!();
                 }
 
-                let b = if let Some(n) = bind_name {
-                    self.bind_one(n, expr)
-                } else {
-                    Ok(())
-                };
+                let bind_success = bind_name
+                    .as_ref()
+                    .map(|n| self.bind_one(n, expr).is_ok())
+                    .unwrap_or(true);
+                let pred_check_success = predicate.as_ref().map(|p| p.check(expr)).unwrap_or(true);
 
-                if b.is_ok() { Ok(()) } else { Err(MatchFail) }
+                if bind_success && pred_check_success {
+                    Ok(())
+                } else {
+                    Err(MatchFail)
+                }
             }
             Pattern::Compound { head, args } => {
                 if let Expr::Compound {
@@ -371,7 +375,11 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{expr::generator::*, parser::ast::{ADD_HEAD, MUL_HEAD}, symbol};
+    use crate::{
+        expr::generator::*,
+        parser::ast::{ADD_HEAD, MUL_HEAD},
+        symbol,
+    };
 
     fn flatten(e: Expr) -> Expr {
         e.flatten(|e: &Expr| e.matches_symbol(ADD_HEAD) || e.matches_symbol(MUL_HEAD))

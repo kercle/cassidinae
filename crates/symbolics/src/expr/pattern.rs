@@ -14,7 +14,7 @@ pub enum PatternPredicate {
 }
 
 impl PatternPredicate {
-    pub fn check<A>(self, expr: Expr<A>) -> bool {
+    pub fn check<A>(&self, expr: &Expr<A>) -> bool {
         use PatternPredicate::*;
         match self {
             IsSymbolQ => expr.is_symbol(),
