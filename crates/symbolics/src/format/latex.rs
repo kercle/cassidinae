@@ -1,4 +1,10 @@
-use crate::{builtin::{CANNONICAL_HEAD_COS, CANNONICAL_HEAD_SIN, CANNONICAL_HEAD_SQRT, CANNONICAL_HEAD_TAN}, parser::ast::ParserAst};
+use crate::{
+    builtin::{
+        CANNONICAL_HEAD_COS, CANNONICAL_HEAD_DERIVATIVE, CANNONICAL_HEAD_SIN, CANNONICAL_HEAD_SQRT,
+        CANNONICAL_HEAD_TAN,
+    },
+    parser::ast::ParserAst,
+};
 use numbers::Number;
 
 fn greek_letter(name: &str) -> String {
@@ -149,10 +155,22 @@ where
             )
         }
         FunctionCall { name, args, .. } if name == CANNONICAL_HEAD_SQRT && args.len() == 1 => {
-            format!(
-                "\\sqrt{{{}}}",
-                ast_to_latex(args.first().unwrap(), weight)
-            )
+            format!("\\sqrt{{{}}}", ast_to_latex(args.first().unwrap(), weight))
+        }
+        FunctionCall { name, args, .. }
+            if name == CANNONICAL_HEAD_DERIVATIVE && args.len() == 2 =>
+        {
+            let f = args.get(1).unwrap();
+            let x = args.get(0).unwrap();
+
+            let f_latex = ast_to_latex(f, weight);
+            let x_latex = ast_to_latex(x, weight);
+
+            if x.is_symbol() {
+                format!("\\frac{{ \text{{d}} }}{{ \text{{d}} {x_latex} }}\\left({f_latex}\\right)")
+            } else {
+                format!("\\text{{D}}\\left[{f_latex}, {x_latex}\\right]")
+            }
         }
         FunctionCall { name, args, .. } => {
             let args_str = args

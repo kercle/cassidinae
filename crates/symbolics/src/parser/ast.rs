@@ -412,6 +412,18 @@ where
         }
     }
 
+    pub fn is_symbol(&self) -> bool {
+        matches!(self, ParserAst::Symbol { .. })
+    }
+
+    pub fn matches_symbol<T: AsRef<str>>(&self, x: T) -> bool {
+        if let ParserAst::Symbol { name, .. } = self {
+            name == x.as_ref()
+        } else {
+            false
+        }
+    }
+
     pub fn map_annotation<B, F>(self, f: &mut F) -> ParserAst<B>
     where
         B: Clone + PartialEq,
