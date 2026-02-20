@@ -2,6 +2,7 @@
 	import '../app.css';
 	import './layout.css';
 	import '$lib/index';
+	import 'katex/dist/katex.min.css';
 	import favicon from '$lib/assets/favicon.svg';
 
 	let { children } = $props();

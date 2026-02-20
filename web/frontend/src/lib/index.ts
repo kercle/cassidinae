@@ -1,7 +1,14 @@
 import { writable } from 'svelte/store';
 
+type ServerMessage = {
+    evalResult: {
+        input: string,
+        output: string,
+    }
+};
+
 type AppState = {
-    history: [any],
+    history: Array<ServerMessage>,
 };
 
 function createGlobalState() {
@@ -9,7 +16,7 @@ function createGlobalState() {
         data: AppState;
         connected: boolean;
     }>({
-        data: {} as AppState,
+        data: { history: [] } as AppState,
         connected: false,
     });
 
@@ -36,7 +43,7 @@ function createGlobalState() {
                     };
                 });
             } catch (e) {
-                console.log("Received non-JSON or echo message:", event.data);
+                console.log("Error parsing message:", e);
             }
         };
 

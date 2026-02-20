@@ -16,14 +16,14 @@ use tracing::{error, info};
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
-enum InboundMessage {
+enum ClientMessage {
     Eval(String),
 }
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-enum OutboundMessage {
-    EvalResult { result: String, format: String },
+enum ServerMessage {
+    EvalResult { input: String, output: String },
     ParseError(String),
 }
 
@@ -56,7 +56,7 @@ async fn handle_socket(socket: WebSocket) {
         if let Message::Text(text) = msg {
             let response = match process_message(text.to_string()) {
                 Ok(ret) => serde_json::to_string(&ret),
-                Err(err) => serde_json::to_string(&OutboundMessage::ParseError(err)),
+                Err(err) => serde_json::to_string(&ServerMessage::ParseError(err)),
             };
 
             if response.is_err() {
@@ -76,19 +76,19 @@ async fn handle_socket(socket: WebSocket) {
     info!("Client disconnected.");
 }
 
-fn process_message(inbound_msg: String) -> Result<OutboundMessage, String> {
-    let inbound_msg: InboundMessage = serde_json::from_str(&inbound_msg)
+fn process_message(inbound_msg: String) -> Result<ServerMessage, String> {
+    let inbound_msg: ClientMessage = serde_json::from_str(&inbound_msg)
         .map_err(|err| format!("Cannot unpack inbound message: {err}"))?;
 
-    let InboundMessage::Eval(input) = inbound_msg;
+    let ClientMessage::Eval(input) = inbound_msg;
 
-    let ast = parse(&input).map_err(|err| format!("Error parsing input: {}", err))?;
-    let expr = NormalizedExpr::new(Expr::from_parser_ast(&ast));
+    let ast_in = parse(&input).map_err(|err| format!("Error parsing input: {}", err))?;
+    let expr = NormalizedExpr::new(Expr::from_parser_ast(&ast_in));
 
-    if let Ok(ast) = ParserAst::try_from(expr) {
-        Ok(OutboundMessage::EvalResult {
-            result: ast.to_latex(),
-            format: "latex".to_string(),
+    if let Ok(ast_out) = ParserAst::try_from(expr) {
+        Ok(ServerMessage::EvalResult {
+            input: ast_in.to_latex(),
+            output: ast_out.to_latex(),
         })
     } else {
         Err("Cannot recover AST from transformed expression.".to_string())
