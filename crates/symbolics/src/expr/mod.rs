@@ -351,11 +351,11 @@ where
     }
 }
 
-pub struct ExprWalker<'a, A> {
+pub struct ExprTopDownWalker<'a, A> {
     stack: Vec<&'a Expr<A>>,
 }
 
-impl<'a, A> ExprWalker<'a, A>
+impl<'a, A> ExprTopDownWalker<'a, A>
 where
     A: PartialEq,
 {
@@ -364,7 +364,7 @@ where
     }
 }
 
-impl<'a, A> Iterator for ExprWalker<'a, A> {
+impl<'a, A> Iterator for ExprTopDownWalker<'a, A> {
     type Item = &'a Expr<A>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -380,8 +380,54 @@ impl<'a, A> Iterator for ExprWalker<'a, A> {
     }
 }
 
+pub enum Visit<'a, A> {
+    Enter(&'a Expr<A>),
+    Exit(&'a Expr<A>),
+}
+
+pub struct ExprBottomUpWalker<'a, A> {
+    stack: Vec<Visit<'a, A>>,
+}
+
+impl<'a, A> ExprBottomUpWalker<'a, A> {
+    pub fn new(root: &'a Expr<A>) -> Self {
+        Self {
+            stack: vec![Visit::Enter(root)],
+        }
+    }
+}
+
+impl<'a, A> Iterator for ExprBottomUpWalker<'a, A> {
+    type Item = &'a Expr<A>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        while let Some(visit) = self.stack.pop() {
+            match visit {
+                Visit::Enter(node) => {
+                    self.stack.push(Visit::Exit(node));
+                    if let Expr::Compound { head, args, .. } = node {
+                        self.stack.push(Visit::Enter(head));
+                        for a in args.iter().rev() {
+                            self.stack.push(Visit::Enter(a));
+                        }
+                    }
+                }
+                Visit::Exit(node) => {
+                    return Some(node);
+                }
+            }
+        }
+        None
+    }
+}
+
 #[cfg(test)]
 mod tests {
+    use crate::{
+        expr::generator::{SymbolGenerator, cos, exp, pow},
+        symbol,
+    };
+
     use super::*;
 
     #[test]
@@ -395,5 +441,16 @@ mod tests {
 
         let x: Expr<()> = Expr::new_symbol("x");
         assert!(x > Expr::from_i64(2));
+    }
+
+    #[test]
+    fn test_walker() {
+        let (x, y, z) = symbol!("x", "y", "z");
+
+        let expr = 2 + x * cos(x + exp(pow(y, 2) + 7 * z));
+        dbg!(&expr);
+        for e in ExprBottomUpWalker::new(&expr) {
+            dbg!(e);
+        }
     }
 }

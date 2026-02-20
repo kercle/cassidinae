@@ -1,4 +1,4 @@
-use crate::expr::{Expr, ExprWalker};
+use crate::expr::{Expr, ExprTopDownWalker};
 
 pub const PATTERN_HEAD: &str = "Pattern";
 pub const BLANK_ONE_HEAD: &str = "Blank";
@@ -70,7 +70,7 @@ where
 
     fn from_expr_inner(expr: &'a Expr<A>) -> Self {
         let mut descend = false;
-        for e in ExprWalker::new(expr) {
+        for e in ExprTopDownWalker::new(expr) {
             if let Expr::Compound { head, .. } = e {
                 if head.matches_symbol(PATTERN_HEAD) | head.matches_symbol(BLANK_ONE_HEAD)
                     || head.matches_symbol(BLANK_SEQ_HEAD)
