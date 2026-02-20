@@ -1,12 +1,5 @@
 import { writable } from 'svelte/store';
 
-type ServerMessage = {
-    evalResult: {
-        input: string,
-        output: string,
-    }
-};
-
 type AppState = {
     history: Array<ServerMessage>,
 };
@@ -36,7 +29,9 @@ function createGlobalState() {
                 const msg = JSON.parse(event.data);
 
                 update(s => {
+                    console.log(msg);
                     s.data.history.push(msg);
+
                     return {
                         ...s,
                         connected: true,

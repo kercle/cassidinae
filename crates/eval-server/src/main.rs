@@ -24,7 +24,7 @@ enum ClientMessage {
 #[serde(rename_all = "camelCase")]
 enum ServerMessage {
     EvalResult { input: String, output: String },
-    ParseError(String),
+    ParseError { input: String, msg: String },
 }
 
 #[tokio::main]
@@ -56,7 +56,7 @@ async fn handle_socket(socket: WebSocket) {
         if let Message::Text(text) = msg {
             let response = match process_message(text.to_string()) {
                 Ok(ret) => serde_json::to_string(&ret),
-                Err(err) => serde_json::to_string(&ServerMessage::ParseError(err)),
+                Err(err) => serde_json::to_string(&err),
             };
 
             if response.is_err() {
@@ -76,13 +76,19 @@ async fn handle_socket(socket: WebSocket) {
     info!("Client disconnected.");
 }
 
-fn process_message(inbound_msg: String) -> Result<ServerMessage, String> {
-    let inbound_msg: ClientMessage = serde_json::from_str(&inbound_msg)
-        .map_err(|err| format!("Cannot unpack inbound message: {err}"))?;
+fn process_message(inbound_msg: String) -> Result<ServerMessage, ServerMessage> {
+    let inbound_msg: ClientMessage =
+        serde_json::from_str(&inbound_msg).map_err(|err| ServerMessage::ParseError {
+            input: "n/a".to_string(),
+            msg: format!("Cannot unpack inbound message: {err}"),
+        })?;
 
     let ClientMessage::Eval(input) = inbound_msg;
 
-    let ast_in = parse(&input).map_err(|err| format!("Error parsing input: {}", err))?;
+    let ast_in = parse(&input).map_err(|err| ServerMessage::ParseError {
+        input: input.clone(),
+        msg: format!("Error parsing input: {}", err),
+    })?;
     let input_expr = Expr::from_parser_ast(&ast_in);
 
     let result_expr = Simplifier::new(input_expr)
@@ -98,6 +104,9 @@ fn process_message(inbound_msg: String) -> Result<ServerMessage, String> {
             output: ast_out.to_latex(),
         })
     } else {
-        Err("Cannot recover AST from transformed expression.".to_string())
+        Err(ServerMessage::ParseError {
+            input: ast_in.to_latex(),
+            msg: "Cannot recover AST from transformed expression.".to_string(),
+        })
     }
 }
