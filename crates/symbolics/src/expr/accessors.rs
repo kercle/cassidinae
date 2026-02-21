@@ -108,3 +108,17 @@ impl<A> Expr<A> {
         }
     }
 }
+
+impl<A> Expr<A>
+where
+    A: Default + Clone + PartialEq,
+{
+    pub fn matches_head<T: Into<Expr<A>>>(&self, test_head: T) -> bool {
+        if let Some(head) = self.head() {
+            let test_head = test_head.into();
+            *head == test_head
+        } else {
+            false
+        }
+    }
+}
