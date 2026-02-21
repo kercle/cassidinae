@@ -6,18 +6,6 @@
 
 	export let entry: ServerMessage | undefined = undefined;
 
-	const getInput = () => {
-		if (entry) {
-			if ('evalResult' in entry) {
-				return entry.evalResult.input;
-			} else if ('parseError' in entry) {
-				return entry.parseError.input;
-			}
-		} else {
-			return '';
-		}
-	};
-
 	const highlightColor = () => {
 		if (entry) {
 			if ('parseError' in entry) {
@@ -59,19 +47,25 @@
 		{@render menu()}
 
 		<div class="pt-2 pl-8">
-			<Math expr={getInput()} />
+			{#if entry && 'evalResult' in entry}
+				<div class="border-{highlightColor()} rounded-b-sm border">
+					<Math expr={entry.evalResult.input} />
+				</div>
+			{:else if entry && 'parseError' in entry}
+				<div class="border-{highlightColor()} rounded-b-sm border py-1">
+					<p>{entry.parseError.input}</p>
+				</div>
+			{/if}
 		</div>
 	</div>
 
-	{#if entry}
-		{#if 'evalResult' in entry}
-			<div class="border-{highlightColor()} rounded-b-sm border pl-8">
-				<Math expr={'=' + entry.evalResult.output} />
-			</div>
-		{:else if 'parseError' in entry}
-			<div class="border-{highlightColor()} rounded-b-sm border p-2 pl-8">
-				<b class="mr-2">Error:</b>{entry.parseError.msg}
-			</div>
-		{/if}
+	{#if entry && 'evalResult' in entry}
+		<div class="border-{highlightColor()} rounded-b-sm border pl-8">
+			<Math expr={'=' + entry.evalResult.output} />
+		</div>
+	{:else if entry && 'parseError' in entry}
+		<div class="border-{highlightColor()} rounded-b-sm border p-2 pl-8">
+			<b class="mr-2">Error:</b>{entry.parseError.msg}
+		</div>
 	{/if}
 </div>
