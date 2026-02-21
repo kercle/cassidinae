@@ -1,6 +1,6 @@
 use std::str::FromStr;
 
-use crate::expr::{Expr, ExprTopDownWalker};
+use crate::expr::{Expr, walk::ExprTopDownWalker};
 
 pub const PATTERN_HEAD: &str = "Pattern";
 pub const PATTERN_TEST_HEAD: &str = "PatternTest";
