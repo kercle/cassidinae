@@ -6,8 +6,8 @@ use numbers::Number;
 use crate::{
     builtin::*,
     expr::{Expr, NormalizedExpr, atom::Atom, pattern::Pattern},
-    parser::ast::{ADD_HEAD, MUL_HEAD, POW_HEAD},
     matcher::MatchIter,
+    parser::ast::{ADD_HEAD, MUL_HEAD, POW_HEAD},
 };
 
 pub fn resolve_derivatives<A>(expr: Expr<A>) -> Expr
@@ -159,7 +159,8 @@ fn derivative_inner<A: Default + Clone + PartialEq>(expr: Expr<A>, var: &str) ->
 mod tests {
     use super::*;
     use crate::{
-        expr::{NormalizedExpr, generator::*, simplify::Simplifier},
+        expr::{NormalizedExpr, generator::*},
+        simplify::Simplifier,
         symbol,
     };
 

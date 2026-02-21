@@ -1,4 +1,5 @@
 pub mod builtin;
+pub mod calculus;
 pub mod expr;
 pub mod format;
 pub mod matcher;

@@ -1,7 +1,10 @@
 mod functions_known_values;
 mod trigonometric_functions;
 
-use crate::expr::{Expr, NormalizedExpr, derivative::resolve_derivatives};
+use crate::{
+    calculus::derivative::resolve_derivatives,
+    expr::{Expr, NormalizedExpr},
+};
 
 pub struct Simplifier {
     expr: NormalizedExpr,
