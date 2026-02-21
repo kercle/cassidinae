@@ -46,22 +46,22 @@
 		{@render menu()}
 
 		{#if entry && 'evalResult' in entry}
-			<div class="bg-base-200 rounded-t-sm pt-2 pl-8">
+			<div class="bg-base-200 rounded-t-sm pt-2 pl-8 overflow-x-auto">
 				<Math expr={entry.evalResult.input} />
 			</div>
 		{:else if entry && 'parseError' in entry}
-			<div class="rounded-t-sm bg-red-200 py-4 pl-8">
+			<div class="rounded-t-sm bg-red-200 py-4 pl-8 overflow-x-auto">
 				<p>{entry.parseError.input}</p>
 			</div>
 		{/if}
 	</div>
 
 	{#if entry && 'evalResult' in entry}
-		<div class="border-base-200 rounded-b-sm border pl-8">
+		<div class="border-base-200 rounded-b-sm border pl-8 overflow-x-auto">
 			<Math expr={'=' + entry.evalResult.output} />
 		</div>
 	{:else if entry && 'parseError' in entry}
-		<div class=" rounded-b-sm border border-red-200 p-2 pl-8">
+		<div class=" rounded-b-sm border border-red-200 p-2 pl-8 overflow-x-auto">
 			<b class="mr-2">Error:</b>{entry.parseError.msg}
 		</div>
 	{/if}
