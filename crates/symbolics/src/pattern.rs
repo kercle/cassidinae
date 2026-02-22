@@ -42,12 +42,12 @@ impl FromStr for PatternPredicate {
 pub enum Pattern<'a, A> {
     Literal(&'a Expr<A>),
     Blank {
-        bind_name: Option<String>,
+        bind_name: Option<&'a str>,
         match_head: Option<&'a Expr<A>>,
         predicate: Option<PatternPredicate>,
     },
     BlankSeq {
-        bind_name: Option<String>,
+        bind_name: Option<&'a str>,
         match_head: Option<&'a Expr<A>>,
     },
     Compound {
@@ -153,16 +153,16 @@ where
         }
     }
 
-    pub fn with_bind_name(self, name: &str) -> Self {
+    pub fn with_bind_name(self, name: &'a str) -> Self {
         use Pattern::*;
         match self {
             Blank { match_head, .. } => Blank {
-                bind_name: Some(name.to_string()),
+                bind_name: Some(name),
                 match_head,
                 predicate: None,
             },
             BlankSeq { match_head, .. } => BlankSeq {
-                bind_name: Some(name.to_string()),
+                bind_name: Some(name),
                 match_head,
             },
             _ => self,

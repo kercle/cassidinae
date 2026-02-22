@@ -39,10 +39,6 @@ impl<'a, A> PatSpan<'a, A> {
     }
 }
 
-enum BindAction {
-    Bind(String),
-}
-
 enum Task<'a, A> {
     Node {
         pattern: Pattern<'a, A>,
@@ -62,7 +58,7 @@ struct ChoicePoint<'a, A> {
     todo_len: usize,
     undo_len: usize,
 
-    seq_name: Option<String>,
+    seq_name: Option<&'a str>,
     k_next: usize,
 
     rest_pats: PatSpan<'a, A>,
@@ -79,7 +75,7 @@ where
     tasks: Vec<Task<'a, A>>,
     ctx: MatchContext<'a, A>,
     back_track: Vec<ChoicePoint<'a, A>>,
-    undo_log: Vec<BindAction>,
+    bind_action_log: Vec<&'a str>,
     done: bool,
 }
 
@@ -92,32 +88,30 @@ where
             tasks: vec![Task::Node { pattern, expr }],
             ctx: MatchContext::default(),
             back_track: Vec::new(),
-            undo_log: Vec::new(),
+            bind_action_log: Vec::new(),
             done: false,
         }
     }
 
-    fn bind_one(&mut self, name: &str, expr: &'a Expr<A>) -> Result<(), MatchContextBindError> {
+    fn bind_one(&mut self, name: &'a str, expr: &'a Expr<A>) -> Result<(), MatchContextBindError> {
         self.ctx.bind_one(name, expr)?;
-        self.undo_log.push(BindAction::Bind(name.to_string()));
+        self.bind_action_log.push(name);
         Ok(())
     }
 
     fn bind_seq(
         &mut self,
-        name: &str,
+        name: &'a str,
         expr_arr: &'a [Expr<A>],
     ) -> Result<(), MatchContextBindError> {
         self.ctx.bind_seq(name, expr_arr)?;
-        self.undo_log.push(BindAction::Bind(name.to_string()));
+        self.bind_action_log.push(name);
         Ok(())
     }
 
     fn rollback_binds(&mut self, undo_len: usize) {
-        while self.undo_log.len() > undo_len {
-            match self.undo_log.pop().unwrap() {
-                BindAction::Bind(name) => self.ctx.unbind(name),
-            }
+        while self.bind_action_log.len() > undo_len {
+            self.ctx.unbind(self.bind_action_log.pop().unwrap());
         }
     }
 
@@ -258,8 +252,8 @@ where
                 if k_min < k_max {
                     self.back_track.push(ChoicePoint {
                         todo_len: self.tasks.len(),
-                        undo_len: self.undo_log.len(),
-                        seq_name: bind_name.clone(),
+                        undo_len: self.bind_action_log.len(),
+                        seq_name: *bind_name,
                         k_next: k_min + 1,
                         rest_pats: patterns.clone().rest(),
                         rest_exprs: exprs,
@@ -285,7 +279,7 @@ where
                     exprs: erest,
                 });
                 self.tasks.push(Task::Node {
-                    pattern: patterns.first().unwrap().clone(), // Todo: can we get rid of this clone?
+                    pattern: patterns.first().unwrap().clone(), // can we get rid of this clone?
                     expr: e0,
                 });
                 Ok(())
