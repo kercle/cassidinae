@@ -44,6 +44,16 @@ impl<'a, A> ExprBottomUpWalker<'a, A> {
             stack: vec![Visit::Enter(root)],
         }
     }
+
+    fn visit_enter(&mut self, node: &'a Expr<A>) {
+        self.stack.push(Visit::Exit(node));
+        if let Expr::Compound { head, args, .. } = node {
+            self.stack.push(Visit::Enter(head));
+            for a in args.iter().rev() {
+                self.stack.push(Visit::Enter(a));
+            }
+        }
+    }
 }
 
 impl<'a, A> Iterator for ExprBottomUpWalker<'a, A> {
@@ -53,13 +63,7 @@ impl<'a, A> Iterator for ExprBottomUpWalker<'a, A> {
         while let Some(visit) = self.stack.pop() {
             match visit {
                 Visit::Enter(node) => {
-                    self.stack.push(Visit::Exit(node));
-                    if let Expr::Compound { head, args, .. } = node {
-                        self.stack.push(Visit::Enter(head));
-                        for a in args.iter().rev() {
-                            self.stack.push(Visit::Enter(a));
-                        }
-                    }
+                    self.visit_enter(node);
                 }
                 Visit::Exit(node) => {
                     return Some(node);
