@@ -9,5 +9,6 @@ pub mod ops;
 pub mod transform;
 pub mod types;
 pub mod walk;
+pub mod resugar;
 
 pub use types::*;
