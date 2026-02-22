@@ -24,23 +24,11 @@ where
         }
     }
 
-    pub fn new_number(value: Number) -> Self {
+    pub fn new_number<T: Into<Number>>(value: T) -> Self {
         Expr::Atom {
-            entry: Atom::Number(value),
+            entry: Atom::Number(value.into()),
             annotation: A::default(),
         }
-    }
-
-    pub fn new_number_zero() -> Self {
-        Self::new_number(Number::zero())
-    }
-
-    pub fn new_number_one() -> Self {
-        Self::new_number(Number::one())
-    }
-
-    pub fn new_number_minus_one() -> Self {
-        Self::new_number(Number::minus_one())
     }
 
     pub fn new_number_rational(numerator: i64, denominator: u64) -> Result<Self, String> {

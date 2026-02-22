@@ -23,14 +23,14 @@ pub fn simplify_evaluation_at_zero(expr: Expr) -> Expr {
         if let Some(ctx) = MatchIter::new(&e, &pattern).next() {
             let head_symbol = ctx.get("h").unwrap().get_symbol().unwrap();
             match head_symbol {
-                CANNONICAL_HEAD_EXP => Expr::new_number_one(),
+                CANNONICAL_HEAD_EXP => Expr::new_number(1),
                 CANNONICAL_HEAD_LOG => Expr::new_compound(
                     NEG_HEAD,
                     vec![Expr::new_symbol(CANNONICAL_SYM_PLUS_INFINITY)],
                 ),
-                CANNONICAL_HEAD_SIN => Expr::new_number_zero(),
-                CANNONICAL_HEAD_COS => Expr::new_number_one(),
-                CANNONICAL_HEAD_TAN => Expr::new_number_zero(),
+                CANNONICAL_HEAD_SIN => Expr::new_number(0),
+                CANNONICAL_HEAD_COS => Expr::new_number(1),
+                CANNONICAL_HEAD_TAN => Expr::new_number(0),
                 _ => e,
             }
         } else {
