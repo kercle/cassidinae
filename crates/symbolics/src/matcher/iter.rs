@@ -5,10 +5,48 @@ use crate::{
     matcher::{
         context::{MatchContext, MatchContextBindError},
         pattern_span::PatSpan,
-        task::{ChoicePoint, Task},
     },
     pattern::{Pattern, PatternPredicate},
 };
+
+type CommutativePredicate<A> = Box<dyn Fn(&Expr<A>) -> bool>;
+
+enum Task<'a, A> {
+    MatchOne {
+        pattern: Pattern<'a, A>,
+        expr: &'a Expr<A>,
+    },
+    MatchSeq {
+        patterns: PatSpan<'a, A>,
+        exprs: &'a [Expr<A>],
+    },
+    ResumeOrderedSplit {
+        seq_name: Option<&'a str>,
+        k_min: usize,
+        k: usize,
+        rest_pats: PatSpan<'a, A>,
+        rest_exprs: &'a [Expr<A>],
+    },
+    MatchUnorderedSeq {
+        patterns: PatSpan<'a, A>,
+        exprs: &'a [Expr<A>],
+        remaining: Vec<usize>,
+    },
+    ResumeUnorderedPick {
+        pat: Pattern<'a, A>,
+        patterns_rest: Vec<Pattern<'a, A>>,
+        exprs: &'a [Expr<A>],
+        remaining: Vec<usize>,
+        next_choice_pos: usize,          // index into remaining vector
+        seq_pat: Option<Pattern<'a, A>>, // for now: only support at most one sequence pattern
+    },
+}
+
+struct ChoicePoint<'a, A> {
+    pub todo_len: usize,
+    pub undo_len: usize,
+    pub resume: Task<'a, A>,
+}
 
 #[derive(Debug, Clone, Copy)]
 struct MatchFail;
@@ -22,6 +60,7 @@ where
     back_track: Vec<ChoicePoint<'a, A>>,
     bind_action_log: Vec<&'a str>,
     done: bool,
+    is_commutative: Option<CommutativePredicate<A>>,
 }
 
 impl<'a, A> MatchIter<'a, A>
@@ -35,7 +74,22 @@ where
             back_track: Vec::new(),
             bind_action_log: Vec::new(),
             done: false,
+            is_commutative: None,
         }
+    }
+
+    pub fn commutative_if(self, f: CommutativePredicate<A>) -> Self {
+        MatchIter {
+            is_commutative: Some(f),
+            ..self
+        }
+    }
+
+    fn is_commutative_head(&self, head: &Expr<A>) -> bool {
+        self.is_commutative
+            .as_ref()
+            .map(|f| f(head))
+            .unwrap_or(false)
     }
 
     fn bind_one(&mut self, name: &'a str, expr: &'a Expr<A>) -> Result<(), MatchContextBindError> {
@@ -215,7 +269,7 @@ where
                 predicate,
             } => self.match_blank(expr, bind_name, match_head, predicate),
             Pattern::Compound {
-                head,
+                head: pat_head,
                 args,
                 predicate,
             } => {
@@ -224,19 +278,28 @@ where
                 }
 
                 if let Expr::Compound {
-                    head: ehead,
-                    args: eargs,
+                    head: expr_head,
+                    args: expr_args,
                     ..
                 } = expr
                 {
-                    self.tasks.push(Task::MatchSeq {
-                        patterns: PatSpan::from(args),
-                        exprs: eargs,
-                    });
                     self.tasks.push(Task::MatchOne {
-                        pattern: *head,
-                        expr: ehead,
+                        pattern: *pat_head,
+                        expr: expr_head,
                     });
+
+                    if self.is_commutative_head(expr_head.as_ref()) {
+                        self.tasks.push(Task::MatchUnorderedSeq {
+                            patterns: PatSpan::from(args),
+                            exprs: expr_args,
+                            remaining: (0..expr_args.len()).collect(),
+                        });
+                    } else {
+                        self.tasks.push(Task::MatchSeq {
+                            patterns: PatSpan::from(args),
+                            exprs: expr_args,
+                        });
+                    }
                     Ok(())
                 } else {
                     Err(MatchFail)
@@ -369,6 +432,8 @@ where
                     rest_pats,
                     rest_exprs,
                 } => self.task_resume_ordered_split(seq_name, k_min, k, rest_pats, rest_exprs),
+                Task::MatchUnorderedSeq { .. } => todo!(),
+                Task::ResumeUnorderedPick { .. } => todo!(),
             };
 
             if r.is_err() && !self.backtrack() {
