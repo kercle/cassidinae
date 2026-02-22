@@ -49,10 +49,17 @@ pub enum Pattern<'a, A> {
     BlankSeq {
         bind_name: Option<&'a str>,
         match_head: Option<&'a Expr<A>>,
+        predicate: Option<PatternPredicate>,
+    },
+    BlankNullSeq {
+        bind_name: Option<&'a str>,
+        match_head: Option<&'a Expr<A>>,
+        predicate: Option<PatternPredicate>,
     },
     Compound {
         head: Box<Pattern<'a, A>>,
         args: Vec<Pattern<'a, A>>,
+        predicate: Option<PatternPredicate>,
     },
 }
 
@@ -115,6 +122,7 @@ where
                     Some(Pattern::BlankSeq {
                         bind_name: None,
                         match_head: args.first(),
+                        predicate: None,
                     })
                 } else {
                     None
@@ -146,6 +154,7 @@ where
                     Pattern::Compound {
                         head: Box::new(Self::from_expr_inner(head.as_ref())),
                         args: args.iter().map(|e| Self::from_expr_inner(e)).collect(),
+                        predicate: None,
                     }
                 }
             }
@@ -164,6 +173,7 @@ where
             BlankSeq { match_head, .. } => BlankSeq {
                 bind_name: Some(name),
                 match_head,
+                predicate: None,
             },
             _ => self,
         }
