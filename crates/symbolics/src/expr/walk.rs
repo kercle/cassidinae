@@ -69,3 +69,57 @@ impl<'a, A> Iterator for ExprBottomUpWalker<'a, A> {
         None
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use expr_macro::raw_expr;
+
+    use crate::atom::Atom;
+
+    use super::*;
+
+    #[test]
+    fn test_walker() {
+        let expr = raw_expr! { 2 + x * Cos[x + D[Exp[Pow[y, 2] + 7 * z], x]] };
+        let mut walk_seq = vec![
+            raw_expr! { 2 },
+            raw_expr! { x },
+            raw_expr! { x },
+            raw_expr! { y },
+            raw_expr! { 2 },
+            raw_expr! { Pow },
+            raw_expr! { Pow[y, 2] },
+            raw_expr! { 7 },
+            raw_expr! { z },
+            raw_expr! { Mul },
+            raw_expr! { Mul[7, z] },
+            raw_expr! { Add },
+            raw_expr! { Add[Pow[y, 2], Mul[7, z]] },
+            raw_expr! { Exp },
+            raw_expr! { Exp[Add[Pow[y, 2], Mul[7, z]]] },
+            raw_expr! { x },
+            raw_expr! { D },
+            raw_expr! { D[Exp[Add[Pow[y, 2], Mul[7, z]]], x] },
+            raw_expr! { Add },
+            raw_expr! { Add[x, D[Exp[Add[Pow[y, 2], Mul[7, z]]], x]] },
+            raw_expr! { Cos },
+            raw_expr! { Cos[Add[x, D[Exp[Add[Pow[y, 2], Mul[7, z]]], x]]] },
+            raw_expr! { Mul },
+            raw_expr! { Mul[x, Cos[Add[x, D[Exp[Add[Pow[y, 2], Mul[7, z]]], x]]]] },
+            raw_expr! { Add },
+            raw_expr! { Add[2, Mul[x, Cos[Add[x, D[Exp[Add[Pow[y, 2], Mul[7, z]]], x]]]]] },
+        ];
+
+        walk_seq.reverse();
+
+        for actual in ExprBottomUpWalker::new(&expr) {
+            let expected = walk_seq
+                .pop()
+                .expect("ExprBottomUpWalker emits more tokens than expected.");
+
+            assert_eq!(*actual, expected);
+        }
+
+        assert!(walk_seq.is_empty())
+    }
+}
