@@ -108,7 +108,6 @@ where
     }
 
     pub fn iter(&self) -> HashMapIter<'_, String, Binding<'_, A>> {
-        // self.bindings.iter().map(|(k,b)| (k,b))
         self.bindings.iter()
     }
 }
@@ -118,7 +117,11 @@ enum Task<'a, A> {
         pattern: &'a Pattern<'a, A>,
         expr: &'a Expr<A>,
     },
-    Args {
+    OrderedList {
+        patterns: &'a [Pattern<'a, A>],
+        exprs: &'a [Expr<A>],
+    },
+    UnorderedList {
         patterns: &'a [Pattern<'a, A>],
         exprs: &'a [Expr<A>],
     },
@@ -143,7 +146,7 @@ pub struct MatchIter<'a, A>
 where
     A: PartialEq + Clone,
 {
-    todo: Vec<Task<'a, A>>,
+    tasks: Vec<Task<'a, A>>,
     ctx: MatchContext<'a, A>,
     back_track: Vec<ChoicePoint<'a, A>>,
     undo_log: Vec<BindAction>,
@@ -156,7 +159,7 @@ where
 {
     pub fn new(expr: &'a Expr<A>, pattern: &'a Pattern<'a, A>) -> Self {
         MatchIter {
-            todo: vec![Task::Node { pattern, expr }],
+            tasks: vec![Task::Node { pattern, expr }],
             ctx: MatchContext::default(),
             back_track: Vec::new(),
             undo_log: Vec::new(),
@@ -179,7 +182,7 @@ where
 
     fn backtrack(&mut self) -> bool {
         while let Some(cp) = self.back_track.pop() {
-            self.todo.truncate(cp.todo_len);
+            self.tasks.truncate(cp.todo_len);
             self.rollback_to(cp.undo_len);
 
             // recompute bounds for remaining choices
@@ -206,87 +209,13 @@ where
                 todo!("seq binding support");
             }
 
-            self.todo.push(Task::Args {
+            self.tasks.push(Task::OrderedList {
                 patterns,
                 exprs: &exprs[k..],
             });
             return true;
         }
         false
-    }
-
-    fn queue_args(
-        &mut self,
-        patterns: &'a [Pattern<'a, A>],
-        exprs: &'a [Expr<A>],
-    ) -> Result<(), MatchFail> {
-        // both empty => ok
-        if patterns.is_empty() {
-            return if exprs.is_empty() {
-                Ok(())
-            } else {
-                Err(MatchFail)
-            };
-        }
-
-        let (p0, prest) = patterns.split_first().unwrap();
-
-        match p0 {
-            Pattern::BlankSeq { bind_name, .. } => {
-                if exprs.is_empty() {
-                    return Err(MatchFail);
-                }
-
-                // We need to leave a few exprs for remaining patterns
-                let min_left = prest.len();
-                if exprs.len() < 1 + min_left {
-                    return Err(MatchFail);
-                }
-
-                let k_min = 1;
-                let k_max = exprs.len() - min_left;
-
-                // Try the first split k_min now, but save choicepoint for k_min+1..=k_max
-                if k_min < k_max {
-                    self.back_track.push(ChoicePoint {
-                        todo_len: self.todo.len(),
-                        undo_len: self.undo_log.len(),
-                        seq_name: bind_name.as_deref(),
-                        k_next: k_min + 1,
-                        rest_pats: prest,
-                        rest_exprs: exprs,
-                    });
-                }
-
-                // Apply k = k_min
-                // You don’t yet support seq bindings in MatchContext; for now:
-                // either (a) extend Bindings to allow slices, or (b) delay and just implement __ without binding.
-                // I'd recommend (a). But since your Pattern::BlankSeq example had no name, do (b) for now:
-                if let Some(_name) = bind_name {
-                    todo!("add seq binding support (slice) to MatchContext");
-                }
-
-                self.todo.push(Task::Args {
-                    patterns: prest,
-                    exprs: &exprs[k_min..],
-                });
-                Ok(())
-            }
-
-            _ => {
-                // non-seq: need at least one expr
-                let (e0, erest) = exprs.split_first().ok_or(MatchFail)?;
-                self.todo.push(Task::Args {
-                    patterns: prest,
-                    exprs: erest,
-                });
-                self.todo.push(Task::Node {
-                    pattern: p0,
-                    expr: e0,
-                });
-                Ok(())
-            }
-        }
     }
 
     fn queue_node(
@@ -331,11 +260,11 @@ where
                     ..
                 } = expr
                 {
-                    self.todo.push(Task::Args {
+                    self.tasks.push(Task::OrderedList {
                         patterns: args,
                         exprs: eargs,
                     });
-                    self.todo.push(Task::Node {
+                    self.tasks.push(Task::Node {
                         pattern: head,
                         expr: ehead,
                     });
@@ -348,6 +277,88 @@ where
             // no seq blanks here; see match_args
             Pattern::BlankSeq { .. } => Err(MatchFail),
         }
+    }
+
+    fn queue_ordered_list(
+        &mut self,
+        patterns: &'a [Pattern<'a, A>],
+        exprs: &'a [Expr<A>],
+    ) -> Result<(), MatchFail> {
+        // both empty => ok
+        if patterns.is_empty() {
+            return if exprs.is_empty() {
+                Ok(())
+            } else {
+                Err(MatchFail)
+            };
+        }
+
+        let (p0, prest) = patterns.split_first().unwrap();
+
+        match p0 {
+            Pattern::BlankSeq { bind_name, .. } => {
+                if exprs.is_empty() {
+                    return Err(MatchFail);
+                }
+
+                // We need to leave a few exprs for remaining patterns
+                let min_left = prest.len();
+                if exprs.len() < 1 + min_left {
+                    return Err(MatchFail);
+                }
+
+                let k_min = 1;
+                let k_max = exprs.len() - min_left;
+
+                // Try the first split k_min now, but save choicepoint for k_min+1..=k_max
+                if k_min < k_max {
+                    self.back_track.push(ChoicePoint {
+                        todo_len: self.tasks.len(),
+                        undo_len: self.undo_log.len(),
+                        seq_name: bind_name.as_deref(),
+                        k_next: k_min + 1,
+                        rest_pats: prest,
+                        rest_exprs: exprs,
+                    });
+                }
+
+                // Apply k = k_min
+                // You don’t yet support seq bindings in MatchContext; for now:
+                // either (a) extend Bindings to allow slices, or (b) delay and just implement __ without binding.
+                // I'd recommend (a). But since your Pattern::BlankSeq example had no name, do (b) for now:
+                if let Some(_name) = bind_name {
+                    todo!("add seq binding support (slice) to MatchContext");
+                }
+
+                self.tasks.push(Task::OrderedList {
+                    patterns: prest,
+                    exprs: &exprs[k_min..],
+                });
+                Ok(())
+            }
+
+            _ => {
+                // non-seq: need at least one expr
+                let (e0, erest) = exprs.split_first().ok_or(MatchFail)?;
+                self.tasks.push(Task::OrderedList {
+                    patterns: prest,
+                    exprs: erest,
+                });
+                self.tasks.push(Task::Node {
+                    pattern: p0,
+                    expr: e0,
+                });
+                Ok(())
+            }
+        }
+    }
+
+    fn queue_unordered_list(
+        &mut self,
+        _patterns: &'a [Pattern<'a, A>],
+        _exprs: &'a [Expr<A>],
+    ) -> Result<(), MatchFail> {
+        todo!()
     }
 }
 
@@ -362,10 +373,13 @@ where
             return None;
         }
 
-        while let Some(task) = self.todo.pop() {
+        while let Some(task) = self.tasks.pop() {
             let r = match task {
                 Task::Node { pattern, expr } => self.queue_node(pattern, expr),
-                Task::Args { patterns, exprs } => self.queue_args(patterns, exprs),
+                Task::OrderedList { patterns, exprs } => self.queue_ordered_list(patterns, exprs),
+                Task::UnorderedList { patterns, exprs } => {
+                    self.queue_unordered_list(patterns, exprs)
+                }
             };
 
             if r.is_err() && !self.backtrack() {
