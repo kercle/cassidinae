@@ -40,6 +40,12 @@ enum Task<'a, A> {
         next_choice_pos: usize,          // index into remaining vector
         seq_pat: Option<Pattern<'a, A>>, // for now: only support at most one sequence pattern
     },
+    MatchUnorderedRest {
+        patterns_rest: Vec<Pattern<'a, A>>,
+        exprs: &'a [Expr<A>],
+        remaining: Vec<usize>,
+        seq_pat: Option<Pattern<'a, A>>,
+    },
 }
 
 struct ChoicePoint<'a, A> {
@@ -61,6 +67,70 @@ where
     bind_action_log: Vec<&'a str>,
     done: bool,
     is_commutative: Option<CommutativePredicate<A>>,
+}
+
+impl<'a, A> Iterator for MatchIter<'a, A>
+where
+    A: Default + PartialEq + Clone + Debug,
+{
+    type Item = MatchContext<'a, A>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.done {
+            return None;
+        }
+
+        while let Some(task) = self.tasks.pop() {
+            let r = match task {
+                Task::MatchOne { pattern, expr } => self.task_match_one(pattern, expr),
+                Task::MatchSeq { patterns, exprs } => self.task_match_seq(patterns, exprs),
+                Task::ResumeOrderedSplit {
+                    seq_name,
+                    k_min,
+                    k,
+                    rest_pats,
+                    rest_exprs,
+                } => self.task_resume_ordered_split(seq_name, k_min, k, rest_pats, rest_exprs),
+                Task::MatchUnorderedSeq {
+                    patterns,
+                    exprs,
+                    remaining,
+                } => self.task_match_unordered_seq(patterns, exprs, remaining),
+                Task::MatchUnorderedRest {
+                    patterns_rest,
+                    exprs,
+                    remaining,
+                    seq_pat,
+                } => self.task_match_unordered_rest(patterns_rest, exprs, remaining, seq_pat),
+                Task::ResumeUnorderedPick {
+                    pat,
+                    patterns_rest,
+                    exprs,
+                    remaining,
+                    next_choice_pos,
+                    seq_pat,
+                } => self.task_resume_unordered_pick(
+                    pat,
+                    patterns_rest,
+                    exprs,
+                    remaining,
+                    next_choice_pos,
+                    seq_pat,
+                ),
+            };
+
+            if r.is_err() && !self.backtrack() {
+                self.done = true;
+                return None;
+            }
+        }
+
+        if !self.backtrack() {
+            self.done = true;
+        }
+
+        Some(self.ctx.clone())
+    }
 }
 
 impl<'a, A> MatchIter<'a, A>
@@ -92,6 +162,19 @@ where
             .unwrap_or(false)
     }
 
+    fn min_required(pats: &PatSpan<'a, A>) -> usize {
+        pats.as_slice()
+            .iter()
+            .map(|p| match p {
+                Pattern::BlankNullSeq { .. } => 0,
+                Pattern::BlankSeq { .. }
+                | Pattern::Blank { .. }
+                | Pattern::Compound { .. }
+                | Pattern::Literal(_) => 1,
+            })
+            .sum()
+    }
+
     fn bind_one(&mut self, name: &'a str, expr: &'a Expr<A>) -> Result<(), MatchContextBindError> {
         self.ctx.bind_one(name, expr)?;
         self.bind_action_log.push(name);
@@ -106,6 +189,16 @@ where
         self.ctx.bind_seq(name, expr_arr)?;
         self.bind_action_log.push(name);
         Ok(())
+    }
+
+    fn set_choice_point(&mut self, resume_task: Task<'a, A>) {
+        let cp = ChoicePoint {
+            todo_len: self.tasks.len(),
+            undo_len: self.bind_action_log.len(),
+            resume: resume_task,
+        };
+
+        self.back_track.push(cp);
     }
 
     fn rollback_binds(&mut self, undo_len: usize) {
@@ -180,19 +273,13 @@ where
         let k_max = exprs.len() - min_left;
 
         if k_min < k_max {
-            let cp = ChoicePoint {
-                todo_len: self.tasks.len(),
-                undo_len: self.bind_action_log.len(),
-                resume: Task::ResumeOrderedSplit {
-                    seq_name: bind_name,
-                    k_min,
-                    k: k_min + 1,
-                    rest_pats: rest_pats.clone(),
-                    rest_exprs: exprs,
-                },
-            };
-
-            self.back_track.push(cp);
+            self.set_choice_point(Task::ResumeOrderedSplit {
+                seq_name: bind_name,
+                k_min,
+                k: k_min + 1,
+                rest_pats: rest_pats.clone(),
+                rest_exprs: exprs,
+            });
         }
 
         if let Some(name) = bind_name {
@@ -205,19 +292,6 @@ where
             exprs: &exprs[k_min..],
         });
         Ok(())
-    }
-
-    fn min_required(pats: &PatSpan<'a, A>) -> usize {
-        pats.as_slice()
-            .iter()
-            .map(|p| match p {
-                Pattern::BlankNullSeq { .. } => 0,
-                Pattern::BlankSeq { .. }
-                | Pattern::Blank { .. }
-                | Pattern::Compound { .. }
-                | Pattern::Literal { .. } => 1,
-            })
-            .sum()
     }
 
     fn match_blank_seq(
@@ -345,7 +419,7 @@ where
 
                 self.match_blank_null_seq(exprs, patterns.clone().rest(), *bind_name)
             }
-            Pattern::Literal { .. } | Pattern::Compound { .. } | Pattern::Blank { .. } => {
+            Pattern::Literal(_) | Pattern::Compound { .. } | Pattern::Blank { .. } => {
                 // non-seq: need at least one expr
                 let (e0, erest) = exprs.split_first().ok_or(MatchFail)?;
                 self.tasks.push(Task::MatchSeq {
@@ -381,18 +455,13 @@ where
 
         // If there are further ks, save a choicepoint that will resume with k+1
         if k < k_max {
-            let cp = ChoicePoint {
-                todo_len: self.tasks.len(),
-                undo_len: self.bind_action_log.len(),
-                resume: Task::ResumeOrderedSplit {
-                    seq_name,
-                    k_min,
-                    k: k + 1,
-                    rest_pats: rest_pats.clone(),
-                    rest_exprs,
-                },
-            };
-            self.back_track.push(cp);
+            self.set_choice_point(Task::ResumeOrderedSplit {
+                seq_name,
+                k_min,
+                k: k + 1,
+                rest_pats: rest_pats.clone(),
+                rest_exprs,
+            });
         }
 
         // Apply this k
@@ -408,44 +477,198 @@ where
 
         Ok(())
     }
-}
 
-impl<'a, A> Iterator for MatchIter<'a, A>
-where
-    A: Default + PartialEq + Clone + Debug,
-{
-    type Item = MatchContext<'a, A>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        if self.done {
-            return None;
+    fn finish_unordered_tail(
+        &mut self,
+        seq_pat: Option<Pattern<'a, A>>,
+        exprs: &'a [Expr<A>],
+        remaining: Vec<usize>,
+    ) -> Result<(), MatchFail> {
+        match seq_pat {
+            None => {
+                if remaining.is_empty() {
+                    Ok(())
+                } else {
+                    Err(MatchFail)
+                }
+            }
+            Some(Pattern::BlankSeq {
+                bind_name,
+                match_head,
+                predicate,
+            }) => {
+                if match_head.is_some() || predicate.is_some() {
+                    todo!("unordered BlankSeq with head/predicate not supported yet");
+                }
+                if remaining.is_empty() {
+                    return Err(MatchFail); // BlankSeq requires >= 1
+                }
+                if let Some(name) = bind_name {
+                    self.bind_seq(name, remaining.iter().map(|&i| &exprs[i]).collect())
+                        .map_err(|_| MatchFail)?;
+                }
+                Ok(())
+            }
+            Some(Pattern::BlankNullSeq {
+                bind_name,
+                match_head,
+                predicate,
+            }) => {
+                if match_head.is_some() || predicate.is_some() {
+                    todo!("unordered BlankNullSeq with head/predicate not supported yet");
+                }
+                if let Some(name) = bind_name {
+                    self.bind_seq(name, remaining.iter().map(|&i| &exprs[i]).collect())
+                        .map_err(|_| MatchFail)?;
+                }
+                Ok(())
+            }
+            Some(_) => unreachable!("seq_pat can only be BlankSeq / BlankNullSeq here"),
         }
+    }
 
-        while let Some(task) = self.tasks.pop() {
-            let r = match task {
-                Task::MatchOne { pattern, expr } => self.task_match_one(pattern, expr),
-                Task::MatchSeq { patterns, exprs } => self.task_match_seq(patterns, exprs),
-                Task::ResumeOrderedSplit {
-                    seq_name,
-                    k_min,
-                    k,
-                    rest_pats,
-                    rest_exprs,
-                } => self.task_resume_ordered_split(seq_name, k_min, k, rest_pats, rest_exprs),
-                Task::MatchUnorderedSeq { .. } => todo!(),
-                Task::ResumeUnorderedPick { .. } => todo!(),
-            };
+    fn task_match_unordered_seq(
+        &mut self,
+        patterns: PatSpan<'a, A>,
+        exprs: &'a [Expr<A>],
+        mut remaining: Vec<usize>,
+    ) -> Result<(), MatchFail> {
+        // For now, we only support at most one sequence pattern in unordered seq.
+        let mut literal_exprs: Vec<&'a Expr<A>> = Vec::new();
+        let mut blanks: Vec<Pattern<'a, A>> = Vec::new();
+        let mut other_nonseq: Vec<Pattern<'a, A>> = Vec::new();
+        let mut seq_pat: Option<Pattern<'a, A>> = None;
 
-            if r.is_err() && !self.backtrack() {
-                self.done = true;
-                return None;
+        for p in patterns.as_slice().iter().cloned() {
+            match p {
+                Pattern::Literal(e) => literal_exprs.push(e),
+                Pattern::Blank { .. } => blanks.push(p),
+                Pattern::Compound { .. } => other_nonseq.push(p),
+                Pattern::BlankSeq { .. } | Pattern::BlankNullSeq { .. } => {
+                    if seq_pat.is_some() {
+                        todo!("unordered: more than one BlankSeq/BlankNullSeq not supported yet");
+                    }
+                    seq_pat = Some(p);
+                }
             }
         }
 
-        if !self.backtrack() {
-            self.done = true;
+        // Pick next from remaining literals
+        for lit in literal_exprs {
+            let pos = remaining
+                .iter()
+                .position(|&i| &exprs[i] == lit)
+                .ok_or(MatchFail)?;
+            remaining.remove(pos);
         }
 
-        Some(self.ctx.clone())
+        // Deligate remaining nonseq to next task
+        let mut nonseq: Vec<Pattern<'a, A>> = Vec::new();
+        nonseq.extend(blanks);
+        nonseq.extend(other_nonseq);
+
+        if nonseq.is_empty() {
+            return self.finish_unordered_tail(seq_pat, exprs, remaining);
+        }
+
+        self.tasks.push(Task::MatchUnorderedRest {
+            patterns_rest: nonseq,
+            exprs,
+            remaining,
+            seq_pat,
+        });
+
+        Ok(())
+    }
+
+    fn task_match_unordered_rest(
+        &mut self,
+        mut patterns_rest: Vec<Pattern<'a, A>>,
+        exprs: &'a [Expr<A>],
+        mut remaining: Vec<usize>,
+        seq_pat: Option<Pattern<'a, A>>,
+    ) -> Result<(), MatchFail> {
+        if patterns_rest.is_empty() {
+            return self.finish_unordered_tail(seq_pat, exprs, remaining);
+        }
+
+        if remaining.is_empty() {
+            return Err(MatchFail);
+        }
+
+        let pat0 = patterns_rest.remove(0);
+
+        // Choicepoint for alternative expr choices
+        if remaining.len() >= 2 {
+            self.set_choice_point(Task::ResumeUnorderedPick {
+                pat: pat0.clone(),
+                patterns_rest: patterns_rest.clone(),
+                exprs,
+                remaining: remaining.clone(),
+                next_choice_pos: 1,
+                seq_pat: seq_pat.clone(),
+            });
+        }
+
+        // Apply choice 0
+        let chosen_idx = remaining[0];
+        remaining.swap_remove(0);
+
+        self.tasks.push(Task::MatchUnorderedRest {
+            patterns_rest,
+            exprs,
+            remaining,
+            seq_pat,
+        });
+
+        self.tasks.push(Task::MatchOne {
+            pattern: pat0,
+            expr: &exprs[chosen_idx],
+        });
+
+        Ok(())
+    }
+
+    fn task_resume_unordered_pick(
+        &mut self,
+        pat: Pattern<'a, A>,
+        patterns_rest: Vec<Pattern<'a, A>>,
+        exprs: &'a [Expr<A>],
+        mut remaining: Vec<usize>,
+        next_choice_pos: usize,
+        seq_pat: Option<Pattern<'a, A>>,
+    ) -> Result<(), MatchFail> {
+        if next_choice_pos >= remaining.len() {
+            return Err(MatchFail);
+        }
+
+        // Save another choicepoint for the next candidate
+        if next_choice_pos + 1 < remaining.len() {
+            self.set_choice_point(Task::ResumeUnorderedPick {
+                pat: pat.clone(),
+                patterns_rest: patterns_rest.clone(),
+                exprs,
+                remaining: remaining.clone(),
+                next_choice_pos: next_choice_pos + 1,
+                seq_pat: seq_pat.clone(),
+            });
+        }
+
+        // Apply this choice
+        let chosen_idx = remaining.remove(next_choice_pos);
+
+        self.tasks.push(Task::MatchUnorderedRest {
+            patterns_rest,
+            exprs,
+            remaining,
+            seq_pat,
+        });
+
+        self.tasks.push(Task::MatchOne {
+            pattern: pat,
+            expr: &exprs[chosen_idx],
+        });
+
+        Ok(())
     }
 }
