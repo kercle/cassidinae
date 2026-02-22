@@ -512,7 +512,7 @@ where
                 .iter()
                 .position(|&i| &exprs[i] == lit)
                 .ok_or(MatchError::MatchFail)?;
-            remaining.remove(pos);
+            remaining.swap_remove(pos);
         }
 
         // Deligate remaining nonseq to next task
