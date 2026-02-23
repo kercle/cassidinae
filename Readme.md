@@ -10,12 +10,15 @@ Since this is just a toy project of mine, I want to keep the core modules indepe
 
 - [x] Decouple `AstNode` from internal `Expr`
 - [x] Basic Pattern matching
-- [ ] Advanced Pattern matching (commutative expressions)
-- [ ] Rewrite engine
+- [x] More advanced Pattern matching (commutative expressions with at most one sequence)
+- [ ] Allow more sequences in commutative patterns
+- [ ] Support for more flexible predicate in pattern matching
+- [x] Basic Rewrite engine
 - [ ] Basic polynomial engine
 - [ ] Solve polynomial equations
 - [x] Naive Differentiation
-- [ ] Naive Integration
+- [x] Naive Integration with simple rules
+- [ ] More advanced integration
 - [ ] Matrix/Vector operations
 - [ ] Plotting and dynamical variables for dashboards
 - [ ] Numerical integration and ODE/PDE solving
