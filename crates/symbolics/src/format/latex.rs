@@ -92,9 +92,7 @@ where
         Symbol { name, .. } if name == CANNONICAL_SYM_INDETERMINATE => {
             format!(r#"\text{{{name}}}"#)
         }
-        Symbol { name, .. } if name == CANNONICAL_SYM_PLUS_INFINITY => {
-            r#"\infty"#.to_string()
-        }
+        Symbol { name, .. } if name == CANNONICAL_SYM_PLUS_INFINITY => r#"\infty"#.to_string(),
         Symbol { name, .. } => greek_letter(name),
         Negation { arg, .. } => {
             format!("-{}", ast_to_latex(arg, weight))

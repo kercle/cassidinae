@@ -415,7 +415,7 @@ impl<A: Clone + PartialEq + Default> NormalizedExpr<A> {
 
 #[cfg(test)]
 mod tests {
-    use expr_macro::{norm_expr, expr};
+    use expr_macro::{expr, norm_expr};
 
     use super::*;
     use crate::{expr::generator::*, symbol};

@@ -424,7 +424,9 @@ where
                 predicate,
             } => {
                 if match_head.is_some() || predicate.is_some() {
-                    todo!("task_match_orderd_seq: head match and predicates not yet supported for BlankSeq")
+                    todo!(
+                        "task_match_orderd_seq: head match and predicates not yet supported for BlankSeq"
+                    )
                 }
 
                 self.match_blank_seq(exprs, patterns.clone().rest(), *bind_name)
@@ -435,7 +437,9 @@ where
                 predicate,
             } => {
                 if match_head.is_some() || predicate.is_some() {
-                    todo!("task_match_orderd_seq: head match and predicates not yet supported for BlankNullSeq")
+                    todo!(
+                        "task_match_orderd_seq: head match and predicates not yet supported for BlankNullSeq"
+                    )
                 }
 
                 self.match_blank_null_seq(exprs, patterns.clone().rest(), *bind_name)
