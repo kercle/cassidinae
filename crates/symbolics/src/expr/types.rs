@@ -23,6 +23,14 @@ impl<A: Clone + PartialEq + Default> NormalizedExpr<A> {
     pub fn new(expr: Expr<A>) -> Self {
         NormalizedExpr(expr.normalize())
     }
+
+    pub fn drop_annotations(self) -> Expr {
+        self.take_expr().drop_annotation()
+    }
+
+    pub fn map_annotations(self) -> Self {
+        NormalizedExpr(self.take_expr().map_annotations(&|_| A::default()))
+    }
 }
 
 impl<A: Clone + PartialEq> NormalizedExpr<A> {
