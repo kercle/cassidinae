@@ -19,3 +19,18 @@ macro_rules! chain_replace_quick_and_dirty {
         __e
     }};
 }
+
+#[macro_export]
+macro_rules! rules {
+    // entry: takes an identifier that is the rewriter expr (e.g. `rw;`)
+    ($rw:expr; $(($lhs:tt) => $rhs:expr;)+) => {{
+        let mut r = $rw;
+        $(
+            r = r.with_rule(
+                norm_expr! { $lhs },
+                |ctx| ctx.fill($rhs),
+            );
+        )+
+        r
+    }};
+}

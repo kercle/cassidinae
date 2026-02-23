@@ -187,3 +187,41 @@ where
         self.bindings.iter()
     }
 }
+
+impl<'a, A> MatchContext<'a, A>
+where
+    A: PartialEq + Clone + Default,
+{
+    pub fn fill(&self, expr: Expr<A>) -> Expr<A> {
+        expr.map_bottom_up(&|expr| {
+            if let Some(x) = expr.get_symbol() {
+                if let Some(repl) = self.get_one(x) {
+                    return repl.clone();
+                }
+            }
+
+            let Some(head) = expr.head().cloned() else {
+                return expr;
+            };
+
+            if let Some(args) = expr.iter_args() {
+                let mut new_args = Vec::new();
+                for a in args {
+                    if let Some(x) = a.get_symbol() {
+                        if let Some(repl) = self.get_seq(x) {
+                            new_args.extend(repl.into_iter().cloned());
+                        } else {
+                            new_args.push(a.clone());
+                        }
+                    } else {
+                        new_args.push(a.clone());
+                    }
+                }
+
+                Expr::new_compound(head, new_args)
+            } else {
+                expr
+            }
+        })
+    }
+}

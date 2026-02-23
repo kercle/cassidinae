@@ -45,6 +45,17 @@ where
         self
     }
 
+    pub fn with_rules<I, F>(mut self, rules: I) -> Self
+    where
+        I: IntoIterator<Item = (NormalizedExpr<A>, F)>,
+        F: Fn(&mut MatchContext<'_, A>) -> Expr<A> + 'static,
+    {
+        for (p, t) in rules {
+            self = self.with_rule(p, t);
+        }
+        self
+    }
+
     pub fn commutative_if<F>(mut self, f: F) -> Self
     where
         F: Fn(&Expr<A>) -> bool + 'static,
@@ -70,7 +81,6 @@ where
             })
             .collect();
 
-        eprintln!("MAP_BOTTOM_UP: {expr:?}");
         expr.map_bottom_up(&|expr| {
             let mut res = expr;
 

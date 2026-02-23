@@ -177,17 +177,35 @@ where
     pub fn with_bind_name(self, name: &'a str) -> Self {
         use Pattern::*;
         match self {
-            Blank { match_head, .. } => Blank {
+            Literal(_) => self,
+            Compound { .. } => self,
+            Blank {
+                match_head,
+                predicate,
+                ..
+            } => Blank {
                 bind_name: Some(name),
                 match_head,
-                predicate: None,
+                predicate,
             },
-            BlankSeq { match_head, .. } => BlankSeq {
+            BlankSeq {
+                match_head,
+                predicate,
+                ..
+            } => BlankSeq {
                 bind_name: Some(name),
                 match_head,
-                predicate: None,
+                predicate,
             },
-            _ => self,
+            BlankNullSeq {
+                match_head,
+                predicate,
+                ..
+            } => BlankNullSeq {
+                bind_name: Some(name),
+                match_head,
+                predicate,
+            },
         }
     }
 }

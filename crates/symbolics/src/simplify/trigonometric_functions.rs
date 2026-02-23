@@ -1,7 +1,12 @@
 use expr_macro::{expr, norm_expr};
 
 use crate::{
-    atom::Atom, chain_replace_quick_and_dirty, expr::{Expr, NormalizedExpr}, matcher::MatchIter, parser::ast::ADD_HEAD, pattern::Pattern, rewrite::Rewriter
+    atom::Atom,
+    chain_replace_quick_and_dirty,
+    expr::{Expr, NormalizedExpr},
+    matcher::MatchIter,
+    pattern::Pattern,
+    rewrite::Rewriter,
 };
 
 impl Expr {
@@ -59,17 +64,18 @@ pub fn simplify_trigon(expr: Expr) -> Expr {
         { Sqrt[1 - Sin[Pattern[x, Blank[]]]^2] } => { Cos[x] },
     );
 
-    let rw = Rewriter::new().with_rule(
-        norm_expr! {
-            Cos[Pattern[a, Blank[]]]^2 + Sin[Pattern[a, Blank[]]]^2 + Pattern[rest, BlankSeq[]]
-        },
-        |ctx| {
-            let mut args: Vec<Expr<()>> = ctx.take_seq("rest").unwrap().into_iter().cloned().collect();
-            args.push(Expr::new_number(1));
-            
-            Expr::new_compound(ADD_HEAD, args)
-        },
-    );
-    
-    rw.apply_first_match(expr)
+    Rewriter::new()
+        .with_rule(
+            norm_expr! {
+                Cos[Pattern[a, Blank[]]]^2 + Sin[Pattern[a, Blank[]]]^2 + Pattern[rest, BlankNullSeq[]]
+            },
+            |ctx| ctx.fill(expr! { 1 + rest }),
+        )
+        .with_rule(norm_expr! { Sqrt[1 - Cos[Pattern[x, Blank[]]]^2] }, |ctx| {
+            ctx.fill(expr! { Sin[x] })
+        })
+        .with_rule(norm_expr! { Sqrt[1 - Sin[Pattern[x, Blank[]]]^2] }, |ctx| {
+            ctx.fill(expr! { Cos[x] })
+        })
+        .apply_first_match(expr)
 }

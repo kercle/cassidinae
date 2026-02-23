@@ -1,4 +1,4 @@
-use crate::{expr::Expr, matcher::context::MatchContext};
+use crate::expr::Expr;
 
 impl<A> Expr<A>
 where
@@ -73,36 +73,5 @@ where
                 f(Expr::new_compound(head, args))
             }
         }
-    }
-
-    pub fn apply_match_context(self, ctx: &MatchContext<A>) -> Expr<A> {
-        self.map_bottom_up(&|expr| {
-            if let Some(x) = expr.get_symbol() {
-                if let Some(repl) = ctx.get_one(x) {
-                    return repl.clone();
-                }
-            }
-
-            let Some(head) = expr.head().cloned() else {
-                return expr;
-            };
-
-            if let Some(args) = expr.iter_args() {
-                let mut new_args = Vec::new();
-                for a in args {
-                    if let Some(x) = a.get_symbol() {
-                        if let Some(repl) = ctx.get_seq(x) {
-                            new_args.extend(repl.into_iter().cloned());
-                        } else {
-                            new_args.push(a.clone());
-                        }
-                    }
-                }
-
-                Expr::new_compound(head, new_args)
-            } else {
-                expr
-            }
-        })
     }
 }

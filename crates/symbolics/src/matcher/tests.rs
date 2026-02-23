@@ -639,3 +639,22 @@ fn unordered_two_blanks_plus_blankseq_len7() {
         ]
     );
 }
+
+#[test]
+fn unordered_two_blanks_plus_blanknullseq() {
+    let expr = expr! {
+        Add[Cos[phi / 8]^2, Sin[phi / 8]^2]
+    };
+    let matcher = Matcher::new(expr! {
+        Add[
+            Cos[Pattern[a, Blank[]]]^2,
+            Sin[Pattern[a, Blank[]]]^2,
+            Pattern[rest, BlankNullSeq[]]
+        ]
+    })
+    .commutative_if(|head| head.matches_symbol(ADD_HEAD));
+
+    let m = matcher.first_match(&expr);
+
+    dbg!(&m);
+}
