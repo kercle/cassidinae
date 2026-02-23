@@ -88,7 +88,10 @@ where
 }
 
 #[derive(Clone, Debug)]
-pub struct MatchContextBindError;
+pub enum MatchContextError {
+    Bind,
+    Missing,
+}
 
 impl<'a, A> MatchContext<'a, A>
 where
@@ -98,15 +101,15 @@ where
         &mut self,
         name: T,
         expr: &'a Expr<A>,
-    ) -> Result<(), MatchContextBindError> {
+    ) -> Result<(), MatchContextError> {
         if let Some(b) = self.bindings.get_mut(name.as_ref()) {
-            let e = b.get_one().ok_or(MatchContextBindError)?;
+            let e = b.get_one().ok_or(MatchContextError::Bind)?;
 
             if e == expr {
                 b.inc_bindings();
                 Ok(())
             } else {
-                Err(MatchContextBindError)
+                Err(MatchContextError::Bind)
             }
         } else {
             self.bindings
@@ -123,25 +126,31 @@ where
         }
     }
 
+    pub fn take_one<T: AsRef<str>>(&mut self, name: T) -> Result<&'a Expr<A>, MatchContextError> {
+        if let Some(e) = self.bindings.remove(name.as_ref()) {
+            Ok(e.get_one().unwrap())
+        } else {
+            Err(MatchContextError::Missing)
+        }
+    }
+
     pub fn bind_seq<T: AsRef<str>>(
         &mut self,
         name: T,
         expr_arr: Vec<&'a Expr<A>>,
-    ) -> Result<(), MatchContextBindError> {
+    ) -> Result<(), MatchContextError> {
         if let Some(b) = self.bindings.get_mut(name.as_ref()) {
-            let ea = b.get_seq().ok_or(MatchContextBindError)?;
+            let ea = b.get_seq().ok_or(MatchContextError::Bind)?;
 
             if ea.iter().zip(expr_arr).all(|(&e1, e2)| e1 == e2) {
                 b.inc_bindings();
                 Ok(())
             } else {
-                Err(MatchContextBindError)
+                Err(MatchContextError::Bind)
             }
         } else {
-            self.bindings.insert(
-                name.as_ref().to_string(),
-                Binding::new_seq(expr_arr),
-            );
+            self.bindings
+                .insert(name.as_ref().to_string(), Binding::new_seq(expr_arr));
             Ok(())
         }
     }
@@ -151,6 +160,17 @@ where
             e.get_seq()
         } else {
             None
+        }
+    }
+
+    pub fn take_seq<T: AsRef<str>>(
+        &mut self,
+        name: T,
+    ) -> Result<Vec<&'a Expr<A>>, MatchContextError> {
+        if let Some(e) = self.bindings.remove(name.as_ref()) {
+            Ok(e.get_seq().unwrap())
+        } else {
+            Err(MatchContextError::Missing)
         }
     }
 

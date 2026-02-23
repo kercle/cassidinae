@@ -2,10 +2,7 @@ use std::{fmt::Debug, rc::Rc};
 
 use crate::{
     expr::Expr,
-    matcher::{
-        context::{MatchContext, MatchContextBindError},
-        pattern_span::PatSpan,
-    },
+    matcher::{context::MatchContext, pattern_span::PatSpan},
     pattern::{Pattern, PatternPredicate},
 };
 
@@ -142,11 +139,14 @@ where
             }
         }
 
+        // need to take ctx before draining in backtrack.
+        let out = self.ctx.clone();
+
         if !self.backtrack() {
             self.done = true;
         }
 
-        Some(self.ctx.clone())
+        Some(out)
     }
 }
 
@@ -198,18 +198,20 @@ where
             .sum()
     }
 
-    fn bind_one(&mut self, name: &'a str, expr: &'a Expr<A>) -> Result<(), MatchContextBindError> {
-        self.ctx.bind_one(name, expr)?;
+    fn bind_one(&mut self, name: &'a str, expr: &'a Expr<A>) -> Result<(), MatchError> {
+        eprintln!("BIND ONE: {name} → {expr:?}");
+        self.ctx
+            .bind_one(name, expr)
+            .map_err(|_| MatchError::BindFail)?;
         self.bind_action_log.push(name);
         Ok(())
     }
 
-    fn bind_seq(
-        &mut self,
-        name: &'a str,
-        expr_arr: Vec<&'a Expr<A>>,
-    ) -> Result<(), MatchContextBindError> {
-        self.ctx.bind_seq(name, expr_arr)?;
+    fn bind_seq(&mut self, name: &'a str, expr_arr: Vec<&'a Expr<A>>) -> Result<(), MatchError> {
+        eprintln!("BIND SEQ: {name} → {expr_arr:?}");
+        self.ctx
+            .bind_seq(name, expr_arr)
+            .map_err(|_| MatchError::BindFail)?;
         self.bind_action_log.push(name);
         Ok(())
     }
@@ -226,7 +228,9 @@ where
 
     fn rollback_binds(&mut self, undo_len: usize) {
         while self.bind_action_log.len() > undo_len {
-            self.ctx.unbind(self.bind_action_log.pop().unwrap());
+            let name = self.bind_action_log.pop().unwrap();
+            eprintln!("UNBIND {name}");
+            self.ctx.unbind(name);
         }
     }
 
@@ -263,7 +267,7 @@ where
         }
 
         if let Some(n) = bind_name {
-            self.bind_one(n, expr).map_err(|_| MatchError::BindFail)?
+            self.bind_one(n, expr)?
         }
 
         if predicate.as_ref().map(|p| p.check(expr)).unwrap_or(true) {
@@ -304,8 +308,7 @@ where
         }
 
         if let Some(name) = bind_name {
-            self.bind_seq(name, exprs[..k_min].iter().collect())
-                .map_err(|_| MatchError::BindFail)?;
+            self.bind_seq(name, exprs[..k_min].iter().collect())?;
         }
 
         self.tasks.push(Task::MatchSeq {
@@ -487,8 +490,7 @@ where
 
         // Apply this k
         if let Some(name) = seq_name {
-            self.bind_seq(name, rest_exprs[..k].iter().collect())
-                .map_err(|_| MatchError::BindFail)?;
+            self.bind_seq(name, rest_exprs[..k].iter().collect())?;
         }
 
         self.tasks.push(Task::MatchSeq {
@@ -579,8 +581,7 @@ where
                     return Err(MatchError::MatchFail); // BlankSeq requires >= 1
                 }
                 if let Some(name) = bind_name {
-                    self.bind_seq(name, remaining.iter().map(|&i| &exprs[i]).collect())
-                        .map_err(|_| MatchError::BindFail)?;
+                    self.bind_seq(name, remaining.iter().map(|&i| &exprs[i]).collect())?;
                 }
                 Ok(())
             }
@@ -593,8 +594,7 @@ where
                     todo!("unordered BlankNullSeq with head/predicate not supported yet");
                 }
                 if let Some(name) = bind_name {
-                    self.bind_seq(name, remaining.iter().map(|&i| &exprs[i]).collect())
-                        .map_err(|_| MatchError::BindFail)?;
+                    self.bind_seq(name, remaining.iter().map(|&i| &exprs[i]).collect())?;
                 }
                 Ok(())
             }
