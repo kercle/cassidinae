@@ -12,8 +12,8 @@ use symbolics::parser::parse;
 use crate::util::escape_json;
 
 #[wasm_bindgen]
-pub fn process_message_wasm(inbound_msg_json: &str) -> String {
-    let res = eval(inbound_msg_json.to_string());
+pub fn eval_input(input: &str) -> String {
+    let res = eval_inner(input.to_string());
 
     match res {
         Ok(msg) => serde_json::to_string(&msg).unwrap_or_else(|e| {
@@ -31,14 +31,14 @@ pub fn process_message_wasm(inbound_msg_json: &str) -> String {
     }
 }
 
-fn eval(inbound_msg: String) -> Result<KernelMessage, KernelMessage> {
-    let inbound_msg: ClientMessage =
-        serde_json::from_str(&inbound_msg).map_err(|err| KernelMessage::ParseError {
+fn eval_inner(input: String) -> Result<KernelMessage, KernelMessage> {
+    let input: ClientMessage =
+        serde_json::from_str(&input).map_err(|err| KernelMessage::ParseError {
             input: "n/a".to_string(),
             msg: format!("Cannot unpack inbound message: {err}"),
         })?;
 
-    let ClientMessage::Eval(input) = inbound_msg;
+    let ClientMessage::Eval(input) = input;
 
     let ast_in = parse(&input).map_err(|err| KernelMessage::ParseError {
         input: input.clone(),
