@@ -50,6 +50,7 @@ jobs:
         working-directory: web/frontend
         env:
           BASE_PATH: /${{ github.event.repository.name }}
+          VITE_USE_WASM: "true"
         run: npm run build
 
       - name: Deploy to gh-pages branch
