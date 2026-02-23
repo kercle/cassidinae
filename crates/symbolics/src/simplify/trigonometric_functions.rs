@@ -1,11 +1,7 @@
-use expr_macro::{norm_expr, expr};
+use expr_macro::{expr, norm_expr};
 
 use crate::{
-    atom::Atom,
-    chain_replace_quick_and_dirty,
-    expr::{Expr, NormalizedExpr},
-    matcher::MatchIter,
-    pattern::Pattern,
+    atom::Atom, chain_replace_quick_and_dirty, expr::{Expr, NormalizedExpr}, matcher::MatchIter, parser::ast::ADD_HEAD, pattern::Pattern, rewrite::Rewriter
 };
 
 impl Expr {
@@ -44,7 +40,7 @@ impl Expr {
 }
 
 pub fn simplify_trigon(expr: Expr) -> Expr {
-    chain_replace_quick_and_dirty!(expr,
+    let expr = chain_replace_quick_and_dirty!(expr,
         { Sin[pi / 12] } => { Sqrt[2] * (Sqrt[3] - 1) / 4         },
         { Sin[pi / 10] } => { (Sqrt[5] - 1) / 4                   },
         { Sin[pi / 8]  } => { (Sqrt[2 - Sqrt[2]]) / 2             },
@@ -61,5 +57,19 @@ pub fn simplify_trigon(expr: Expr) -> Expr {
 
         { Sqrt[1 - Cos[Pattern[x, Blank[]]]^2] } => { Sin[x] },
         { Sqrt[1 - Sin[Pattern[x, Blank[]]]^2] } => { Cos[x] },
-    )
+    );
+
+    let rw = Rewriter::new().with_rule(
+        norm_expr! {
+            Cos[Pattern[a, Blank[]]]^2 + Sin[Pattern[a, Blank[]]]^2 + Pattern[rest, BlankSeq[]]
+        },
+        |ctx| {
+            let mut args: Vec<Expr<()>> = ctx.take_seq("rest").unwrap().into_iter().cloned().collect();
+            args.push(Expr::new_number(1));
+            
+            Expr::new_compound(ADD_HEAD, args)
+        },
+    );
+    
+    rw.apply_first_match(expr)
 }

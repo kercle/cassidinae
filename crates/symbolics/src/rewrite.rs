@@ -1,11 +1,11 @@
 use std::fmt::Debug;
 
 use crate::{
-    expr::Expr,
+    expr::{Expr, NormalizedExpr},
     matcher::{CommutativePredicate, Matcher, context::MatchContext},
 };
 
-pub type RuleTransformer<A> = Box<dyn Fn(&MatchContext<'_, A>) -> Expr<A>>;
+pub type RuleTransformer<A> = Box<dyn Fn(&mut MatchContext<'_, A>) -> Expr<A>>;
 
 pub struct Rule<A>
 where
@@ -34,8 +34,14 @@ where
         }
     }
 
-    pub fn with_rule(mut self, pattern: Expr<A>, transform: RuleTransformer<A>) -> Self {
-        self.rules.push(Rule { pattern, transform });
+    pub fn with_rule<F>(mut self, pattern: NormalizedExpr<A>, transform: F) -> Self
+    where
+        F: Fn(&mut MatchContext<'_, A>) -> Expr<A> + 'static,
+    {
+        self.rules.push(Rule {
+            pattern: pattern.take_expr(),
+            transform: Box::new(transform),
+        });
         self
     }
 
@@ -64,12 +70,13 @@ where
             })
             .collect();
 
+        eprintln!("MAP_BOTTOM_UP: {expr:?}");
         expr.map_bottom_up(&|expr| {
             let mut res = expr;
 
             for (m, transform) in &patterns {
-                if let Some(ctx) = m.first_match(&res) {
-                    res = transform(&ctx);
+                if let Some(mut ctx) = m.first_match(&res) {
+                    res = transform(&mut ctx);
                 }
             }
 

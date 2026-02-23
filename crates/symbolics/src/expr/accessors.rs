@@ -31,6 +31,13 @@ impl<A> Expr<A> {
         }
     }
 
+    pub fn iter_args(&self) -> Option<std::slice::Iter<'_, Expr<A>>> {
+        match self {
+            Expr::Atom { .. } => None,
+            Expr::Compound { args, .. } => Some(args.iter()),
+        }
+    }
+
     pub fn matches_symbol<T: AsRef<str>>(&self, s: T) -> bool {
         matches!(self, Expr::Atom { entry: Atom::Symbol(t), .. } if t == s.as_ref())
     }

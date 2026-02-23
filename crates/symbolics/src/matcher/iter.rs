@@ -199,7 +199,6 @@ where
     }
 
     fn bind_one(&mut self, name: &'a str, expr: &'a Expr<A>) -> Result<(), MatchError> {
-        eprintln!("BIND ONE: {name} → {expr:?}");
         self.ctx
             .bind_one(name, expr)
             .map_err(|_| MatchError::BindFail)?;
@@ -208,7 +207,6 @@ where
     }
 
     fn bind_seq(&mut self, name: &'a str, expr_arr: Vec<&'a Expr<A>>) -> Result<(), MatchError> {
-        eprintln!("BIND SEQ: {name} → {expr_arr:?}");
         self.ctx
             .bind_seq(name, expr_arr)
             .map_err(|_| MatchError::BindFail)?;
@@ -229,7 +227,6 @@ where
     fn rollback_binds(&mut self, undo_len: usize) {
         while self.bind_action_log.len() > undo_len {
             let name = self.bind_action_log.pop().unwrap();
-            eprintln!("UNBIND {name}");
             self.ctx.unbind(name);
         }
     }

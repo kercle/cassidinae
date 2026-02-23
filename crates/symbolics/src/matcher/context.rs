@@ -95,7 +95,7 @@ pub enum MatchContextError {
 
 impl<'a, A> MatchContext<'a, A>
 where
-    A: PartialEq + Clone + Debug,
+    A: PartialEq + Clone,
 {
     pub fn bind_one<T: AsRef<str>>(
         &mut self,
