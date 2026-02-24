@@ -111,10 +111,7 @@ where
         let mut expr = NormalizedExpr::new(self);
 
         for _ in 0..limit_guard {
-            eprintln!("EXPR {expr:?}");
             let expr_next_iter = rw.apply_first_match(expr.clone());
-
-            eprintln!(" → BECOMES {expr_next_iter:?}");
 
             if expr != expr_next_iter {
                 expr = expr_next_iter;

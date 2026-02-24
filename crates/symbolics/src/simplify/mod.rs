@@ -28,7 +28,7 @@ impl Simplifier {
             let prev_expr = current.expr.clone();
 
             let next_expr = current
-                // .with_factorization() // TODO: There is a nasty bug in the matcher :(
+                .with_factorization() // TODO: There is a nasty bug in the matcher :(
                 .with_known_function_values()
                 .with_resolved_derivatives()
                 .with_resolved_indefinite_integrals()
