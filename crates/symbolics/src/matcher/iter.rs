@@ -24,7 +24,11 @@ impl<A> CommutativePredicate<A> {
     }
 }
 
-enum Task<'a, A> {
+#[derive(Debug)]
+enum Task<'a, A>
+where
+    A: Clone + PartialEq,
+{
     MatchOne {
         pattern: Pattern<'a, A>,
         expr: &'a Expr<A>,
@@ -61,7 +65,11 @@ enum Task<'a, A> {
     },
 }
 
-struct ChoicePoint<'a, A> {
+#[derive(Debug)]
+struct ChoicePoint<'a, A>
+where
+    A: Clone + PartialEq,
+{
     pub todo_len: usize,
     pub undo_len: usize,
     pub resume: Task<'a, A>,

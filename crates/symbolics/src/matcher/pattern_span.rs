@@ -2,13 +2,19 @@ use std::rc::Rc;
 
 use crate::pattern::Pattern;
 
-#[derive(Clone)]
-pub struct PatSpan<'a, A> {
+#[derive(Clone, Debug)]
+pub struct PatSpan<'a, A>
+where
+    A: Clone + PartialEq,
+{
     reference: Rc<[Pattern<'a, A>]>,
     start: usize,
 }
 
-impl<'a, A> PatSpan<'a, A> {
+impl<'a, A> PatSpan<'a, A>
+where
+    A: Clone + PartialEq,
+{
     pub fn from(arr: Vec<Pattern<'a, A>>) -> Self {
         PatSpan {
             reference: Rc::from(arr),

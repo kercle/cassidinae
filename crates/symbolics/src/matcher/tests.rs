@@ -1,7 +1,10 @@
 use expr_macro::expr;
 
 use super::*;
-use crate::{atom::Atom, parser::ast::ADD_HEAD};
+use crate::{
+    atom::Atom,
+    parser::ast::{ADD_HEAD, MUL_HEAD},
+};
 
 #[test]
 fn match_literal_success() {
@@ -657,4 +660,46 @@ fn unordered_two_blanks_plus_blanknullseq() {
     let m = matcher.first_match(&expr);
 
     dbg!(&m);
+}
+
+#[test]
+fn unordered_factorize_pattern_without_rest() {
+    let expr = expr! {
+        Add[Mul[a, Add[1, x]], Mul[b, Add[1, x]]]
+    };
+    let matcher = Matcher::new(expr! {
+        Add[
+            Mul[Pattern[z, Blank[]], Pattern[x, Blank[]]],
+            Mul[Pattern[z, Blank[]], Pattern[y, Blank[]]]
+        ]
+    })
+    .commutative_if(|head| head.matches_symbol(ADD_HEAD) || head.matches_symbol(MUL_HEAD));
+
+    let m = matcher.first_match(&expr).unwrap();
+
+    assert_eq!(m.get_one("x"), Some(&expr!(a)));
+    assert_eq!(m.get_one("y"), Some(&expr!(b)));
+    assert_eq!(m.get_one("z"), Some(&expr!(Add[1, x])));
+}
+
+#[test]
+fn unordered_factorize_pattern_with_rest() {
+    let expr = expr! {
+        Add[Mul[a, Add[1, x]], Mul[b, Add[1, x]]]
+    };
+    let matcher = Matcher::new(expr! {
+        Add[
+            Pattern[r, BlankNullSeq[]],
+            Mul[Pattern[z, Blank[]], Pattern[x, Blank[]]],
+            Mul[Pattern[z, Blank[]], Pattern[y, Blank[]]]
+        ]
+    })
+    .commutative_if(|head| head.matches_symbol(ADD_HEAD) || head.matches_symbol(MUL_HEAD));
+
+    let m = matcher.first_match(&expr).unwrap();
+
+    assert_eq!(m.get_one("x"), Some(&expr!(a)));
+    assert_eq!(m.get_one("y"), Some(&expr!(b)));
+    assert_eq!(m.get_one("z"), Some(&expr!(Add[1, x])));
+    assert_eq!(m.get_seq("r"), Some(Vec::new()));
 }
