@@ -4,8 +4,6 @@ use crate::{
     atom::Atom,
     expr::{Expr, NormalizedExpr},
     matcher::context::MatchContext,
-    parser::ast::{ADD_HEAD, MUL_HEAD},
-    rewrite::Rewriter,
 };
 
 pub fn resolve_indefinite_integrals<A>(expr: Expr<A>) -> NormalizedExpr
@@ -13,25 +11,15 @@ where
     A: Default + Clone + PartialEq,
 {
     let rules = indefinite_integrals_rules();
-    let rw: Rewriter<()> = Rewriter::new()
-        .commutative_if(|head| head.matches_symbol(ADD_HEAD) || head.matches_symbol(MUL_HEAD))
-        .with_rules(rules.into_iter().map(|(pat, repl)| {
+
+    expr.drop_annotation().apply_until_fixed_point(
+        rules.into_iter().map(|(pat, repl)| {
             (pat, move |ctx: &mut MatchContext<'_>| {
                 ctx.fill(repl.clone())
             })
-        }));
-
-    let mut expr = NormalizedExpr::new(expr.drop_annotation());
-
-    loop {
-        let expr_next_iter = rw.apply_first_match(expr.clone());
-
-        if expr != expr_next_iter {
-            expr = expr_next_iter;
-        } else {
-            return expr;
-        }
-    }
+        }),
+        1000,
+    )
 }
 
 fn indefinite_integrals_rules() -> Vec<(NormalizedExpr, Expr)> {

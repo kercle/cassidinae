@@ -3,6 +3,7 @@ use std::fmt::Debug;
 use crate::{
     expr::{Expr, NormalizedExpr},
     matcher::{CommutativePredicate, Matcher, context::MatchContext},
+    parser::ast::{ADD_HEAD, MUL_HEAD},
 };
 
 pub type RuleTransformer<A> = Box<dyn Fn(&mut MatchContext<'_, A>) -> Expr<A> + Send + Sync>;
@@ -90,5 +91,34 @@ where
         });
 
         NormalizedExpr::new(res)
+    }
+}
+
+impl<A> Expr<A>
+where
+    A: Default + Clone + PartialEq + Debug,
+{
+    pub fn apply_until_fixed_point<F, I>(self, rules: I, limit_guard: u32) -> NormalizedExpr<A>
+    where
+        I: IntoIterator<Item = (NormalizedExpr<A>, F)>,
+        F: Fn(&mut MatchContext<'_, A>) -> Expr<A> + Send + Sync + 'static,
+    {
+        let rw: Rewriter<A> = Rewriter::new()
+            .commutative_if(|head| head.matches_symbol(ADD_HEAD) || head.matches_symbol(MUL_HEAD))
+            .with_rules(rules);
+
+        let mut expr = NormalizedExpr::new(self);
+
+        for _ in 0..limit_guard {
+            let expr_next_iter = rw.apply_first_match(expr.clone());
+
+            if expr != expr_next_iter {
+                expr = expr_next_iter;
+            } else {
+                return expr;
+            }
+        }
+
+        expr
     }
 }
