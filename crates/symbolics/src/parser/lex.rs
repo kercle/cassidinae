@@ -10,16 +10,14 @@ pub struct TokenPos {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Token {
-    // Triple-character tokens
-
-    // Double-character tokens
+    // Double-character operators
     EqEq,      // '=='
     NotEq,     // '!='
     LesserEq,  // '<='
     GreaterEq, // '>='
     ColonEq,   // ':='
 
-    // Single-character tokens
+    // Single-character operators
     LeftBrace,    // '{'
     RightBrace,   // '}'
     LeftBracket,  // '['
@@ -48,6 +46,16 @@ pub enum Token {
     Identifier(String),
     StringLiteral(String),
     CodeBlock { language: String, code: String },
+}
+
+impl Token {
+    fn is_operator(&self) -> bool {
+        use Token::*;
+        match self {
+            Number(_) | Identifier(_) | StringLiteral(_) | CodeBlock { .. } => false,
+            _ => true,
+        }
+    }
 }
 
 struct CharIterator<'a> {
