@@ -49,13 +49,9 @@ impl<'a, A> Binding<'a, A> {
         self.rc += 1;
     }
 
-    pub fn dec_bindings(&mut self) -> Result<(), BindingDecError> {
-        if self.rc > 0 {
-            self.rc -= 1;
-            Ok(())
-        } else {
-            Err(BindingDecError)
-        }
+    pub fn dec_bindings(&mut self) {
+        debug_assert!(self.rc > 0);
+        self.rc = self.rc.saturating_sub(1);
     }
 
     pub fn has_no_bindings(&self) -> bool {
@@ -177,10 +173,11 @@ where
     }
 
     pub fn unbind<T: AsRef<str>>(&mut self, name: T) {
-        if let Some(b) = self.bindings.get_mut(name.as_ref()) {
-            let _ = b.dec_bindings();
+        let key = name.as_ref();
+        if let Some(b) = self.bindings.get_mut(key) {
+            b.dec_bindings();
             if b.has_no_bindings() {
-                self.bindings.remove(name.as_ref());
+                self.bindings.remove(key);
             }
         }
     }

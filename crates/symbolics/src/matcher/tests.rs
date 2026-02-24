@@ -677,6 +677,8 @@ fn unordered_factorize_pattern_without_rest() {
 
     let m = matcher.first_match(&expr).unwrap();
 
+    dbg!(&m);
+
     assert_eq!(m.get_one("x"), Some(&expr!(a)));
     assert_eq!(m.get_one("y"), Some(&expr!(b)));
     assert_eq!(m.get_one("z"), Some(&expr!(Add[1, x])));

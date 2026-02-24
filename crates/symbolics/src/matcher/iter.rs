@@ -24,7 +24,7 @@ impl<A> CommutativePredicate<A> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 enum Task<'a, A>
 where
     A: Clone + PartialEq,
@@ -54,8 +54,8 @@ where
         patterns_rest: Vec<Pattern<'a, A>>,
         exprs: &'a [Expr<A>],
         remaining: Vec<usize>,
-        next_choice_pos: usize,          // index into remaining vector
-        seq_pat: Option<Pattern<'a, A>>, // for now: only support at most one sequence pattern
+        next_choice_pos: usize,
+        seq_pat: Option<Pattern<'a, A>>,
     },
     MatchUnorderedRest {
         patterns_rest: Vec<Pattern<'a, A>>,
@@ -63,6 +63,7 @@ where
         remaining: Vec<usize>,
         seq_pat: Option<Pattern<'a, A>>,
     },
+    PopTaskFloor,
 }
 
 #[derive(Debug)]
@@ -70,8 +71,9 @@ struct ChoicePoint<'a, A>
 where
     A: Clone + PartialEq,
 {
-    pub todo_len: usize,
+    pub tasks_snapshot: Vec<Task<'a, A>>,
     pub undo_len: usize,
+    pub floor_stack_snapshot: Vec<usize>,
     pub resume: Task<'a, A>,
 }
 
@@ -86,6 +88,7 @@ where
     A: PartialEq + Clone,
 {
     tasks: Vec<Task<'a, A>>,
+    task_floor_stack: Vec<usize>,
     ctx: MatchContext<'a, A>,
     back_track: Vec<ChoicePoint<'a, A>>,
     bind_action_log: Vec<&'a str>,
@@ -141,6 +144,10 @@ where
                     next_choice_pos,
                     seq_pat,
                 ),
+                Task::PopTaskFloor => {
+                    self.task_floor_stack.pop();
+                    Ok(())
+                }
             };
 
             if r.is_err() && !self.backtrack() {
@@ -167,6 +174,7 @@ where
     pub fn new(expr: &'a Expr<A>, pattern: Pattern<'a, A>) -> Self {
         MatchIter {
             tasks: vec![Task::MatchOne { pattern, expr }],
+            task_floor_stack: vec![0],
             ctx: MatchContext::default(),
             back_track: Vec::new(),
             bind_action_log: Vec::new(),
@@ -213,6 +221,7 @@ where
             .bind_one(name, expr)
             .map_err(|_| MatchError::BindFail)?;
         self.bind_action_log.push(name);
+
         Ok(())
     }
 
@@ -221,16 +230,17 @@ where
             .bind_seq(name, expr_arr)
             .map_err(|_| MatchError::BindFail)?;
         self.bind_action_log.push(name);
+
         Ok(())
     }
 
     fn set_choice_point(&mut self, resume_task: Task<'a, A>) {
         let cp = ChoicePoint {
-            todo_len: self.tasks.len(),
+            tasks_snapshot: self.tasks.clone(),
             undo_len: self.bind_action_log.len(),
+            floor_stack_snapshot: self.task_floor_stack.clone(),
             resume: resume_task,
         };
-
         self.back_track.push(cp);
     }
 
@@ -239,18 +249,25 @@ where
             let name = self.bind_action_log.pop().unwrap();
             self.ctx.unbind(name);
         }
+
+        debug_assert_eq!(self.bind_action_log.len(), undo_len);
     }
 
     fn backtrack(&mut self) -> bool {
         if let Some(cp) = self.back_track.pop() {
-            self.tasks.truncate(cp.todo_len);
-            self.rollback_binds(cp.undo_len);
-            self.tasks.push(cp.resume);
+            self.tasks = cp.tasks_snapshot;
+            self.task_floor_stack = cp.floor_stack_snapshot;
 
+            self.rollback_binds(cp.undo_len);
+            self.push_task(cp.resume);
             true
         } else {
             false
         }
+    }
+
+    fn push_task(&mut self, task: Task<'a, A>) {
+        self.tasks.push(task);
     }
 
     fn match_blank(
@@ -318,7 +335,7 @@ where
             self.bind_seq(name, exprs[..k_min].iter().collect())?;
         }
 
-        self.tasks.push(Task::MatchSeq {
+        self.push_task(Task::MatchSeq {
             patterns: rest_pats,
             exprs: &exprs[k_min..],
         });
@@ -388,20 +405,24 @@ where
                     ..
                 } = expr
                 {
+                    let floor = self.tasks.len();
+                    self.task_floor_stack.push(floor);
+
+                    self.push_task(Task::PopTaskFloor);
                     if self.is_commutative_head(expr_head.as_ref()) {
-                        self.tasks.push(Task::MatchUnorderedSeq {
+                        self.push_task(Task::MatchUnorderedSeq {
                             patterns: PatSpan::from(args),
                             exprs: expr_args,
                             remaining: (0..expr_args.len()).collect(),
                         });
                     } else {
-                        self.tasks.push(Task::MatchSeq {
+                        self.push_task(Task::MatchSeq {
                             patterns: PatSpan::from(args),
                             exprs: expr_args,
                         });
                     }
 
-                    self.tasks.push(Task::MatchOne {
+                    self.push_task(Task::MatchOne {
                         pattern: *pat_head,
                         expr: expr_head,
                     });
@@ -458,11 +479,11 @@ where
             Pattern::Literal(_) | Pattern::Compound { .. } | Pattern::Blank { .. } => {
                 // non-seq: need at least one expr
                 let (e0, erest) = exprs.split_first().ok_or(MatchError::MatchFail)?;
-                self.tasks.push(Task::MatchSeq {
+                self.push_task(Task::MatchSeq {
                     patterns: patterns.clone().rest(),
                     exprs: erest,
                 });
-                self.tasks.push(Task::MatchOne {
+                self.push_task(Task::MatchOne {
                     // can we get rid of this clone?
                     // patterns are mostly pointers and relatively shallow
                     // -> shouldn't be a problem in general.
@@ -505,7 +526,7 @@ where
             self.bind_seq(name, rest_exprs[..k].iter().collect())?;
         }
 
-        self.tasks.push(Task::MatchSeq {
+        self.push_task(Task::MatchSeq {
             patterns: rest_pats,
             exprs: &rest_exprs[k..],
         });
@@ -557,7 +578,7 @@ where
             return self.finish_unordered_tail(seq_pat, exprs, remaining);
         }
 
-        self.tasks.push(Task::MatchUnorderedRest {
+        self.push_task(Task::MatchUnorderedRest {
             patterns_rest: nonseq,
             exprs,
             remaining,
@@ -646,14 +667,14 @@ where
         // Apply choice 0
         let chosen_idx = remaining.remove(0);
 
-        self.tasks.push(Task::MatchUnorderedRest {
+        self.push_task(Task::MatchUnorderedRest {
             patterns_rest,
             exprs,
             remaining,
             seq_pat,
         });
 
-        self.tasks.push(Task::MatchOne {
+        self.push_task(Task::MatchOne {
             pattern: pat0,
             expr: &exprs[chosen_idx],
         });
@@ -689,14 +710,14 @@ where
         // Apply this choice
         let chosen_idx = remaining.remove(next_choice_pos);
 
-        self.tasks.push(Task::MatchUnorderedRest {
+        self.push_task(Task::MatchUnorderedRest {
             patterns_rest,
             exprs,
             remaining,
             seq_pat,
         });
 
-        self.tasks.push(Task::MatchOne {
+        self.push_task(Task::MatchOne {
             pattern: pat,
             expr: &exprs[chosen_idx],
         });
