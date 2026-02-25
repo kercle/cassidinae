@@ -3,7 +3,7 @@ use std::{
     fmt::{Debug, Formatter},
 };
 
-use crate::{atom::Atom, expr::Expr};
+use crate::expr::Expr;
 
 #[derive(Clone)]
 pub enum Bound<'a, A> {

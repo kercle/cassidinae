@@ -51,10 +51,7 @@ pub enum Token {
 impl Token {
     fn is_operator(&self) -> bool {
         use Token::*;
-        match self {
-            Number(_) | Identifier(_) | StringLiteral(_) | CodeBlock { .. } => false,
-            _ => true,
-        }
+        !matches!(self, Number(_) | Identifier(_) | StringLiteral(_) | CodeBlock { .. })
     }
 }
 
