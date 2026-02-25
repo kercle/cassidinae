@@ -29,7 +29,7 @@ fn factorization_rules() -> Vec<(NormalizedExpr, Expr)> {
                     + Pattern[a, Blank[]] * Pattern[c, BlankSeq[]]
             ),
             expr!(
-                a*(Apply[Mul,b] + Apply[Mul,c]) + Apply[Add, r]
+                a*(Mul[b] + Mul[c]) + Add[r]
             ),
         ),
         (
@@ -39,7 +39,7 @@ fn factorization_rules() -> Vec<(NormalizedExpr, Expr)> {
                     + Pattern[a, Blank[]] * Pattern[b, BlankSeq[]]
             ),
             expr!(
-                a*(1 + Apply[Mul,b]) + Apply[Add, r]
+                a*(1 + Mul[b]) + Add[r]
             ),
         ),
     ]

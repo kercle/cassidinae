@@ -32,7 +32,7 @@ fn indefinite_integrals_rules() -> Vec<(NormalizedExpr, Expr)> {
                 PatternTest[Pattern[x, Blank[]], IsSymbolQ]
             ]),
             expr!(
-            Integrate[f, x] + Integrate[Apply[Add, r],x]
+            Integrate[f, x] + Integrate[Add[r],x]
             ),
         ),
         (
@@ -42,7 +42,7 @@ fn indefinite_integrals_rules() -> Vec<(NormalizedExpr, Expr)> {
                 PatternTest[Pattern[x, Blank[]], IsSymbolQ]
             ]),
             expr!(
-            c * Integrate[Apply[Mul, r],x]
+            c * Integrate[Mul[r],x]
             ),
         ),
         // =============== Basic ===============

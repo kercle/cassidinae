@@ -3,7 +3,7 @@ use std::{
     fmt::{Debug, Formatter},
 };
 
-use crate::expr::Expr;
+use crate::{atom::Atom, expr::Expr};
 
 #[derive(Clone)]
 pub enum Bound<'a, A> {
@@ -192,18 +192,33 @@ where
     A: PartialEq + Clone + Default,
 {
     pub fn fill(&self, target_expr: Expr<A>) -> Expr<A> {
-        target_expr.replace(&|expr| {
-            let Some(name) = expr.get_symbol() else {
-                return None;
-            };
-
-            if let Some(e) = self.get_one(name) {
-                Some(e.clone())
-            } else if let Some(e) = self.get_seq(name) {
-                Some(Expr::new_list(e.into_iter().cloned().collect()))
-            } else {
-                None
+        match target_expr {
+            Expr::Atom { .. } if target_expr.is_symbol() => {
+                // In case of a symbol -> Replace with blanks
+                let name = target_expr.get_symbol().unwrap();
+                self.get_one(name).cloned().unwrap_or(target_expr)
             }
-        })
+            Expr::Compound { head, args, .. } => {
+                let new_head = self.fill(*head);
+                let mut new_args = vec![];
+
+                for arg in args.into_iter() {
+                    let Some(name) = arg.get_symbol() else {
+                        // Arg is not a symbol -> decend and push to new args
+                        new_args.push(self.fill(arg));
+                        continue;
+                    };
+
+                    if let Some(repl) = self.get_one(name) {
+                        new_args.push(repl.clone());
+                    } else if let Some(repl) = self.get_seq(name) {
+                        new_args.extend(repl.into_iter().cloned());
+                    }
+                }
+
+                Expr::new_compound(new_head, new_args)
+            }
+            _ => target_expr,
+        }
     }
 }
