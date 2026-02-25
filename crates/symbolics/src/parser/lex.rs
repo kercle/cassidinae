@@ -51,7 +51,10 @@ pub enum Token {
 impl Token {
     fn is_operator(&self) -> bool {
         use Token::*;
-        !matches!(self, Number(_) | Identifier(_) | StringLiteral(_) | CodeBlock { .. })
+        !matches!(
+            self,
+            Number(_) | Identifier(_) | StringLiteral(_) | CodeBlock { .. }
+        )
     }
 }
 
@@ -89,12 +92,6 @@ impl<'a> CharIterator<'a> {
         }
 
         next_opt
-    }
-
-    fn skip(&mut self, n: usize) {
-        for _ in 0..n {
-            self.next();
-        }
     }
 
     fn lookahead(&mut self, n: usize) -> Option<&char> {
@@ -186,11 +183,8 @@ impl TokenStream {
                 exp_sign_string.push(iter.next().unwrap());
             }
 
-            while let Some(c) = iter.next() {
-                if !c.is_ascii_digit() {
-                    break;
-                }
-
+            while iter.peek().map(|c| c.is_ascii_digit()).unwrap_or(false) {
+                let c = iter.next().unwrap();
                 exponent_string.push(c);
             }
 
@@ -203,7 +197,7 @@ impl TokenStream {
             }
         }
 
-        let number_string = if !exp_sign_string.is_empty() {
+        let number_string = if !exponent_string.is_empty() {
             format!(
                 "{}{}e{}{}",
                 sign_string, base_string, exp_sign_string, exponent_string
@@ -249,79 +243,79 @@ impl TokenStream {
         iter: &mut CharIterator,
         tokens: &mut Vec<(Token, TokenPos)>,
     ) -> bool {
-        let c = iter.peek().cloned();
-
-        if c.is_none() {
+        let Some(c) = iter.peek().cloned() else {
             return false; // No character to consume
-        }
+        };
 
-        if c == Some('=') {
+        let pos = iter.pos();
+        if c == '=' {
             iter.next(); // Consume '='
 
-            if iter.peek().cloned() == Some('=') {
+            if matches!(iter.peek(), Some('=')) {
                 iter.next(); // Consume second '='
-                tokens.push((Token::EqEq, iter.pos()));
+                tokens.push((Token::EqEq, pos));
             } else {
-                tokens.push((Token::Equals, iter.pos()));
+                tokens.push((Token::Equals, pos));
             }
-        } else if c == Some('!') {
+        } else if c == '!' {
             iter.next(); // Consume '!'
 
-            if iter.peek().cloned() == Some('=') {
+            if matches!(iter.peek(), Some('=')) {
                 iter.next(); // Consume '='
-                tokens.push((Token::NotEq, iter.pos()));
+                tokens.push((Token::NotEq, pos));
             } else {
-                tokens.push((Token::Exclamation, iter.pos()));
+                tokens.push((Token::Exclamation, pos));
             }
-        } else if c == Some('<') {
+        } else if c == '<' {
             iter.next(); // Consume '<'
 
-            if iter.peek().cloned() == Some('=') {
+            if matches!(iter.peek(), Some('=')) {
                 iter.next(); // Consume '='
-                tokens.push((Token::LesserEq, iter.pos()));
+                tokens.push((Token::LesserEq, pos));
             } else {
-                tokens.push((Token::LessThan, iter.pos()));
+                tokens.push((Token::LessThan, pos));
             }
-        } else if c == Some('>') {
+        } else if c == '>' {
             iter.next(); // Consume '>'
 
-            if iter.peek().cloned() == Some('=') {
+            if matches!(iter.peek(), Some('=')) {
                 iter.next(); // Consume '='
-                tokens.push((Token::GreaterEq, iter.pos()));
+                tokens.push((Token::GreaterEq, pos));
             } else {
-                tokens.push((Token::GreaterThan, iter.pos()));
+                tokens.push((Token::GreaterThan, pos));
             }
-        } else if c == Some(':') {
+        } else if c == ':' {
             iter.next(); // Consume ':'
 
-            if iter.peek().cloned() == Some('=') {
+            if matches!(iter.peek(), Some('=')) {
                 iter.next(); // Consume '='
-                tokens.push((Token::ColonEq, iter.pos()));
+                tokens.push((Token::ColonEq, pos));
             } else {
-                tokens.push((Token::Colon, iter.pos()));
+                tokens.push((Token::Colon, pos));
             }
         } else {
-            match c {
-                Some('{') => tokens.push((Token::LeftBrace, iter.pos())),
-                Some('}') => tokens.push((Token::RightBrace, iter.pos())),
-                Some('[') => tokens.push((Token::LeftBracket, iter.pos())),
-                Some(']') => tokens.push((Token::RightBracket, iter.pos())),
-                Some('(') => tokens.push((Token::LeftParen, iter.pos())),
-                Some(')') => tokens.push((Token::RightParen, iter.pos())),
-                Some(',') => tokens.push((Token::Comma, iter.pos())),
-                Some(';') => tokens.push((Token::Semicolon, iter.pos())),
-                Some('+') => tokens.push((Token::Plus, iter.pos())),
-                Some('-') => tokens.push((Token::Minus, iter.pos())),
-                Some('*') => tokens.push((Token::Asterisk, iter.pos())),
-                Some('/') => tokens.push((Token::Slash, iter.pos())),
-                Some('%') => tokens.push((Token::Percent, iter.pos())),
-                Some('&') => tokens.push((Token::Ampersand, iter.pos())),
-                Some('|') => tokens.push((Token::Pipe, iter.pos())),
-                Some('^') => tokens.push((Token::Caret, iter.pos())),
-                Some('~') => tokens.push((Token::Tilde, iter.pos())),
+            let token = match c {
+                '{' => Token::LeftBrace,
+                '}' => Token::RightBrace,
+                '[' => Token::LeftBracket,
+                ']' => Token::RightBracket,
+                '(' => Token::LeftParen,
+                ')' => Token::RightParen,
+                ',' => Token::Comma,
+                ';' => Token::Semicolon,
+                '+' => Token::Plus,
+                '-' => Token::Minus,
+                '*' => Token::Asterisk,
+                '/' => Token::Slash,
+                '%' => Token::Percent,
+                '&' => Token::Ampersand,
+                '|' => Token::Pipe,
+                '^' => Token::Caret,
+                '~' => Token::Tilde,
                 _ => return false, // Not an operator character
-            }
+            };
 
+            tokens.push((token, iter.pos()));
             iter.next(); // Consume the operator character
         }
 
@@ -331,9 +325,8 @@ impl TokenStream {
     fn consume_string_literal(
         term_sequence: &str,
         iter: &mut CharIterator,
-    ) -> Result<(String, TokenPos), LexError> {
+    ) -> Result<String, LexError> {
         let mut string_literal = String::new();
-        let start_pos = iter.pos();
 
         while let Some(next_char) = iter.next() {
             if term_sequence.starts_with(next_char) {
@@ -354,7 +347,7 @@ impl TokenStream {
                 }
 
                 if term_sequence_candidate == term_sequence {
-                    break; // End of string literal
+                    return Ok(string_literal); // End of string literal
                 } else {
                     string_literal.push_str(&term_sequence_candidate);
                     continue; // Continue processing the next character
@@ -388,7 +381,11 @@ impl TokenStream {
             }
         }
 
-        Ok((string_literal, start_pos))
+        Err(LexError {
+            message: "Unterminated string literal".to_string(),
+            line: iter.line,
+            column: iter.column,
+        })
     }
 
     pub fn next_token(&mut self) -> Option<&Token> {
@@ -463,10 +460,12 @@ impl FromStr for TokenStream {
         let mut iter = CharIterator::new(s);
         while let Some(&c) = iter.peek() {
             if c == '"' {
+                let pos = iter.pos();
                 iter.next();
-                let (string, pos) = Self::consume_string_literal("\"", &mut iter)?;
+                let string = Self::consume_string_literal("\"", &mut iter)?;
                 tokens.push((Token::StringLiteral(string), pos));
             } else if c == '`' {
+                let pos = iter.pos();
                 for _ in 0..3 {
                     if iter.next() != Some('`') {
                         return Err(LexError {
@@ -476,38 +475,30 @@ impl FromStr for TokenStream {
                         });
                     }
                 }
-                let (language, pos) = Self::consume_identifier_chars(&mut iter)?;
-                let (code, _) = Self::consume_string_literal("```", &mut iter)?;
+                let (language, _) = Self::consume_identifier_chars(&mut iter)?;
+                let code = Self::consume_string_literal("```", &mut iter)?;
 
                 tokens.push((Token::CodeBlock { language, code }, pos));
             } else if c.is_whitespace() {
                 iter.next(); // Consume whitespace
-            } else if c == '-' || c == '+' {
-                if c == '-' && iter.peek() == Some(&'>') {
+            } else if let Some(char_after_minus) = iter.lookahead(1)
+                && (c == '-' || c == '+')
+            {
+                let prev_token_is_operator_or_start =
+                    tokens.last().map(|(t, _)| t.is_operator()).unwrap_or(true);
+
+                if char_after_minus.is_ascii_digit() && prev_token_is_operator_or_start {
+                    Self::comsume_number_chars(&mut iter, &mut tokens)?;
+                } else if c == '-' {
                     tokens.push((Token::Minus, iter.pos()));
-                    iter.skip(2); // Consume '-' and '>'
-                } else if c == '+' && iter.peek() == Some(&'>') {
+                    iter.next(); // Consume '-'
+                } else if c == '+' {
                     tokens.push((Token::Plus, iter.pos()));
-                    iter.skip(2); // Consume '-' and '>'
-                }
-
-                if let Some(char_after_minus) = iter.lookahead(1) {
-                    let prev_token_is_operator_or_start =
-                        tokens.last().map(|(t, _)| t.is_operator()).unwrap_or(true);
-
-                    if char_after_minus.is_ascii_digit() && prev_token_is_operator_or_start {
-                        Self::comsume_number_chars(&mut iter, &mut tokens)?;
-                    } else if c == '-' {
-                        iter.next(); // Consume '-'
-                        tokens.push((Token::Minus, iter.pos()));
-                    } else if c == '+' {
-                        iter.next(); // Consume '+'
-                        tokens.push((Token::Plus, iter.pos()));
-                    } else {
-                        unreachable!(
-                            "Sign should have been consumed at least by previous two branches."
-                        )
-                    }
+                    iter.next(); // Consume '+'
+                } else {
+                    unreachable!(
+                        "Sign should have been consumed at least by previous two branches."
+                    )
                 }
             } else if Self::consume_operator_chars(&mut iter, &mut tokens) {
                 continue;
@@ -682,5 +673,117 @@ mod tests {
         let expected = vec![Token::Minus, Token::Identifier("a".to_string())];
 
         assert!(token_streams_eq(&token_stream.tokens, &expected));
+    }
+
+    #[test]
+    fn test_exponent_does_not_swallow_next_token() {
+        let input = "f(1e2)";
+        let token_stream = TokenStream::from_str(input).unwrap();
+
+        let expected = vec![
+            Token::Identifier("f".to_string()),
+            Token::LeftParen,
+            Token::Number("1e2".to_string()),
+            Token::RightParen,
+        ];
+
+        assert!(
+            token_streams_eq(&token_stream.tokens, &expected),
+            "Expected tokens {:?}, got {:?}",
+            expected,
+            token_stream
+                .tokens
+                .iter()
+                .map(|(t, _)| t)
+                .collect::<Vec<_>>()
+        );
+    }
+
+    #[test]
+    fn test_exponent_does_not_swallow_following_operator() {
+        let input = "1e2+3";
+        let token_stream = TokenStream::from_str(input).unwrap();
+
+        let expected = vec![
+            Token::Number("1e2".to_string()),
+            Token::Plus,
+            Token::Number("3".to_string()),
+        ];
+
+        assert!(
+            token_streams_eq(&token_stream.tokens, &expected),
+            "Expected tokens {:?}, got {:?}",
+            expected,
+            token_stream
+                .tokens
+                .iter()
+                .map(|(t, _)| t)
+                .collect::<Vec<_>>()
+        );
+    }
+
+    #[test]
+    fn test_unterminated_string_literal_errors() {
+        let input = r#""hello"#;
+
+        let err = TokenStream::from_str(input).unwrap_err();
+        assert!(
+            err.message.to_lowercase().contains("unterminated"),
+            "Expected unterminated error, got: {:?}",
+            err
+        );
+    }
+
+    #[test]
+    fn test_unterminated_code_fence_errors() {
+        let input = "```python\nprint(1)\n";
+
+        let err = TokenStream::from_str(input).unwrap_err();
+        assert!(err.message.to_lowercase().contains("unterminated"),);
+    }
+
+    #[test]
+    fn test_operator_position_points_to_operator_start_single_char() {
+        let input = "a+b";
+        let token_stream = TokenStream::from_str(input).unwrap();
+
+        assert_eq!(token_stream.tokens.len(), 3);
+
+        let plus_pos = &token_stream.tokens[1].1;
+        assert_eq!((plus_pos.line, plus_pos.column), (1, 2),);
+    }
+
+    #[test]
+    fn test_operator_position_points_to_operator_start_double_char() {
+        let input = "a==b";
+        let token_stream = TokenStream::from_str(input).unwrap();
+
+        assert_eq!(token_stream.tokens.len(), 3);
+
+        let eqeq_pos = &token_stream.tokens[1].1;
+        assert_eq!((eqeq_pos.line, eqeq_pos.column), (1, 2),);
+    }
+
+    #[test]
+    fn test_operator_position_star() {
+        let ts = TokenStream::from_str("a*b").unwrap();
+        let star_pos = &ts.tokens[1].1;
+        assert_eq!((star_pos.line, star_pos.column), (1, 2));
+    }
+
+    #[test]
+    fn test_operator_position_left_paren() {
+        let ts = TokenStream::from_str("f(x)").unwrap();
+        let lparen_pos = &ts.tokens[1].1;
+        assert_eq!((lparen_pos.line, lparen_pos.column), (1, 2));
+    }
+
+    #[test]
+    fn test_string_literal_position_points_to_opening_quote() {
+        let ts = TokenStream::from_str(r#""x""#).unwrap();
+        assert_eq!(ts.tokens.len(), 1);
+
+        let (_tok, pos) = &ts.tokens[0];
+        assert_eq!((pos.line, pos.column), (1, 1));
     }
 }
