@@ -30,11 +30,14 @@ pub enum Instruction<A: Clone + PartialEq> {
     Literal(Expr<A>),
     Variadic {
         quantity: Quantity,
-        head_constraint: Option<Vec<Expr<A>>>,
+        head_pattern: Option<InstrId>,
     },
-    Bind(VarId),
+    Bind {
+        variable: VarId,
+        inner: InstrId,
+    },
     Predicate {
-        pred_id: Predicate,
+        predicate: Predicate,
         inner: InstrId,
     },
     Node {
@@ -52,7 +55,7 @@ pub enum ArgPlan<A: Clone + PartialEq> {
 #[derive(Debug)]
 enum ArgOrder {
     Sequence,
-    Multiset,
+    _Multiset,
 }
 
 #[derive(Debug)]
@@ -69,6 +72,14 @@ pub struct Compiler<A: Clone + PartialEq> {
 }
 
 impl<A: Clone + PartialEq + Default> Compiler<A> {
+    pub fn new() -> Self {
+        Compiler {
+            instructions: Vec::new(),
+            var_ids: HashMap::new(),
+            vars: Vec::new(),
+        }
+    }
+
     fn emit(&mut self, instr: Instruction<A>) -> InstrId {
         let id = self.instructions.len();
         self.instructions.push(instr);
@@ -99,40 +110,54 @@ impl<A: Clone + PartialEq + Default> Compiler<A> {
         use Expr::*;
         match pat_expr {
             Atom { .. } => self.emit(Instruction::Literal(pat_expr.clone())),
-            Node { head, args, .. } if head.matches_symbol(HEAD_BLANK) => {
-                self.emit(Instruction::Variadic {
-                    quantity: Quantity::One,
-                    head_constraint: None,
-                })
+            Node { head, args, .. } if head.matches_symbol(HEAD_BLANK) && args.len() <= 1 => {
+                self.compile_blank_with_head_constraint(Quantity::One, args.first())
             }
-            Node { head, args, .. } if head.matches_symbol(HEAD_BLANK_SEQUENCE) => {
-                self.emit(Instruction::Variadic {
-                    quantity: Quantity::Many { min: 1 },
-                    head_constraint: None,
-                })
+            Node { head, args, .. }
+                if head.matches_symbol(HEAD_BLANK_SEQUENCE) && args.len() <= 1 =>
+            {
+                self.compile_blank_with_head_constraint(Quantity::Many { min: 1 }, args.first())
             }
-            Node { head, args, .. } if head.matches_symbol(HEAD_BLANK_NULL_SEQUENCE) => {
-                self.emit(Instruction::Variadic {
-                    quantity: Quantity::Many { min: 0 },
-                    head_constraint: None,
-                })
+            Node { head, args, .. }
+                if head.matches_symbol(HEAD_BLANK_NULL_SEQUENCE) && args.len() <= 1 =>
+            {
+                self.compile_blank_with_head_constraint(Quantity::Many { min: 0 }, args.first())
             }
-            Node { .. } => self.emit(Self::nested_expr_to_instr(pat_expr)),
-        }
-    }
-
-    fn nested_expr_to_instr(pat_expr: &Expr<A>) -> Instruction<A> {
-        use Expr::*;
-        match pat_expr {
             Node { head, args, .. } if pat_expr.is_application_of(PATTERN_HEAD, 2) => {
-                todo!()
+                let [lhs, rhs] = args.as_slice() else {
+                    unreachable!()
+                };
+
+                let Some(bind_var_name) = lhs.get_symbol() else {
+                    return self.compile_pat_node(head, ArgOrder::Sequence, &args);
+                };
+
+                let var_id = self.bind_name_id(bind_var_name);
+                let inner = self.compile_pat(rhs);
+                self.emit(Instruction::Bind {
+                    variable: var_id,
+                    inner,
+                })
             }
-            _ => Instruction::Literal(pat_expr.clone()),
+            Node { head, args, .. } => self.compile_pat_node(head, ArgOrder::Sequence, &args),
         }
     }
 
-    fn compile_pat_var(&mut self, name: Option<&str>) -> InstrId {
-        todo!()
+    fn compile_blank_with_head_constraint(
+        &mut self,
+        quantity: Quantity,
+        head_pattern: Option<&Expr<A>>,
+    ) -> InstrId {
+        let head_pattern = if let Some(e) = head_pattern {
+            Some(self.compile_pat(e))
+        } else {
+            None
+        };
+
+        self.emit(Instruction::Variadic {
+            quantity,
+            head_pattern,
+        })
     }
 
     fn compile_pat_node(
@@ -148,7 +173,7 @@ impl<A: Clone + PartialEq + Default> Compiler<A> {
                 let pats = children.iter().map(|c| self.compile_pat(c)).collect();
                 ArgPlan::Sequence(pats)
             }
-            ArgOrder::Multiset => {
+            ArgOrder::_Multiset => {
                 let plan = self.compile_unordered(children);
                 ArgPlan::Multiset(plan)
             }
@@ -157,25 +182,26 @@ impl<A: Clone + PartialEq + Default> Compiler<A> {
         self.emit(Instruction::Node { head, plan })
     }
 
-    fn compile_unordered(&mut self, children: &[Expr<A>]) -> MultisetPlan<A> {
-        let mut literals = Vec::new();
-        let mut fixed = Vec::new();
-        let mut rest: Vec<(VarId, usize)> = vec![];
+    fn compile_unordered(&mut self, _children: &[Expr<A>]) -> MultisetPlan<A> {
+        todo!()
+        // let mut literals = Vec::new();
+        // let mut fixed = Vec::new();
+        // let mut rest: Vec<(VarId, usize)> = vec![];
 
-        for c in children {
-            todo!()
-        }
+        // for c in children {
+        //     todo!()
+        // }
 
-        if rest.len() > 1 {
-            unimplemented!(
-                "Matching unordered children with more than 1 variadic pattern not supported yet"
-            )
-        }
+        // if rest.len() > 1 {
+        //     unimplemented!(
+        //         "Matching unordered children with more than 1 variadic pattern not supported yet"
+        //     )
+        // }
 
-        MultisetPlan {
-            literals,
-            fixed,
-            rest,
-        }
+        // MultisetPlan {
+        //     literals,
+        //     fixed,
+        //     rest,
+        // }
     }
 }
