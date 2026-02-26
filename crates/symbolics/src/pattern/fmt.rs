@@ -1,6 +1,15 @@
 use std::fmt::{Debug, Formatter};
 
-use crate::pattern::program::{ArgPlan, Instruction, Program, VarId};
+use crate::pattern::program::{ArgPlan, Instruction, Program, Quantity, VarId};
+
+impl Debug for Quantity {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
+        match self {
+            Quantity::One => write!(f, "one"),
+            Quantity::Many { min } => write!(f, "many({min})"),
+        }
+    }
+}
 
 impl<A: Clone + PartialEq + Debug> Debug for ArgPlan<A> {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
@@ -23,14 +32,6 @@ impl<A: Clone + PartialEq + Debug> Debug for ArgPlan<A> {
     }
 }
 
-fn format_bind(bind: &Option<VarId>) -> String {
-    if let Some(bind) = bind {
-        format!("{{{bind}}}")
-    } else {
-        String::new()
-    }
-}
-
 impl<A: Clone + PartialEq + Debug> Debug for Instruction<A> {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
         use Instruction::*;
@@ -44,7 +45,7 @@ impl<A: Clone + PartialEq + Debug> Debug for Instruction<A> {
                 bind,
             } => write!(
                 f,
-                "var{} quant={quantity:?} head={head_pattern:?}",
+                "var{} {quantity:?} head={head_pattern:?}",
                 format_bind(bind)
             ),
             Node { head, plan, bind } => {
@@ -52,6 +53,14 @@ impl<A: Clone + PartialEq + Debug> Debug for Instruction<A> {
             }
             _ => todo!(),
         }
+    }
+}
+
+fn format_bind(bind: &Option<VarId>) -> String {
+    if let Some(bind) = bind {
+        format!("{{bind:{bind}}}")
+    } else {
+        String::new()
     }
 }
 

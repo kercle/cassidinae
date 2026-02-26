@@ -6,7 +6,7 @@ use expr_macro::expr;
 #[test]
 fn test_program_compilation() {
     let pattern = expr! {
-        Blank[Pattern[x,Blank]]
+        f[Pattern[x, BlankSeq[]]]+g[Blank[]]
     };
 
     let program = Compiler::new().compile(&pattern);

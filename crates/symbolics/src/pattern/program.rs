@@ -13,7 +13,6 @@ pub struct Program<A: Clone + PartialEq> {
     pub(super) vars: Vec<String>,
 }
 
-#[derive(Debug)]
 pub enum Quantity {
     One,
     Many { min: usize },
@@ -96,7 +95,7 @@ impl<A: Clone + PartialEq + Default> Compiler<A> {
     }
 
     pub fn compile(mut self, pattern: &Expr<A>) -> Program<A> {
-        let entry = self.compile_pat(pattern, None);
+        let entry = self.compile_pattern(pattern, None);
 
         Program {
             entry,
@@ -105,7 +104,7 @@ impl<A: Clone + PartialEq + Default> Compiler<A> {
         }
     }
 
-    fn compile_pat(&mut self, pat_expr: &Expr<A>, bind: Option<VarId>) -> InstrId {
+    fn compile_pattern(&mut self, pat_expr: &Expr<A>, bind: Option<VarId>) -> InstrId {
         use Expr::*;
         match pat_expr {
             Atom { .. } => self.emit(Instruction::Literal {
@@ -139,13 +138,13 @@ impl<A: Clone + PartialEq + Default> Compiler<A> {
                 };
 
                 let Some(bind_var_name) = lhs.get_symbol() else {
-                    return self.compile_pat_node(head, ArgOrder::Sequence, &args, bind);
+                    return self.compile_node(head, ArgOrder::Sequence, &args, bind);
                 };
 
                 let var_id = self.bind_name_id(bind_var_name);
-                self.compile_pat(rhs, Some(var_id))
+                self.compile_pattern(rhs, Some(var_id))
             }
-            Node { head, args, .. } => self.compile_pat_node(head, ArgOrder::Sequence, &args, bind),
+            Node { head, args, .. } => self.compile_node(head, ArgOrder::Sequence, &args, bind),
         }
     }
 
@@ -156,7 +155,7 @@ impl<A: Clone + PartialEq + Default> Compiler<A> {
         bind: Option<VarId>,
     ) -> InstrId {
         let head_pattern = if let Some(e) = head_pattern {
-            Some(self.compile_pat(e, None))
+            Some(self.compile_pattern(e, None))
         } else {
             None
         };
@@ -168,18 +167,18 @@ impl<A: Clone + PartialEq + Default> Compiler<A> {
         })
     }
 
-    fn compile_pat_node(
+    fn compile_node(
         &mut self,
         head: &Expr<A>,
         arg_order: ArgOrder,
         children: &[Expr<A>],
         bind: Option<VarId>,
     ) -> InstrId {
-        let head = Self::compile_pat(self, head, None);
+        let head = Self::compile_pattern(self, head, None);
 
         let plan = match arg_order {
             ArgOrder::Sequence => {
-                let pats = children.iter().map(|c| self.compile_pat(c, bind)).collect();
+                let pats = children.iter().map(|c| self.compile_pattern(c, None)).collect();
                 ArgPlan::Sequence(pats)
             }
             ArgOrder::_Multiset => {
