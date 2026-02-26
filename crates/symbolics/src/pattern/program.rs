@@ -25,7 +25,6 @@ pub enum Predicate {
     IsSymbolQ,
 }
 
-#[derive(Debug)]
 pub enum Instruction<A: Clone + PartialEq> {
     Literal(Expr<A>),
     Variadic {
@@ -46,7 +45,6 @@ pub enum Instruction<A: Clone + PartialEq> {
     },
 }
 
-#[derive(Debug)]
 pub enum ArgPlan<A: Clone + PartialEq> {
     Sequence(Vec<InstrId>),
     Multiset(MultisetPlan<A>),
@@ -96,8 +94,8 @@ impl<A: Clone + PartialEq + Default> Compiler<A> {
         id
     }
 
-    pub fn compile(mut self, pat: &Expr<A>) -> Program<A> {
-        let entry = self.compile_pat(pat);
+    pub fn compile(mut self, pattern: &Expr<A>) -> Program<A> {
+        let entry = self.compile_pat(pattern);
 
         Program {
             entry,
