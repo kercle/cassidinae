@@ -51,9 +51,9 @@ pub enum ArgPlan<A: Clone + PartialEq> {
 }
 
 #[derive(Debug)]
-enum ArgOrder {
+pub enum ArgOrder {
     Sequence,
-    _Multiset,
+    Multiset,
 }
 
 #[derive(Debug)]
@@ -63,18 +63,28 @@ pub struct MultisetPlan<A: Clone + PartialEq> {
     pub rest: Vec<(VarId, usize)>,
 }
 
-pub struct Compiler<A: Clone + PartialEq> {
+pub struct Compiler<A, F>
+where
+    A: Clone + PartialEq,
+    F: Fn(&Expr<A>) -> ArgOrder,
+{
     instructions: Vec<Instruction<A>>,
     var_ids: HashMap<String, VarId>,
     vars: Vec<String>,
+    arg_order_predicate: F,
 }
 
-impl<A: Clone + PartialEq + Default> Compiler<A> {
-    pub fn new() -> Self {
+impl<A, F> Compiler<A, F>
+where
+    A: Clone + PartialEq + Default,
+    F: Fn(&Expr<A>) -> ArgOrder,
+{
+    pub fn new(arg_order_predicate: F) -> Self {
         Compiler {
             instructions: Vec::new(),
             var_ids: HashMap::new(),
             vars: Vec::new(),
+            arg_order_predicate,
         }
     }
 
@@ -138,13 +148,20 @@ impl<A: Clone + PartialEq + Default> Compiler<A> {
                 };
 
                 let Some(bind_var_name) = lhs.get_symbol() else {
-                    return self.compile_node(head, ArgOrder::Sequence, &args, bind);
+                    return self.compile_node(
+                        head,
+                        (&self.arg_order_predicate)(pat_expr),
+                        &args,
+                        bind,
+                    );
                 };
 
                 let var_id = self.bind_name_id(bind_var_name);
                 self.compile_pattern(rhs, Some(var_id))
             }
-            Node { head, args, .. } => self.compile_node(head, ArgOrder::Sequence, &args, bind),
+            Node { head, args, .. } => {
+                self.compile_node(head, (&self.arg_order_predicate)(pat_expr), &args, bind)
+            }
         }
     }
 
@@ -178,10 +195,13 @@ impl<A: Clone + PartialEq + Default> Compiler<A> {
 
         let plan = match arg_order {
             ArgOrder::Sequence => {
-                let pats = children.iter().map(|c| self.compile_pattern(c, None)).collect();
+                let pats = children
+                    .iter()
+                    .map(|c| self.compile_pattern(c, None))
+                    .collect();
                 ArgPlan::Sequence(pats)
             }
-            ArgOrder::_Multiset => {
+            ArgOrder::Multiset => {
                 let plan = self.compile_unordered(children);
                 ArgPlan::Multiset(plan)
             }
