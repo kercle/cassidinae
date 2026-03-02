@@ -1,6 +1,6 @@
 use crate::{
     dbg_matcher,
-    pattern::program::{ArgPlan, Instruction, Quantity},
+    pattern::program::{ArgPlan, Instruction, Predicate, Quantity},
 };
 use std::{
     collections::{HashMap, HashSet, hash_map::Keys},
@@ -39,6 +39,10 @@ enum Frame<'p, 's, A: Clone + PartialEq> {
     BindSeq {
         bind_var: VarId,
         subjects: Vec<&'s Expr<A>>,
+    },
+    TestPredicate {
+        subject: &'s Expr<A>,
+        predicate: Predicate,
     },
 }
 
@@ -133,6 +137,7 @@ impl<'p, 's, A: Clone + PartialEq + Debug> Runtime<'p, 's, A> {
             } => self.match_multiset(literals, fixed, rest),
             Frame::BindOne { bind_var, subject } => self.environment.bind_one(bind_var, subject),
             Frame::BindSeq { bind_var, subjects } => self.environment.bind_seq(bind_var, subjects),
+            Frame::TestPredicate { subject, predicate } => self.test_predicate(subject, predicate),
         }
     }
 
@@ -146,9 +151,7 @@ impl<'p, 's, A: Clone + PartialEq + Debug> Runtime<'p, 's, A> {
         use Instruction::*;
         match instr {
             Literal { inner, bind } => {
-                if subject.to_hash() != inner.to_hash() {
-                    return false;
-                }
+                // TODO: check hash from Merkle tree first once implemented
 
                 if subject != inner {
                     return false;
@@ -377,6 +380,14 @@ impl<'p, 's, A: Clone + PartialEq + Debug> Runtime<'p, 's, A> {
         rest: &[(VarId, usize)],
     ) -> bool {
         todo!()
+    }
+
+    fn test_predicate(&self, subject: &'s Expr<A>, predicate: Predicate) -> bool {
+        use Predicate::*;
+        match predicate {
+            IsNumberQ => subject.is_number(),
+            IsSymbolQ => subject.is_symbol(),
+        }
     }
 
     fn push_choice_point(&mut self) {
