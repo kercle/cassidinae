@@ -1,5 +1,5 @@
 use std::{
-    collections::{HashMap, HashSet, hash_map::Keys},
+    collections::{HashMap, HashSet},
     fmt::Debug,
 };
 
@@ -64,10 +64,6 @@ impl<'p, 's, A: Clone + PartialEq> Environment<'p, 's, A> {
             bindings: HashMap::new(),
             program,
         }
-    }
-
-    fn bound_variables(&self) -> Keys<'_, u32, EnvBinding<'_, A>> {
-        self.bindings.keys()
     }
 
     fn bind_one(&mut self, bind_var: VarId, subject: &'s Expr<A>) -> bool {
@@ -140,14 +136,20 @@ impl<'p, 's, A: Clone + PartialEq + Debug> Runtime<'p, 's, A> {
     }
 
     pub fn next_match(&mut self) -> Option<&Environment<'p, 's, A>> {
+        if self.frame_stack.is_empty() {
+            return None;
+        }
+
         loop {
             let Some(frame) = self.frame_stack.pop() else {
                 return Some(&self.environment);
             };
 
-            if !self.step(frame) {
-                // todo: choicepoints
-                // fail for now
+            if self.step(frame) {
+                continue;
+            }
+
+            if !self.backtrack() {
                 return None;
             }
         }
@@ -443,10 +445,28 @@ impl<'p, 's, A: Clone + PartialEq + Debug> Runtime<'p, 's, A> {
             bindings: HashSet::new(),
         };
 
-        for &v_id in self.environment.bound_variables() {
+        for &v_id in self.environment.bindings.keys() {
             choice_point.bindings.insert(v_id);
         }
 
         self.choice_points.push(choice_point);
+    }
+
+    fn backtrack(&mut self) -> bool {
+        let Some(choice_point) = self.choice_points.pop() else {
+            return false;
+        };
+
+        let keys: Vec<VarId> = self.environment.bindings.keys().cloned().collect();
+
+        for k in keys {
+            if !choice_point.bindings.contains(&k) {
+                self.environment.bindings.remove(&k);
+            }
+        }
+
+        self.frame_stack.truncate(choice_point.frame_stack_len);
+
+        true
     }
 }
