@@ -27,7 +27,5 @@ fn test_program_executation_no_blanks_no_multiset() {
         f[1, g[a, b]]
     };
     let mut runtime = Runtime::new(&program, &subject);
-    let m = runtime.next_match();
-
-    dbg!(m.is_some());
+    dbg!(runtime.next_match());
 }

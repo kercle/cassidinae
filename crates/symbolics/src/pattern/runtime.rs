@@ -38,31 +38,34 @@ enum Frame<'p, 's, A: Clone + PartialEq> {
     },
 }
 
-enum Binding<'s, A: Clone + PartialEq> {
+pub enum EnvBinding<'s, A: Clone + PartialEq> {
     One(&'s Expr<A>),
     Many(Vec<&'s Expr<A>>),
 }
 
-pub struct Environment<'s, A: Clone + PartialEq> {
-    bindings: HashMap<VarId, Binding<'s, A>>,
+#[derive(Debug)]
+pub struct Environment<'p, 's, A: Clone + PartialEq> {
+    bindings: HashMap<VarId, EnvBinding<'s, A>>,
+    program: &'p Program<A>,
 }
 
-impl<'s, A: Clone + PartialEq> Environment<'s, A> {
-    fn new() -> Self {
+impl<'p, 's, A: Clone + PartialEq> Environment<'p, 's, A> {
+    fn new(program: &'p Program<A>) -> Self {
         Self {
             bindings: HashMap::new(),
+            program,
         }
     }
 
-    fn bound_variables(&self) -> Keys<'_, u32, Binding<'_, A>> {
+    fn bound_variables(&self) -> Keys<'_, u32, EnvBinding<'_, A>> {
         self.bindings.keys()
     }
 
     fn bind_one(&mut self, bind_var: VarId, subject: &'s Expr<A>) -> bool {
         match self.bindings.get(&bind_var) {
-            Some(Binding::One(_bound_subject)) => todo!(),
+            Some(EnvBinding::One(_bound_subject)) => todo!(),
             None => {
-                self.bindings.insert(bind_var, Binding::One(subject));
+                self.bindings.insert(bind_var, EnvBinding::One(subject));
                 true
             }
             _ => false,
@@ -71,9 +74,9 @@ impl<'s, A: Clone + PartialEq> Environment<'s, A> {
 
     fn bind_seq(&mut self, bind_var: VarId, subjects: Vec<&'s Expr<A>>) -> bool {
         match self.bindings.get(&bind_var) {
-            Some(Binding::Many(_bound_subject)) => todo!(),
+            Some(EnvBinding::Many(_bound_subject)) => todo!(),
             None => {
-                self.bindings.insert(bind_var, Binding::Many(subjects));
+                self.bindings.insert(bind_var, EnvBinding::Many(subjects));
                 true
             }
             _ => false,
@@ -83,7 +86,7 @@ impl<'s, A: Clone + PartialEq> Environment<'s, A> {
 
 pub struct Runtime<'p, 's, A: Clone + PartialEq> {
     program: &'p Program<A>,
-    environment: Environment<'s, A>,
+    environment: Environment<'p, 's, A>,
     frame_stack: Vec<Frame<'p, 's, A>>,
     choice_points: Vec<ChoicePoint>,
 }
@@ -92,7 +95,7 @@ impl<'p, 's, A: Clone + PartialEq> Runtime<'p, 's, A> {
     pub fn new(program: &'p Program<A>, expr: &'s Expr<A>) -> Self {
         Runtime {
             program,
-            environment: Environment::new(),
+            environment: Environment::new(program),
             frame_stack: vec![Frame::Exec {
                 instr: program.entry,
                 subject: expr,
@@ -101,7 +104,7 @@ impl<'p, 's, A: Clone + PartialEq> Runtime<'p, 's, A> {
         }
     }
 
-    pub fn next_match(&mut self) -> Option<&Environment<'s, A>> {
+    pub fn next_match(&mut self) -> Option<&Environment<'p, 's, A>> {
         loop {
             let Some(frame) = self.frame_stack.pop() else {
                 return Some(&self.environment);

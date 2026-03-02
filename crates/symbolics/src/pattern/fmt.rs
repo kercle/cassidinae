@@ -1,6 +1,12 @@
 use std::fmt::{Debug, Formatter};
 
-use crate::pattern::program::{ArgPlan, Instruction, Program, Quantity, VarId};
+use crate::{
+    matcher::context::Binding,
+    pattern::{
+        program::{ArgPlan, Instruction, Program, Quantity, VarId},
+        runtime::EnvBinding,
+    },
+};
 
 impl Debug for Quantity {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
@@ -77,5 +83,25 @@ impl<A: Clone + PartialEq + Debug> Debug for Program<A> {
         }
 
         Ok(())
+    }
+}
+
+impl<'p, 'a, A: Clone + PartialEq + Debug> Debug for EnvBinding<'a, A> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
+        match self {
+            EnvBinding::One(s) => write!(f, "{s:?}"),
+            EnvBinding::Many(subjects) => {
+                let mut leading_char = '[';
+                for s in subjects.iter() {
+                    write!(f, "{s:?}")?;
+                    leading_char = ',';
+                }
+                if leading_char == '[' {
+                    write!(f, "[]")
+                } else {
+                    write!(f, "]")
+                }
+            }
+        }
     }
 }
