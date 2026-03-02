@@ -61,3 +61,18 @@ fn test_predicate_matching() {
 
     assert!(m.is_some());
 }
+
+
+#[test]
+fn test_multiple_blank_sequences() {
+    let pattern = expr! { f[Pattern[x, BlankSeq[]], Pattern[y, Blank[]], Pattern[z, BlankSeq[]]] };
+    let program = Compiler::new(|_| ArgOrder::Sequence).compile(&pattern);
+
+    dbg!(&program);
+
+    let subject = expr! { f[1,2,3,4,5] };
+    let mut runtime = Runtime::new(&program, &subject);
+    let m = runtime.next_match();
+
+    dbg!(&m);
+}

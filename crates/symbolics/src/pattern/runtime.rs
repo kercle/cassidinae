@@ -28,6 +28,13 @@ enum Frame<'p, 's, A: Clone + PartialEq> {
         instrs: &'p [InstrId],
         subjects: &'s [Expr<A>],
     },
+    ResumeMatchSequence {
+        instrs: &'p [InstrId],
+        subjects: &'s [Expr<A>],
+        first_consume_count: usize,
+        first_head_pattern: &'p Option<InstrId>,
+        first_bind: &'p Option<VarId>,
+    },
     MatchMultiset {
         literals: &'p [Expr<A>],
         fixed: &'p [InstrId],
@@ -79,7 +86,9 @@ impl<'p, 's, A: Clone + PartialEq> Environment<'p, 's, A> {
 
     fn bind_seq(&mut self, bind_var: VarId, subjects: Vec<&'s Expr<A>>) -> bool {
         match self.bindings.get(&bind_var) {
-            Some(EnvBinding::Many(_bound_subject)) => todo!(),
+            Some(EnvBinding::Many(_bound_subject)) => {
+                todo!()
+            },
             None => {
                 self.bindings.insert(bind_var, EnvBinding::Many(subjects));
                 true
@@ -167,6 +176,19 @@ impl<'p, 's, A: Clone + PartialEq + Debug> Runtime<'p, 's, A> {
             Frame::BindOne { bind_var, subject } => self.environment.bind_one(bind_var, subject),
             Frame::BindSeq { bind_var, subjects } => self.environment.bind_seq(bind_var, subjects),
             Frame::TestPredicate { subject, predicate } => self.test_predicate(subject, predicate),
+            Frame::ResumeMatchSequence {
+                instrs,
+                subjects,
+                first_consume_count,
+                first_head_pattern,
+                first_bind,
+            } => self.match_sequence_multiple_variadic(
+                instrs,
+                subjects,
+                first_consume_count,
+                first_head_pattern,
+                first_bind,
+            ),
         }
     }
 
@@ -323,7 +345,7 @@ impl<'p, 's, A: Clone + PartialEq + Debug> Runtime<'p, 's, A> {
         }
     }
 
-    pub fn match_sequence_exact(&mut self, instrs: &'p [InstrId], subjects: &'s [Expr<A>]) -> bool {
+    fn match_sequence_exact(&mut self, instrs: &'p [InstrId], subjects: &'s [Expr<A>]) -> bool {
         if instrs.len() != subjects.len() {
             return false;
         }
@@ -335,8 +357,8 @@ impl<'p, 's, A: Clone + PartialEq + Debug> Runtime<'p, 's, A> {
         true
     }
 
-    pub fn match_sequence_rest(&mut self, instrs: &'p [InstrId], subjects: &'s [Expr<A>]) -> bool {
-        if instrs.len() == 1 {
+    fn match_sequence_rest(&mut self, instrs: &'p [InstrId], subjects: &'s [Expr<A>]) -> bool {
+        if instrs.len() >= 1 {
             let &instr = instrs.first().unwrap();
 
             let Some(Instruction::Variadic {
@@ -352,27 +374,99 @@ impl<'p, 's, A: Clone + PartialEq + Debug> Runtime<'p, 's, A> {
                 return false;
             }
 
-            if let Some(&bind_var) = bind.as_ref() {
-                self.frame_stack.push(Frame::BindSeq {
-                    bind_var,
-                    subjects: subjects.iter().collect(),
-                });
+            if instrs.len() == 1 {
+                self.match_sequence_single_variadic(subjects, head_pattern, bind)
+            } else {
+                self.match_sequence_multiple_variadic(instrs, subjects, *min, head_pattern, bind)
             }
-
-            if let Some(head_pattern_instr) = head_pattern {
-                for subject in subjects {
-                    if !self.match_head_pattern(*head_pattern_instr, subject) {
-                        return false;
-                    }
-                }
-            }
-
-            true
-        } else if instrs.len() > 1 {
-            todo!("Multiple many-variadics. Require backtracking.")
         } else {
             true
         }
+    }
+
+    fn match_sequence_single_variadic(
+        &mut self,
+        subjects: &'s [Expr<A>],
+        head_pattern: &Option<InstrId>,
+        bind: &Option<VarId>,
+    ) -> bool {
+        if let Some(&bind_var) = bind.as_ref() {
+            self.frame_stack.push(Frame::BindSeq {
+                bind_var,
+                subjects: subjects.iter().collect(),
+            });
+        }
+
+        if let Some(head_pattern_instr) = head_pattern {
+            for subject in subjects {
+                if !self.match_head_pattern(*head_pattern_instr, subject) {
+                    return false;
+                }
+            }
+        }
+
+        true
+    }
+
+    fn match_sequence_multiple_variadic(
+        &mut self,
+        instrs: &'p [InstrId],
+        subjects: &'s [Expr<A>],
+        first_consume_count: usize,
+        first_head_pattern: &'p Option<InstrId>,
+        first_bind: &'p Option<VarId>,
+    ) -> bool {
+        todo!()
+        // debug_assert!(instrs.len() >= 2);
+
+        // let Some(suffix_min) = self.min_subjects_needed(&instrs[1..]) else {
+        //     return false;
+        // };
+
+        // if subjects.len() < suffix_min {
+        //     return false;
+        // }
+
+        // let max_first = subjects.len() - suffix_min;
+        // if first_consume_count > max_first {
+        //     return false;
+        // }
+
+        // if first_consume_count < max_first {
+        //     self.push_choice_point(Frame::ResumeMatchSequence {
+        //         instrs,
+        //         subjects,
+        //         first_consume_count: first_consume_count + 1,
+        //         first_head_pattern,
+        //         first_bind,
+        //     });
+        // }
+
+        // let (first_chunk, rest_subjects) = subjects.split_at(first_consume_count);
+
+        // self.frame_stack.push(Frame::MatchSequence {
+        //     instrs: &instrs[1..],
+        //     subjects: rest_subjects,
+        // });
+
+        // self.match_sequence_single_variadic(subjects, first_head_pattern, first_bind)
+    }
+
+    fn min_subjects_needed(&self, instrs: &'p [InstrId]) -> Option<usize> {
+        use Instruction::*;
+
+        let mut sum = 0usize;
+        for &id in instrs {
+            let instr = self.program.instructions.get(id)?;
+            match instr {
+                Variadic {
+                    quantity: Quantity::Many { min },
+                    ..
+                } => sum = sum.checked_add(*min)?,
+                _ => sum = sum.checked_add(1)?,
+            }
+        }
+        Some(sum)
     }
 
     fn find_first_var_many(&mut self, instrs: &'p [InstrId]) -> Option<usize> {
@@ -439,7 +533,9 @@ impl<'p, 's, A: Clone + PartialEq + Debug> Runtime<'p, 's, A> {
         }
     }
 
-    fn push_choice_point(&mut self) {
+    fn push_choice_point(&mut self, resume_frame: Frame<'p, 's, A>) {
+        self.frame_stack.push(resume_frame);
+
         let mut choice_point = ChoicePoint {
             frame_stack_len: self.frame_stack.len(),
             bindings: HashSet::new(),
