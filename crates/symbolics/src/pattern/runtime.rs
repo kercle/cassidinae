@@ -341,6 +341,16 @@ impl<'p, 's, A: Clone + PartialEq + Debug> Runtime<'p, 's, A> {
         true
     }
 
+    fn test_predicate(&self, subject: &'s Expr<A>, predicate: PatternPredicate) -> bool {
+        use PatternPredicate::*;
+        match predicate {
+            IsNumberQ => subject.is_number(),
+            IsSymbolQ => subject.is_symbol(),
+        }
+    }
+
+    // ---- Sequence Matching ----
+
     fn match_sequence(&mut self, instrs: &'p [InstrId], subjects: &'s [Expr<A>]) -> bool {
         if instrs.is_empty() {
             return subjects.is_empty();
@@ -512,6 +522,19 @@ impl<'p, 's, A: Clone + PartialEq + Debug> Runtime<'p, 's, A> {
         true
     }
 
+    // ---- Multiset Matching ----
+
+    fn match_multiset(
+        &mut self,
+        _literals: &[Expr<A>],
+        _fixed: &[InstrId],
+        _rest: &[(VarId, usize)],
+    ) -> bool {
+        todo!()
+    }
+
+    // ---- Program Queries ----
+
     fn min_subjects_needed(&self, instrs: &'p [InstrId]) -> usize {
         use Instruction::*;
 
@@ -548,22 +571,7 @@ impl<'p, 's, A: Clone + PartialEq + Debug> Runtime<'p, 's, A> {
         )
     }
 
-    fn match_multiset(
-        &mut self,
-        _literals: &[Expr<A>],
-        _fixed: &[InstrId],
-        _rest: &[(VarId, usize)],
-    ) -> bool {
-        todo!()
-    }
-
-    fn test_predicate(&self, subject: &'s Expr<A>, predicate: PatternPredicate) -> bool {
-        use PatternPredicate::*;
-        match predicate {
-            IsNumberQ => subject.is_number(),
-            IsSymbolQ => subject.is_symbol(),
-        }
-    }
+    // ---- Execution State ----
 
     fn bind_one(&mut self, bind_var: VarId, subject: &'s Expr<A>) -> bool {
         match self.environment.bind_one(bind_var, subject) {
