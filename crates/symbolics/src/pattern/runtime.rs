@@ -66,6 +66,8 @@ pub struct Environment<'p, 's, A: Clone + PartialEq> {
     program: &'p Program<A>,
 }
 
+struct ErrorBindCollision;
+
 impl<'p, 's, A: Clone + PartialEq> Environment<'p, 's, A> {
     fn new(program: &'p Program<A>) -> Self {
         Self {
@@ -74,31 +76,51 @@ impl<'p, 's, A: Clone + PartialEq> Environment<'p, 's, A> {
         }
     }
 
-    fn bind_one(&mut self, bind_var: VarId, subject: &'s Expr<A>) -> bool {
+    fn bind_one(
+        &mut self,
+        bind_var: VarId,
+        subject: &'s Expr<A>,
+    ) -> Result<bool, ErrorBindCollision> {
         match self.bindings.get(&bind_var) {
-            Some(EnvBinding::One(bound_subject)) => subject == *bound_subject,
+            Some(EnvBinding::One(bound_subject)) => {
+                if subject == *bound_subject {
+                    Ok(false)
+                } else {
+                    Err(ErrorBindCollision)
+                }
+            }
             None => {
                 self.bindings.insert(bind_var, EnvBinding::One(subject));
-                true
+                Ok(true)
             }
-            _ => false,
+            _ => Err(ErrorBindCollision),
         }
     }
 
-    fn bind_seq(&mut self, bind_var: VarId, subjects: Vec<&'s Expr<A>>) -> bool {
+    fn bind_seq(
+        &mut self,
+        bind_var: VarId,
+        subjects: Vec<&'s Expr<A>>,
+    ) -> Result<bool, ErrorBindCollision> {
         match self.bindings.get(&bind_var) {
             Some(EnvBinding::Many(bound_subjects)) => {
                 if bound_subjects.len() != subjects.len() {
-                    return false;
+                    return Err(ErrorBindCollision);
                 }
 
-                bound_subjects.iter().zip(subjects).all(|(a, b)| *a == b)
+                let all_equal = bound_subjects.iter().zip(subjects).all(|(a, b)| *a == b);
+
+                if all_equal {
+                    Ok(false)
+                } else {
+                    Err(ErrorBindCollision)
+                }
             }
             None => {
                 self.bindings.insert(bind_var, EnvBinding::Many(subjects));
-                true
+                Ok(true)
             }
-            _ => false,
+            _ => Err(ErrorBindCollision),
         }
     }
 
@@ -401,7 +423,7 @@ impl<'p, 's, A: Clone + PartialEq + Debug> Runtime<'p, 's, A> {
         subjects: &'s [Expr<A>],
     ) -> bool {
         if instrs.is_empty() {
-            return true;
+            return subjects.is_empty();
         }
 
         let &instr = instrs.first().unwrap();
@@ -547,20 +569,24 @@ impl<'p, 's, A: Clone + PartialEq + Debug> Runtime<'p, 's, A> {
     }
 
     fn bind_one(&mut self, bind_var: VarId, subject: &'s Expr<A>) -> bool {
-        if self.environment.bind_one(bind_var, subject) {
-            self.bind_stack.push(bind_var);
-            true
-        } else {
-            false
+        match self.environment.bind_one(bind_var, subject) {
+            Ok(true) => {
+                self.bind_stack.push(bind_var);
+                true
+            }
+            Ok(false) => true,
+            Err(_) => false,
         }
     }
 
     fn bind_seq(&mut self, bind_var: VarId, subjects: Vec<&'s Expr<A>>) -> bool {
-        if self.environment.bind_seq(bind_var, subjects) {
-            self.bind_stack.push(bind_var);
-            true
-        } else {
-            false
+        match self.environment.bind_seq(bind_var, subjects) {
+            Ok(true) => {
+                self.bind_stack.push(bind_var);
+                true
+            }
+            Ok(false) => true,
+            Err(_) => false,
         }
     }
 

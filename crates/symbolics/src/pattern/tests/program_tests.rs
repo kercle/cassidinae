@@ -104,3 +104,16 @@ fn test_no_spurious_match_after_length_mismatch() {
         "Should not match when back literals cannot be satisfied"
     );
 }
+
+#[test]
+fn test_confirming_rebind_not_wiped_on_backtrack() {
+    let pattern = expr! { f[Pattern[x, Blank[]], Pattern[x, Blank[]], Pattern[y, BlankNullSeq[]]] };
+    let program = Compiler::new(|_| ArgOrder::Sequence).compile(&pattern);
+    let subject = expr! { f[a, a, b] };
+    let mut runtime = Runtime::new(&program, &subject);
+
+    let env = runtime.next_match().expect("should match");
+    assert_eq!(env.get_one("x"), Some(&expr! { a }));
+
+    assert!(runtime.next_match().is_none());
+}
