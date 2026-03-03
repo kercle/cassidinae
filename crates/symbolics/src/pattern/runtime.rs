@@ -13,6 +13,7 @@ use crate::{
     },
 };
 
+#[derive(Debug)]
 struct ChoicePoint<'p, 's, A: Clone + PartialEq> {
     pub frame_stack_len: usize,
     pub bindings: HashSet<VarId>,
@@ -75,6 +76,7 @@ impl<'p, 's, A: Clone + PartialEq> Environment<'p, 's, A> {
     }
 
     fn bind_one(&mut self, bind_var: VarId, subject: &'s Expr<A>) -> bool {
+        // eprintln!("BIND: {bind_var:?}");
         match self.bindings.get(&bind_var) {
             Some(EnvBinding::One(_bound_subject)) => todo!(),
             None => {
@@ -86,6 +88,7 @@ impl<'p, 's, A: Clone + PartialEq> Environment<'p, 's, A> {
     }
 
     fn bind_seq(&mut self, bind_var: VarId, subjects: Vec<&'s Expr<A>>) -> bool {
+        // eprintln!("BIND: {bind_var:?}");
         match self.bindings.get(&bind_var) {
             Some(EnvBinding::Many(_bound_subject)) => {
                 todo!()
@@ -125,6 +128,19 @@ impl<'p, 's, A: Clone + PartialEq> Environment<'p, 's, A> {
     }
 }
 
+impl<'p, 's, A: Clone + PartialEq + Debug> Environment<'p, 's, A> {
+    pub fn dbg_print_bindings(&self) {
+        let mut keys: Vec<&VarId> = self.bindings.keys().collect();
+        keys.sort();
+
+        for k in keys {
+            let v = self.bindings.get(k).unwrap();
+            let name = self.program.vars.get(*k as usize).unwrap();
+            eprintln!("{name}: {v:?}");
+        }
+    }
+}
+
 pub struct Runtime<'p, 's, A: Clone + PartialEq> {
     program: &'p Program<A>,
     environment: Environment<'p, 's, A>,
@@ -146,7 +162,7 @@ impl<'p, 's, A: Clone + PartialEq + Debug> Runtime<'p, 's, A> {
     }
 
     pub fn next_match(&mut self) -> Option<&Environment<'p, 's, A>> {
-        if self.frame_stack.is_empty() {
+        if self.frame_stack.is_empty() && !self.backtrack() {
             return None;
         }
 
@@ -166,6 +182,12 @@ impl<'p, 's, A: Clone + PartialEq + Debug> Runtime<'p, 's, A> {
     }
 
     fn step(&mut self, frame: Frame<'p, 's, A>) -> bool {
+        // eprintln!("==== STEP ====");
+        // dbg!(&frame);
+        // eprintln!("---- STACK ----");
+        // dbg!(&self.frame_stack);
+        // eprintln!("");
+
         match frame {
             Frame::Exec { instr, subject } => self.exec(instr, subject),
             Frame::MatchSequence { instrs, subjects } => self.match_sequence(instrs, subjects),
@@ -308,30 +330,41 @@ impl<'p, 's, A: Clone + PartialEq + Debug> Runtime<'p, 's, A> {
     }
 
     fn match_sequence(&mut self, instrs: &'p [InstrId], subjects: &'s [Expr<A>]) -> bool {
-        if instrs.is_empty() || subjects.is_empty() {
-            if instrs.is_empty() && subjects.is_empty() {
-                return true;
-            }
+        if instrs.is_empty() {
+            return true;
+        }
 
+        let Some(rest_start) = self.find_first_var_many(instrs) else {
+            return self.match_sequence_exact(instrs, subjects);
+        };
+        let Some(rest_end) = self.find_last_var_many(instrs) else {
+            return false;
+        };
+
+        let front_exact_len = rest_start;
+        let back_exact_len = instrs.len() - rest_end - 1;
+
+        if front_exact_len + back_exact_len > subjects.len() {
             return false;
         }
 
-        if let Some(rest_start) = self.find_first_var_many(instrs) {
-            let Some(rest_end) = self.find_last_var_many(instrs) else {
-                return false;
-            };
+        if front_exact_len == 0 && back_exact_len == 0 {
+            // if sequence starts and ends with variadic, we work through
+            // all possible remaining choices. This guarantees that the
+            // front and back is already bound before we enter backtracking.
 
-            let front_exact_len = rest_start;
-            let back_exact_len = instrs.len() - rest_end - 1;
-
-            if front_exact_len + back_exact_len > subjects.len() {
-                return false;
-            }
-
-            let rest_match_result = self.match_sequence_rest(
+            self.match_sequence_rest(
                 &instrs[rest_start..=rest_end],
                 &subjects[rest_start..subjects.len() - back_exact_len],
-            );
+            )
+        } else {
+            // Defer matching rest of the sequence before we match all
+            // deterministic match options.
+
+            self.frame_stack.push(Frame::MatchSequence {
+                instrs: &instrs[rest_start..=rest_end],
+                subjects: &subjects[rest_start..subjects.len() - back_exact_len],
+            });
 
             let front_match_result =
                 self.match_sequence_exact(&instrs[..front_exact_len], &subjects[..front_exact_len]);
@@ -340,9 +373,7 @@ impl<'p, 's, A: Clone + PartialEq + Debug> Runtime<'p, 's, A> {
                 &subjects[subjects.len() - back_exact_len..],
             );
 
-            front_match_result && back_match_result && rest_match_result
-        } else {
-            self.match_sequence_exact(instrs, subjects)
+            front_match_result && back_match_result
         }
     }
 
@@ -413,44 +444,41 @@ impl<'p, 's, A: Clone + PartialEq + Debug> Runtime<'p, 's, A> {
         &mut self,
         instrs: &'p [InstrId],
         subjects: &'s [Expr<A>],
-        first_consume_count: usize,
+        first_seq_len: usize,
         first_head_pattern: &'p Option<InstrId>,
         first_bind: &'p Option<VarId>,
     ) -> bool {
-        todo!()
-        // debug_assert!(instrs.len() >= 2);
+        debug_assert!(instrs.len() >= 2);
 
-        // let Some(suffix_min) = self.min_subjects_needed(&instrs[1..]) else {
-        //     return false;
-        // };
+        let Some(suffix_min) = self.min_subjects_needed(&instrs[1..]) else {
+            return false;
+        };
 
-        // if subjects.len() < suffix_min {
-        //     return false;
-        // }
+        let required_min_len = first_seq_len + suffix_min;
 
-        // let max_first = subjects.len() - suffix_min;
-        // if first_consume_count > max_first {
-        //     return false;
-        // }
+        if subjects.len() < required_min_len {
+            return false;
+        }
 
-        // if first_consume_count < max_first {
-        //     self.push_choice_point(Frame::ResumeMatchSequence {
-        //         instrs,
-        //         subjects,
-        //         first_consume_count: first_consume_count + 1,
-        //         first_head_pattern,
-        //         first_bind,
-        //     });
-        // }
+        if required_min_len + 1 <= subjects.len() {
+            // we can afford to add one more subject to first sequence
+            self.push_choice_point(Frame::ResumeMatchSequence {
+                instrs,
+                subjects,
+                first_consume_count: first_seq_len + 1,
+                first_head_pattern,
+                first_bind,
+            });
+        }
 
-        // let (first_chunk, rest_subjects) = subjects.split_at(first_consume_count);
+        let (first_chunk, rest_subjects) = subjects.split_at(first_seq_len);
 
-        // self.frame_stack.push(Frame::MatchSequence {
-        //     instrs: &instrs[1..],
-        //     subjects: rest_subjects,
-        // });
+        self.frame_stack.push(Frame::MatchSequence {
+            instrs: &instrs[1..],
+            subjects: rest_subjects,
+        });
 
-        // self.match_sequence_single_variadic(subjects, first_head_pattern, first_bind)
+        self.match_sequence_single_variadic(first_chunk, first_head_pattern, first_bind)
     }
 
     fn min_subjects_needed(&self, instrs: &'p [InstrId]) -> Option<usize> {
@@ -541,14 +569,18 @@ impl<'p, 's, A: Clone + PartialEq + Debug> Runtime<'p, 's, A> {
             resume_frame,
         };
 
+        // eprint!("PUSH CHOICEPOINT:");
         for &v_id in self.environment.bindings.keys() {
+            // eprint!(" {v_id:?}");
             choice_point.bindings.insert(v_id);
         }
+        // eprintln!("");
 
         self.choice_points.push(choice_point);
     }
 
     fn backtrack(&mut self) -> bool {
+        // eprintln!("BACKTRACK");
         let Some(choice_point) = self.choice_points.pop() else {
             return false;
         };
