@@ -4,7 +4,6 @@ use std::{
 };
 
 use crate::{
-    dbg_matcher,
     expr::Expr,
     pattern::program::{InstrId, Program, VarId},
     pattern::{
@@ -212,8 +211,6 @@ impl<'p, 's, A: Clone + PartialEq + Debug> Runtime<'p, 's, A> {
     }
 
     fn exec(&mut self, instr: InstrId, subject: &'s Expr<A>) -> bool {
-        dbg_matcher!("exec {instr:02} subject={subject:?}");
-
         let Some(instr) = self.program.instructions.get(instr) else {
             return false;
         };
