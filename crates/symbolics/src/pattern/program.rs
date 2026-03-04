@@ -3,6 +3,7 @@ use std::fmt::Debug;
 use std::str::FromStr;
 
 use crate::expr::Expr;
+use crate::expr::walk::ExprTopDownWalker;
 use crate::pattern::{PatternPredicate, builtin::*};
 
 pub type InstrId = usize;
@@ -123,57 +124,31 @@ where
                 inner: pat_expr.clone(),
                 bind,
             }),
-            Node { head, args, .. } if head.matches_symbol(HEAD_BLANK) && args.len() <= 1 => {
+            Node { args, .. } if Self::is_blank(pat_expr) => {
                 self.compile_blank_with_head_constraint(Quantity::One, args.first(), bind)
             }
-            Node { head, args, .. }
-                if head.matches_symbol(HEAD_BLANK_SEQUENCE) && args.len() <= 1 =>
-            {
-                self.compile_blank_with_head_constraint(
-                    Quantity::Many { min: 1 },
-                    args.first(),
-                    bind,
-                )
-            }
-            Node { head, args, .. }
-                if head.matches_symbol(HEAD_BLANK_NULL_SEQUENCE) && args.len() <= 1 =>
-            {
-                self.compile_blank_with_head_constraint(
-                    Quantity::Many { min: 0 },
-                    args.first(),
-                    bind,
-                )
-            }
-            Node { head, args, .. } if pat_expr.is_application_of(HEAD_PATTERN, 2) => {
+            Node { args, .. } if Self::is_blank_seq(pat_expr) => self
+                .compile_blank_with_head_constraint(Quantity::Many { min: 1 }, args.first(), bind),
+            Node { args, .. } if Self::is_blank_null_seq(pat_expr) => self
+                .compile_blank_with_head_constraint(Quantity::Many { min: 0 }, args.first(), bind),
+            Node { args, .. } if Self::is_pattern(pat_expr) => {
                 let [lhs, rhs] = args.as_slice() else {
                     unreachable!()
                 };
 
-                let Some(bind_var_name) = lhs.get_symbol() else {
-                    return self.compile_node(
-                        head,
-                        (self.arg_order_predicate)(pat_expr),
-                        args,
-                        bind,
-                    );
-                };
+                // Unwrap is safe here: guaranteed by is_pattern
+                let bind_var_name = lhs.get_symbol().unwrap();
 
                 let var_id = self.bind_name_id(bind_var_name);
                 self.compile_pattern(rhs, Some(var_id))
             }
-            Node { head, args, .. } if pat_expr.is_application_of(HEAD_PATTERN_TEST, 2) => {
+            Node { head, args, .. } if Self::is_pattern_test(pat_expr) => {
                 let [lhs, rhs] = args.as_slice() else {
                     unreachable!()
                 };
 
-                let Some(predicate_symbol) = rhs.get_symbol() else {
-                    return self.compile_node(
-                        head,
-                        (self.arg_order_predicate)(pat_expr),
-                        args,
-                        bind,
-                    );
-                };
+                // Unwrap is safe here: guaranteed by is_pattern_test
+                let predicate_symbol = rhs.get_symbol().unwrap();
 
                 let Ok(predicate) = PatternPredicate::from_str(predicate_symbol) else {
                     // Maybe error reporting instead?
@@ -195,9 +170,14 @@ where
                 })
             }
             Node { head, args, .. } => {
-                // Optimization: check if there are any Pattern-related sub-expressions present.
-                // If not, push the entire node as literal.
-                self.compile_node(head, (self.arg_order_predicate)(pat_expr), args, bind)
+                if Self::is_literal(pat_expr) {
+                    self.emit(Instruction::Literal {
+                        inner: pat_expr.clone(),
+                        bind,
+                    })
+                } else {
+                    self.compile_node(head, (self.arg_order_predicate)(pat_expr), args, bind)
+                }
             }
         }
     }
@@ -239,5 +219,60 @@ where
         };
 
         self.emit(Instruction::Node { head, plan, bind })
+    }
+
+    fn is_blank(expr: &Expr<A>) -> bool {
+        if let Expr::Node { head, args, .. } = expr {
+            head.matches_symbol(HEAD_BLANK) && args.len() <= 1
+        } else {
+            false
+        }
+    }
+
+    fn is_blank_seq(expr: &Expr<A>) -> bool {
+        if let Expr::Node { head, args, .. } = expr {
+            head.matches_symbol(HEAD_BLANK_SEQUENCE) && args.len() <= 1
+        } else {
+            false
+        }
+    }
+
+    fn is_blank_null_seq(expr: &Expr<A>) -> bool {
+        if let Expr::Node { head, args, .. } = expr {
+            head.matches_symbol(HEAD_BLANK_NULL_SEQUENCE) && args.len() <= 1
+        } else {
+            false
+        }
+    }
+
+    fn is_pattern(expr: &Expr<A>) -> bool {
+        if !expr.is_application_of(HEAD_PATTERN, 2) {
+            return false;
+        }
+
+        expr.get_arg(0).unwrap().is_symbol()
+    }
+
+    fn is_pattern_test(expr: &Expr<A>) -> bool {
+        if !expr.is_application_of(HEAD_PATTERN_TEST, 2) {
+            return false;
+        }
+
+        expr.get_arg(1).unwrap().is_symbol()
+    }
+
+    fn is_literal(root: &Expr<A>) -> bool {
+        for expr in ExprTopDownWalker::new(root) {
+            if Self::is_blank(expr)
+                || Self::is_blank_null_seq(expr)
+                || Self::is_blank_seq(expr)
+                || Self::is_pattern(expr)
+                || Self::is_pattern_test(expr)
+            {
+                return false;
+            }
+        }
+
+        true
     }
 }

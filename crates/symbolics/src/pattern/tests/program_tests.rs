@@ -121,11 +121,12 @@ fn test_confirming_rebind_not_wiped_on_backtrack() {
 #[test]
 fn test_simple_multiset_matching() {
     let pattern =
-        expr! { f[a, b, Pattern[x, Blank[]], Pattern[y, Blank[]], Pattern[y, BlankSeq[]]] };
+        expr! { f[g[a], b, Pattern[x, Blank[]], Pattern[y, Blank[]], Pattern[y, BlankSeq[]]] };
     let program = Compiler::new(|_| ArgOrder::Multiset).compile(&pattern);
     let subject = expr! {
-        f[a,b,c,d,e,f]
+        f[g[a],b,c,d,e,f]
     };
+    dbg!(&program);
     let mut runtime = Runtime::new(&program, &subject);
 
     runtime.next_match().expect("should match");
