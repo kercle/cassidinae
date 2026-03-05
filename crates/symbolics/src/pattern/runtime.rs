@@ -42,7 +42,7 @@ enum Frame<'p, 's, A: Clone + PartialEq> {
         instrs: &'p [InstrId],
         subjects: &'s [Expr<A>],
         state: MultisetMatchState,
-        skip_subjects: usize,
+        already_tried_count: usize,
     },
     BindOne {
         bind_var: VarId,
@@ -58,7 +58,7 @@ enum Frame<'p, 's, A: Clone + PartialEq> {
     },
 }
 
-pub enum EnvBinding<'s, A: Clone + PartialEq> {
+pub(super) enum EnvBinding<'s, A: Clone + PartialEq> {
     One(&'s Expr<A>),
     Many(Vec<&'s Expr<A>>),
 }
@@ -236,8 +236,8 @@ impl<'p, 's, A: Clone + PartialEq + Debug> Runtime<'p, 's, A> {
                 instrs,
                 subjects,
                 state,
-                skip_subjects,
-            } => self.match_multiset(instrs, subjects, state, skip_subjects),
+                already_tried_count,
+            } => self.match_multiset(instrs, subjects, state, already_tried_count),
             BindOne { bind_var, subject } => self.bind_one(bind_var, subject),
             BindSeq { bind_var, subjects } => self.bind_seq(bind_var, subjects),
             TestPredicate { subject, predicate } => self.test_predicate(subject, predicate),
@@ -542,7 +542,7 @@ impl<'p, 's, A: Clone + PartialEq + Debug> Runtime<'p, 's, A> {
         instrs: &'p [InstrId],
         subjects: &'s [Expr<A>],
         mut state: MultisetMatchState,
-        skip_subjects: usize,
+        already_tried_count: usize,
     ) -> bool {
         // Get rid of all literals. If any literal in the pattern does
         // not match any subject, the pattern does not match and we abort.
@@ -582,12 +582,15 @@ impl<'p, 's, A: Clone + PartialEq + Debug> Runtime<'p, 's, A> {
         else {
             // There is possibly a variadic pattern left
             // handle here!
-            return self.match_multiset_variadics(instrs, subjects, state, skip_subjects);
+            return self.match_multiset_variadics(instrs, subjects, state, already_tried_count);
         };
 
-        // among the unmatched subjects, take the one after `skip_subjects`
+        // among the unmatched subjects, take the one after `already_tried_count`
         // since they have already been tried in a previous choicepoint
-        let Some(next_subject_pos) = state.subject_index_iter(true).skip(skip_subjects).next()
+        let Some(next_subject_pos) = state
+            .subject_index_iter(true)
+            .skip(already_tried_count)
+            .next()
         else {
             return false;
         };
@@ -595,12 +598,12 @@ impl<'p, 's, A: Clone + PartialEq + Debug> Runtime<'p, 's, A> {
         // Optimization potential: check first if there are even
         // more subjects left to match before pushing choicepoint
         // For now, we just want to get it to work.
-        if skip_subjects + 1 < state.count_unmatched_subjects() {
+        if already_tried_count + 1 < state.count_unmatched_subjects() {
             self.push_choice_point(Frame::ResumeMatchMultiset {
                 instrs,
                 subjects,
                 state: state.clone(),
-                skip_subjects: skip_subjects + 1,
+                already_tried_count: already_tried_count + 1,
             });
         }
 
@@ -625,7 +628,7 @@ impl<'p, 's, A: Clone + PartialEq + Debug> Runtime<'p, 's, A> {
         instrs: &'p [InstrId],
         subjects: &'s [Expr<A>],
         state: MultisetMatchState,
-        _skip_subjects: usize, // for later use when implementing multiple variadics
+        _already_tried_count: usize, // for later use when implementing multiple variadics
     ) -> bool {
         let unmatched_instr_count = state.count_unmatched_instructions();
 
