@@ -8,3 +8,6 @@ pub mod parser;
 pub mod pattern;
 pub mod rewrite;
 pub mod simplify;
+
+#[cfg(test)]
+mod tests;

@@ -9,5 +9,5 @@ members = [
     "crates/wasm",
     "crates/common",
     "crates/parser",
-    "crates/symbolics-macros",
+    "crates/parser-macros",
 ]

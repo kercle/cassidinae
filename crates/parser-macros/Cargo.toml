@@ -1,5 +1,5 @@
 [package]
-name = "symbolics_macros"
+name = "parser_macros"
 version = "0.1.0"
 edition = "2024"
 
@@ -7,8 +7,8 @@ edition = "2024"
 proc-macro = true
 
 [dependencies]
-symbolics = { path = "../symbolics" }
 parser = { path = "../parser" }
+numbers = { path = "../numbers" }
 proc-macro2 = { version = "1.0.106", features = ["span-locations"] }
 syn = "2.0.117"
 quote = "1.0.45"

@@ -132,7 +132,7 @@ impl ParserAst {
     }
 
     pub fn new_add(lhs: ParserAst, rhs: ParserAst) -> Self {
-        ParserAst::GreaterThan {
+        ParserAst::Add {
             lhs: Box::new(lhs),
             rhs: Box::new(rhs),
         }

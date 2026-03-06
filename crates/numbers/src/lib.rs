@@ -21,6 +21,10 @@ pub enum Number {
 }
 
 impl Number {
+    pub fn new_integer_from_str(s: &str) -> Result<Self, String> {
+        Ok(Self::Integer(BigInteger::from_str_radix(s, 10)?))
+    }
+
     pub fn new_rational_from_i64(numerator: i64, denominator: u64) -> Result<Self, String> {
         Ok(Self::Rational(BigRational::new(
             BigInteger::from_i64(numerator),

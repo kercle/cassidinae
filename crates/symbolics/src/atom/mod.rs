@@ -12,6 +12,18 @@ pub enum Atom {
 }
 
 impl Atom {
+    pub fn number(n: Number) -> Self {
+        Self::Number(n)
+    }
+
+    pub fn symbol<T: AsRef<str>>(s: T) -> Self {
+        Self::Symbol(s.as_ref().to_string())
+    }
+
+    pub fn string_literal<T: AsRef<str>>(s: T) -> Self {
+        Self::StringLiteral(s.as_ref().to_string())
+    }
+
     fn rank(&self) -> u8 {
         match self {
             Atom::Number(_) => 0,

@@ -569,6 +569,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "parser_macros"
+version = "0.1.0"
+dependencies = [
+ "numbers",
+ "parser",
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "percent-encoding"
 version = "2.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -806,17 +817,7 @@ dependencies = [
  "expr_macro",
  "numbers",
  "parser",
-]
-
-[[package]]
-name = "symbolics_macros"
-version = "0.1.0"
-dependencies = [
- "parser",
- "proc-macro2",
- "quote",
- "symbolics",
- "syn",
+ "parser_macros",
 ]
 
 [[package]]

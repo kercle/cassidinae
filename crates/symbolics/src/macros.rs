@@ -1,4 +1,18 @@
 #[macro_export]
+macro_rules! expr {
+    ($($tt:tt)*) => {
+        $crate::expr::Expr::<()>::from(parser_macros::tcas_parse!($($tt)*))
+    };
+}
+
+#[macro_export]
+macro_rules! norm_expr {
+    ($($tt:tt)*) => {
+        $crate::expr::NormalizedExpr::new($crate::expr::Expr::<()>::from(parser_macros::tcas_parse!($($tt)*)))
+    };
+}
+
+#[macro_export]
 macro_rules! symbol {
     ( $($x:expr),* $(,)? ) => {
         ( $($crate::expr::generator::SymbolGenerator::new($x)),* )
