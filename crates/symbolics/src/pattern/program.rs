@@ -48,6 +48,19 @@ pub enum Instruction<A: Clone + PartialEq> {
     },
 }
 
+impl<A: Clone + PartialEq> Instruction<A> {
+    pub fn bind(&self) -> Option<VarId> {
+        use Instruction::*;
+        match self {
+            Literal { bind, .. } => bind.clone(),
+            Variadic { bind, .. } => bind.clone(),
+            Wildcard { bind, .. } => bind.clone(),
+            Predicate { bind, .. } => bind.clone(),
+            Node { bind, .. } => bind.clone(),
+        }
+    }
+}
+
 pub enum ArgPlan {
     Sequence(Vec<InstrId>),
     Multiset(Vec<InstrId>),

@@ -164,7 +164,7 @@ impl<'p, 's, A: Clone + PartialEq + Debug> Runtime<'p, 's, A> {
         use Instruction::*;
         match instr {
             Literal { inner, bind } => self.match_literal(inner, subject, *bind),
-            Node { head, plan, bind } => {
+            Node { head, plan, .. } => {
                 let Expr::Node {
                     head: subject_head,
                     args: subject_args,
@@ -175,9 +175,7 @@ impl<'p, 's, A: Clone + PartialEq + Debug> Runtime<'p, 's, A> {
                     return false;
                 };
 
-                if let Some(&bind_var) = bind.as_ref() {
-                    self.push_frame(Frame::BindOne { bind_var, subject });
-                }
+                self.schedule_bind_one_if_present(instr, subject);
 
                 match plan {
                     ArgPlan::Sequence(pattern_args) => {
@@ -202,10 +200,8 @@ impl<'p, 's, A: Clone + PartialEq + Debug> Runtime<'p, 's, A> {
 
                 true
             }
-            Wildcard { head_pattern, bind } => {
-                if let Some(&bind_var) = bind.as_ref() {
-                    self.push_frame(Frame::BindOne { bind_var, subject });
-                }
+            Wildcard { head_pattern, .. } => {
+                self.schedule_bind_one_if_present(instr, subject);
 
                 if let Some(head_pattern_instr) = head_pattern {
                     self.stage_match_head_pattern(*head_pattern_instr, subject)
@@ -215,13 +211,9 @@ impl<'p, 's, A: Clone + PartialEq + Debug> Runtime<'p, 's, A> {
             }
             Variadic { .. } => unreachable!("Variadics handled in match_variadic_subsequence."),
             Predicate {
-                predicate,
-                inner,
-                bind,
+                predicate, inner, ..
             } => {
-                if let Some(&bind_var) = bind.as_ref() {
-                    self.push_frame(Frame::BindOne { bind_var, subject });
-                }
+                self.schedule_bind_one_if_present(instr, subject);
 
                 self.push_frame(Frame::TestPredicate {
                     subject,
@@ -260,6 +252,12 @@ impl<'p, 's, A: Clone + PartialEq + Debug> Runtime<'p, 's, A> {
         }
     }
 
+    fn schedule_bind_one_if_present(&mut self, instr: &Instruction<A>, subject: &'s Expr<A>) {
+        if let Some(bind_var) = instr.bind() {
+            self.push_frame(Frame::BindOne { bind_var, subject });
+        }
+    }
+
     // ---- Literal Matching ----
 
     fn match_literal(
@@ -268,11 +266,7 @@ impl<'p, 's, A: Clone + PartialEq + Debug> Runtime<'p, 's, A> {
         subject: &'s Expr<A>,
         bind: Option<VarId>,
     ) -> bool {
-        if subject.digest() != inner.digest() {
-            return false;
-        }
-
-        if subject != inner {
+        if !Self::expressions_equal(inner, subject) {
             return false;
         }
 
@@ -280,6 +274,21 @@ impl<'p, 's, A: Clone + PartialEq + Debug> Runtime<'p, 's, A> {
             self.bind_one(bind_var, subject)
         } else {
             true
+        }
+    }
+
+    fn expressions_equal(inner: &Expr<A>, subject: &'s Expr<A>) -> bool {
+        if subject.digest() != inner.digest() {
+            return false;
+        }
+
+        return subject == inner;
+    }
+
+    fn literal_instr_matches_expr(&self, instr: InstrId, subject: &'s Expr<A>) -> bool {
+        match self.program.instructions.get(instr) {
+            Some(Instruction::Literal { inner, .. }) => Self::expressions_equal(inner, subject),
+            _ => false,
         }
     }
 
@@ -481,7 +490,7 @@ impl<'p, 's, A: Clone + PartialEq + Debug> Runtime<'p, 's, A> {
                         continue;
                     }
 
-                    if self.exec(instr, subject) {
+                    if self.literal_instr_matches_expr(instr, subject) {
                         break 'find_subject Some(subject_pos);
                     }
                 }
@@ -492,6 +501,11 @@ impl<'p, 's, A: Clone + PartialEq + Debug> Runtime<'p, 's, A> {
             };
 
             state.set(instr_pos, subject_pos);
+
+            self.schedule_bind_one_if_present(
+                self.program.instructions.get(instr).unwrap(),
+                &subjects[subject_pos],
+            );
         }
 
         if state.is_instructions_mask_full() {
