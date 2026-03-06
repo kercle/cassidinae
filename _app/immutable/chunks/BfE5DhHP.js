@@ -1,39 +1,39 @@
-import { h, aQ as v, aR as A, N as S, aS as T, aT as M, aU as x, aV as E, aW as L } from "./YVIW7mlL.js";
-let Z, Q, m;
+import { h, aQ as A, aR as v, N as S, aS as T, aT as M, aU as x, aV as E, aW as L } from "./YVIW7mlL.js";
+let Z, Q, y;
 let __tla = (async () => {
-  const W = /* @__PURE__ */ Symbol("is custom element"), U = /* @__PURE__ */ Symbol("is html"), I = A ? "link" : "LINK";
+  const U = /* @__PURE__ */ Symbol("is custom element"), I = /* @__PURE__ */ Symbol("is html"), W = v ? "link" : "LINK";
   Q = function(e) {
     if (h) {
       var t = false, n = () => {
         if (!t) {
           if (t = true, e.hasAttribute("value")) {
             var s = e.value;
-            m(e, "value", null), e.value = s;
+            y(e, "value", null), e.value = s;
           }
           if (e.hasAttribute("checked")) {
             var r = e.checked;
-            m(e, "checked", null), e.checked = r;
+            y(e, "checked", null), e.checked = r;
           }
         }
       };
       e.__on_r = n, S(n), T();
     }
   };
-  m = function(e, t, n, s) {
+  y = function(e, t, n, s) {
     var r = N(e);
-    h && (r[t] = e.getAttribute(t), t === "src" || t === "srcset" || t === "href" && e.nodeName === I) || r[t] !== (r[t] = n) && (t === "loading" && (e[M] = n), n == null ? e.removeAttribute(t) : typeof n != "string" && k(e).includes(t) ? e[t] = n : e.setAttribute(t, n));
+    h && (r[t] = e.getAttribute(t), t === "src" || t === "srcset" || t === "href" && e.nodeName === W) || r[t] !== (r[t] = n) && (t === "loading" && (e[M] = n), n == null ? e.removeAttribute(t) : typeof n != "string" && k(e).includes(t) ? e[t] = n : e.setAttribute(t, n));
   };
   function N(e) {
     return e.__attributes ?? (e.__attributes = {
-      [W]: e.nodeName.includes("-"),
-      [U]: e.namespaceURI === v
+      [U]: e.nodeName.includes("-"),
+      [I]: e.namespaceURI === A
     });
   }
-  var y = /* @__PURE__ */ new Map();
+  var m = /* @__PURE__ */ new Map();
   function k(e) {
-    var t = e.getAttribute("is") || e.nodeName, n = y.get(t);
+    var t = e.getAttribute("is") || e.nodeName, n = m.get(t);
     if (n) return n;
-    y.set(t, n = []);
+    m.set(t, n = []);
     for (var s, r = e, a = Element.prototype; a !== r; ) {
       s = E(r);
       for (var o in s) s[o].set && n.push(o);
@@ -41,7 +41,7 @@ let __tla = (async () => {
     }
     return n;
   }
-  const B = "" + new URL("../assets/kernel_bg.BbmsgMvW.wasm", import.meta.url).href, O = async (e = {}, t) => {
+  const O = "" + new URL("../assets/kernel_bg.I5pUgyHn.wasm", import.meta.url).href, B = async (e = {}, t) => {
     let n;
     if (t.startsWith("data:")) {
       const s = t.replace(/^data:.*?base64,/, "");
@@ -66,7 +66,7 @@ let __tla = (async () => {
   function C(e) {
     let t, n;
     try {
-      const s = j(e, _.__wbindgen_malloc, _.__wbindgen_realloc), r = w, a = _.eval_input(s, r);
+      const s = H(e, _.__wbindgen_malloc, _.__wbindgen_realloc), r = w, a = _.eval_input(s, r);
       return t = a[0], n = a[1], D(a[0], a[1]);
     } finally {
       _.__wbindgen_free(t, n, 1);
@@ -77,13 +77,13 @@ let __tla = (async () => {
     e.set(0, void 0), e.set(t + 0, void 0), e.set(t + 1, null), e.set(t + 2, true), e.set(t + 3, false);
   }
   function D(e, t) {
-    return e = e >>> 0, G(e, t);
+    return e = e >>> 0, F(e, t);
   }
   let l = null;
   function u() {
     return (l === null || l.byteLength === 0) && (l = new Uint8Array(_.memory.buffer)), l;
   }
-  function j(e, t, n) {
+  function H(e, t, n) {
     if (n === void 0) {
       const i = d.encode(e), c = t(i.length, 1) >>> 0;
       return u().subarray(c, c + i.length).set(i), w = i.length, c;
@@ -108,10 +108,10 @@ let __tla = (async () => {
     fatal: true
   });
   b.decode();
-  const F = 2146435072;
+  const j = 2146435072;
   let g = 0;
-  function G(e, t) {
-    return g += t, g >= F && (b = new TextDecoder("utf-8", {
+  function F(e, t) {
+    return g += t, g >= j && (b = new TextDecoder("utf-8", {
       ignoreBOM: true,
       fatal: true
     }), b.decode(), g = t), b.decode(u().subarray(e, e + t));
@@ -125,15 +125,15 @@ let __tla = (async () => {
     };
   });
   let w = 0, _;
-  function H(e) {
+  function G(e) {
     _ = e;
   }
   URL = globalThis.URL;
-  const f = await O({
+  const f = await B({
     "./kernel_bg.js": {
       __wbindgen_init_externref_table: R
     }
-  }, B), K = f.memory, P = f.eval_input, V = f.__wbindgen_externrefs, X = f.__wbindgen_malloc, Y = f.__wbindgen_realloc, $ = f.__wbindgen_free, p = f.__wbindgen_start, q = Object.freeze(Object.defineProperty({
+  }, O), K = f.memory, P = f.eval_input, V = f.__wbindgen_externrefs, X = f.__wbindgen_malloc, Y = f.__wbindgen_realloc, $ = f.__wbindgen_free, p = f.__wbindgen_start, q = Object.freeze(Object.defineProperty({
     __proto__: null,
     __wbindgen_externrefs: V,
     __wbindgen_free: $,
@@ -145,7 +145,7 @@ let __tla = (async () => {
   }, Symbol.toStringTag, {
     value: "Module"
   }));
-  H(q);
+  G(q);
   p();
   function z() {
     const { subscribe: e, set: t, update: n } = L({
@@ -183,5 +183,5 @@ export {
   __tla,
   Z as a,
   Q as r,
-  m as s
+  y as s
 };
