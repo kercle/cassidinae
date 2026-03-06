@@ -3,7 +3,7 @@ mod functions_known_values;
 mod trigonometric_functions;
 
 use crate::{
-    calculus::{derivative::resolve_derivatives, integrate::indefinite_integrals_rules},
+    calculus::{derivative::derivative_rules, integrate::indefinite_integrals_rules},
     expr::{Expr, NormalizedExpr},
     matcher::context::MatchContext,
 };
@@ -47,7 +47,7 @@ impl Simplifier {
     }
 
     pub fn with_resolved_derivatives(self) -> Simplifier {
-        Simplifier::new(resolve_derivatives(self.expr.take_expr()))
+        Simplifier::new(self.simplify_with_rules_until_stable(derivative_rules()))
     }
 
     pub fn with_resolved_indefinite_integrals(self) -> Simplifier {
