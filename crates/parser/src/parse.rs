@@ -148,10 +148,42 @@ fn parse_sum(stream: &mut TokenStream) -> Result<ParserAst, ParseError> {
     Ok(result)
 }
 
-fn parse_expression(stream: &mut TokenStream) -> Result<ParserAst, ParseError> {
-    // <expression> ::= <sum>
+fn parse_cmp(stream: &mut TokenStream) -> Result<ParserAst, ParseError> {
+    // <cmp> ::= <sum> { ("<" | "<=" | "==" | ">=" | ">") <sum> }*
 
-    parse_sum(stream)
+    let mut result = parse_sum(stream)?;
+
+    loop {
+        let Some(op) = stream.next_if_matches(|token| {
+            matches!(
+                token,
+                Token::LessThan
+                    | Token::LesserEq
+                    | Token::EqEq
+                    | Token::GreaterEq
+                    | Token::GreaterThan
+            )
+        }) else {
+            break; // No more operators
+        };
+
+        result = match op {
+            Token::LessThan => ParserAst::new_lt(result, parse_sum(stream)?),
+            Token::LesserEq => ParserAst::new_le(result, parse_sum(stream)?),
+            Token::EqEq => ParserAst::new_eq(result, parse_sum(stream)?),
+            Token::GreaterEq => ParserAst::new_ge(result, parse_sum(stream)?),
+            Token::GreaterThan => ParserAst::new_gt(result, parse_sum(stream)?),
+            _ => unreachable!(),
+        };
+    }
+
+    Ok(result)
+}
+
+fn parse_expression(stream: &mut TokenStream) -> Result<ParserAst, ParseError> {
+    // <expression> ::= <cmp>
+
+    parse_cmp(stream)
 }
 
 fn parse_block(stream: &mut TokenStream) -> Result<ParserAst, ParseError> {
@@ -444,6 +476,23 @@ mod tests {
                 ParserAst::from_i64(2),
                 ParserAst::from_i64(3)
             )),
+        );
+    }
+
+    #[test]
+    fn test_parse_equals() {
+        let input = "x+4==-2^3";
+        let ast = parse(input).expect("Failed to parse block with nested expressions");
+
+        assert_eq!(
+            ast,
+            ParserAst::new_eq(
+                ParserAst::new_add_pair(ParserAst::new_symbol("x"), ParserAst::from_i64(4)),
+                ParserAst::new_negation(ParserAst::new_pow(
+                    ParserAst::from_i64(2),
+                    ParserAst::from_i64(3)
+                ))
+            ),
         );
     }
 }

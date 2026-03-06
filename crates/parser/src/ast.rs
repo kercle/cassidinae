@@ -17,6 +17,26 @@ pub enum ParserAst {
     Symbol {
         name: String,
     },
+    LesserThan {
+        lhs: Box<ParserAst>,
+        rhs: Box<ParserAst>,
+    },
+    LesserEq {
+        lhs: Box<ParserAst>,
+        rhs: Box<ParserAst>,
+    },
+    Equals {
+        lhs: Box<ParserAst>,
+        rhs: Box<ParserAst>,
+    },
+    GreaterEq {
+        lhs: Box<ParserAst>,
+        rhs: Box<ParserAst>,
+    },
+    GreaterThan {
+        lhs: Box<ParserAst>,
+        rhs: Box<ParserAst>,
+    },
     Add {
         nodes: Vec<ParserAst>,
     },
@@ -71,6 +91,41 @@ impl ParserAst {
     pub fn new_symbol<T: ToString>(name: T) -> Self {
         ParserAst::Symbol {
             name: name.to_string(),
+        }
+    }
+
+    pub fn new_lt(lhs: ParserAst, rhs: ParserAst) -> Self {
+        ParserAst::LesserThan {
+            lhs: Box::new(lhs),
+            rhs: Box::new(rhs),
+        }
+    }
+
+    pub fn new_le(lhs: ParserAst, rhs: ParserAst) -> Self {
+        ParserAst::LesserEq {
+            lhs: Box::new(lhs),
+            rhs: Box::new(rhs),
+        }
+    }
+
+    pub fn new_eq(lhs: ParserAst, rhs: ParserAst) -> Self {
+        ParserAst::Equals {
+            lhs: Box::new(lhs),
+            rhs: Box::new(rhs),
+        }
+    }
+
+    pub fn new_ge(lhs: ParserAst, rhs: ParserAst) -> Self {
+        ParserAst::GreaterEq {
+            lhs: Box::new(lhs),
+            rhs: Box::new(rhs),
+        }
+    }
+
+    pub fn new_gt(lhs: ParserAst, rhs: ParserAst) -> Self {
+        ParserAst::GreaterThan {
+            lhs: Box::new(lhs),
+            rhs: Box::new(rhs),
         }
     }
 
@@ -148,53 +203,6 @@ impl ParserAst {
         } else {
             None
         }
-    }
-
-    pub fn map<F>(self, mut f: F) -> Self
-    where
-        F: FnMut(Self) -> Self,
-    {
-        self.map_inner(&mut f)
-    }
-
-    fn map_inner<F>(self, f: &mut F) -> Self
-    where
-        F: FnMut(Self) -> Self,
-    {
-        use ParserAst::*;
-        let mapped = match self {
-            Add { nodes } => ParserAst::Add {
-                nodes: nodes.into_iter().map(|n| n.map_inner(f)).collect(),
-            },
-            Negation { arg } => Negation {
-                arg: Box::new(arg.map_inner(f)),
-            },
-            Sub { lhs, rhs } => Sub {
-                lhs: Box::new(lhs.map_inner(f)),
-                rhs: Box::new(rhs.map_inner(f)),
-            },
-            Mul { nodes } => Mul {
-                nodes: nodes.into_iter().map(|n| n.map_inner(f)).collect(),
-            },
-            Div { lhs, rhs } => Div {
-                lhs: Box::new(lhs.map_inner(f)),
-                rhs: Box::new(rhs.map_inner(f)),
-            },
-            Pow { lhs, rhs } => Pow {
-                lhs: Box::new(lhs.map_inner(f)),
-                rhs: Box::new(rhs.map_inner(f)),
-            },
-            FunctionCall { name, args } => FunctionCall {
-                name,
-                args: args.into_iter().map(|a| a.map_inner(f)).collect(),
-            },
-            Block { nodes } => Block {
-                nodes: nodes.into_iter().map(|n| n.map_inner(f)).collect(),
-            },
-            node @ Constant { .. } | node @ Symbol { .. } => node,
-        };
-
-        f(mapped)
     }
 }
 
