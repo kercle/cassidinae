@@ -1,8 +1,8 @@
 use crate::{
     builtin::{
-        CANNONICAL_HEAD_COS, CANNONICAL_HEAD_DERIVATIVE, CANNONICAL_HEAD_INTEGRATE,
-        CANNONICAL_HEAD_SIN, CANNONICAL_HEAD_SQRT, CANNONICAL_HEAD_TAN,
-        CANNONICAL_SYM_INDETERMINATE, CANNONICAL_SYM_PLUS_INFINITY,
+        CANNONICAL_HEAD_COS, CANNONICAL_HEAD_DERIVATIVE, CANNONICAL_HEAD_EXP,
+        CANNONICAL_HEAD_INTEGRATE, CANNONICAL_HEAD_LOG, CANNONICAL_HEAD_SIN, CANNONICAL_HEAD_SQRT,
+        CANNONICAL_HEAD_TAN, CANNONICAL_SYM_INDETERMINATE, CANNONICAL_SYM_PLUS_INFINITY,
     },
     parser::ast::ParserAst,
 };
@@ -140,6 +140,18 @@ where
             );
 
             wrap_with_parentheses(pow_str, weight, parent_weight)
+        }
+        FunctionCall { name, args, .. } if name == CANNONICAL_HEAD_EXP && args.len() == 1 => {
+            format!(
+                "\\exp\\left({}\\right)",
+                ast_to_latex(args.first().unwrap(), weight)
+            )
+        }
+        FunctionCall { name, args, .. } if name == CANNONICAL_HEAD_LOG && args.len() == 1 => {
+            format!(
+                "\\log\\left({}\\right)",
+                ast_to_latex(args.first().unwrap(), weight)
+            )
         }
         FunctionCall { name, args, .. } if name == CANNONICAL_HEAD_SIN && args.len() == 1 => {
             format!(
