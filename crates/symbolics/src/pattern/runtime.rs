@@ -3,9 +3,7 @@ use std::{collections::HashMap, fmt::Debug, rc::Rc};
 use crate::{
     expr::Expr,
     pattern::{
-        PatternPredicate,
-        program::{ArgPlan, InstrId, Instruction, Program, VarId},
-        utils::MultisetMatchState,
+        PatternPredicate, environment::Environment, program::{ArgPlan, InstrId, Instruction, Program, VarId}, utils::MultisetMatchState
     },
 };
 
@@ -66,119 +64,6 @@ enum Frame<'p, 's, A: Clone + PartialEq> {
         subject: &'s Expr<A>,
         predicate: PatternPredicate,
     },
-}
-
-#[derive(Clone)]
-pub(super) enum EnvBinding<'s, A: Clone + PartialEq> {
-    One(&'s Expr<A>),
-    Many(Rc<Vec<&'s Expr<A>>>),
-}
-
-#[derive(Debug, Clone)]
-pub struct Environment<'p, 's, A: Clone + PartialEq> {
-    bindings: HashMap<VarId, EnvBinding<'s, A>>,
-    program: &'p Program<A>,
-}
-
-struct ErrorBindCollision;
-
-impl<'p, 's, A: Clone + PartialEq> Environment<'p, 's, A> {
-    fn new(program: &'p Program<A>) -> Self {
-        Self {
-            bindings: HashMap::new(),
-            program,
-        }
-    }
-
-    fn bind_one(
-        &mut self,
-        bind_var: VarId,
-        subject: &'s Expr<A>,
-    ) -> Result<bool, ErrorBindCollision> {
-        match self.bindings.get(&bind_var) {
-            Some(EnvBinding::One(bound_subject)) => {
-                if subject == *bound_subject {
-                    Ok(false)
-                } else {
-                    Err(ErrorBindCollision)
-                }
-            }
-            None => {
-                self.bindings.insert(bind_var, EnvBinding::One(subject));
-                Ok(true)
-            }
-            _ => Err(ErrorBindCollision),
-        }
-    }
-
-    fn bind_seq(
-        &mut self,
-        bind_var: VarId,
-        subjects: Rc<Vec<&'s Expr<A>>>,
-    ) -> Result<bool, ErrorBindCollision> {
-        match self.bindings.get(&bind_var) {
-            Some(EnvBinding::Many(bound_subjects)) => {
-                if bound_subjects.len() != subjects.len() {
-                    return Err(ErrorBindCollision);
-                }
-
-                let all_equal = bound_subjects
-                    .iter()
-                    .zip(subjects.iter())
-                    .all(|(a, b)| *a == *b);
-
-                if all_equal {
-                    Ok(false)
-                } else {
-                    Err(ErrorBindCollision)
-                }
-            }
-            None => {
-                self.bindings.insert(bind_var, EnvBinding::Many(subjects));
-                Ok(true)
-            }
-            _ => Err(ErrorBindCollision),
-        }
-    }
-
-    fn var_id_from_name<T: AsRef<str>>(&self, name: T) -> Option<VarId> {
-        self.program.var_ids.get(name.as_ref()).cloned()
-    }
-
-    pub fn get_one<T: AsRef<str>>(&self, name: T) -> Option<&'s Expr<A>> {
-        use EnvBinding::*;
-
-        let var_id = self.var_id_from_name(name.as_ref())?;
-
-        match self.bindings.get(&var_id)? {
-            One(val) => Some(val),
-            Many(_) => None,
-        }
-    }
-
-    pub fn get_seq<T: AsRef<str>>(&self, name: T) -> Option<&[&'s Expr<A>]> {
-        use EnvBinding::*;
-
-        let var_id = self.var_id_from_name(name.as_ref())?;
-
-        match self.bindings.get(&var_id)? {
-            One(_) => None,
-            Many(val) => Some(val.as_slice()),
-        }
-    }
-}
-
-impl<'p, 's, A: Clone + PartialEq + Debug> Environment<'p, 's, A> {
-    pub fn dbg_print_bindings(&self) {
-        let mut keys: Vec<&VarId> = self.bindings.keys().collect();
-        keys.sort();
-
-        for k in keys {
-            let v = self.bindings.get(k).unwrap();
-            let name = self.program.vars.get(*k as usize).unwrap();
-            eprintln!("{name}: {v:?}");
-        }
-    }
 }
 
 pub struct Runtime<'p, 's, A: Clone + PartialEq> {
@@ -821,7 +706,7 @@ impl<'p, 's, A: Clone + PartialEq + Debug> Runtime<'p, 's, A> {
 
         while self.bind_stack.len() > choice_point.bind_stack_len {
             let var = self.bind_stack.pop().unwrap();
-            self.environment.bindings.remove(&var);
+            self.environment.unbind(var);
         }
 
         self.frame_stack = choice_point.frame_stack;

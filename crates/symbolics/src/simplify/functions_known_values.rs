@@ -5,7 +5,7 @@ use crate::{
     expr::{Expr, NormalizedExpr},
 };
 
-pub fn known_function_values_rules() -> Vec<(NormalizedExpr, Expr)> {
+pub(super) fn known_function_values_rules() -> Vec<(NormalizedExpr, Expr)> {
     vec![
         // =============== Sin exact values ===============
         (norm_expr!(Sin[0]), expr!(0)),

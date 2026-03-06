@@ -1,7 +1,9 @@
+mod bit_mask;
 mod builtin;
 mod fmt;
-mod bit_mask;
 mod utils;
+
+pub mod environment;
 pub mod program;
 pub mod runtime;
 

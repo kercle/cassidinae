@@ -5,9 +5,9 @@ mod trigonometric_functions;
 use crate::{
     calculus::{derivative::derivative_rules, integrate::indefinite_integrals_rules},
     expr::{Expr, NormalizedExpr},
-    matcher::context::MatchContext,
+    pattern::environment::Environment,
     simplify::{
-        functions_known_values::known_function_values_rules,
+        factorize::factorization_rules, functions_known_values::known_function_values_rules,
         trigonometric_functions::trigonometric_rules,
     },
 };
@@ -67,7 +67,7 @@ impl Simplifier {
     }
 
     pub fn with_factorization(self) -> Simplifier {
-        Simplifier::new(factorize::factorize(self.expr.take_expr()))
+        Simplifier::new(self.simplify_with_rules_until_stable(factorization_rules()))
     }
 
     pub fn finish(self) -> Expr {
@@ -88,7 +88,7 @@ impl Simplifier {
             .drop_annotation()
             .apply_until_fixed_point(
                 rules.into_iter().map(|(pat, repl)| {
-                    (pat, move |ctx: &mut MatchContext<'_>| {
+                    (pat, move |ctx: &Environment<'_, '_, ()>| {
                         ctx.fill(repl.clone())
                     })
                 }),

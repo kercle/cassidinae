@@ -2,17 +2,23 @@ use std::fmt::Debug;
 
 use crate::{
     expr::{Expr, NormalizedExpr},
-    matcher::{CommutativePredicate, Matcher, context::MatchContext},
+    matcher::CommutativePredicate,
     parser::ast::{ADD_HEAD, MUL_HEAD},
+    pattern::{
+        environment::Environment,
+        program::{Compiler, Program},
+        runtime::Runtime,
+    },
 };
 
-pub type RuleTransformer<A> = Box<dyn Fn(&mut MatchContext<'_, A>) -> Expr<A> + Send + Sync>;
+pub type RuleTransformer<A> = Box<dyn Fn(&Environment<'_, '_, A>) -> Expr<A> + Send + Sync>;
 
 pub struct Rule<A>
 where
     A: Clone + PartialEq,
 {
-    pub matcher: Matcher<A>,
+    // pub matcher: Matcher<A>,
+    pub program: Program<A>,
     pub transform: RuleTransformer<A>,
 }
 
@@ -52,13 +58,14 @@ where
 
     pub fn with_rule<F>(mut self, pattern: NormalizedExpr<A>, transform: F) -> Self
     where
-        F: Fn(&mut MatchContext<'_, A>) -> Expr<A> + Send + Sync + 'static,
+        F: Fn(&Environment<'_, '_, A>) -> Expr<A> + Send + Sync + 'static,
     {
-        let matcher = Matcher::new(pattern.take_expr())
-            .with_commutative_predicate(self.is_commutative.clone());
+        // let matcher = Matcher::new(pattern.take_expr())
+        //     .with_commutative_predicate(self.is_commutative.clone());
+        // let program = Compiler::default().compile(&pattern.take_expr());
 
         self.rules.push(Rule {
-            matcher,
+            program: Compiler::default().compile(&pattern.take_expr()),
             transform: Box::new(transform),
         });
         self
@@ -67,7 +74,7 @@ where
     pub fn with_rules<I, F>(mut self, rules: I) -> Self
     where
         I: IntoIterator<Item = (NormalizedExpr<A>, F)>,
-        F: Fn(&mut MatchContext<'_, A>) -> Expr<A> + Send + Sync + 'static,
+        F: Fn(&Environment<'_, '_, A>) -> Expr<A> + Send + Sync + 'static,
     {
         for (p, t) in rules {
             self = self.with_rule(p, t);
@@ -77,17 +84,18 @@ where
 
     pub fn apply_first_match(&self, expr: NormalizedExpr<A>) -> NormalizedExpr<A> {
         let res = expr.take_expr().map_bottom_up(&|expr| {
-            let mut res = expr;
+            let mut sub_expr = expr;
 
             for rule in &self.rules {
-                if let Some(mut ctx) = rule.matcher.first_match(&res) {
+                let mut runtime = Runtime::new(&rule.program, &sub_expr);
+                if let Some(mut env) = runtime.first_match() {
                     let f = &rule.transform;
-                    res = f(&mut ctx).normalize();
+                    sub_expr = f(&mut env).normalize();
                     break;
                 }
             }
 
-            res
+            sub_expr
         });
 
         NormalizedExpr::new(res)
@@ -101,7 +109,7 @@ where
     pub fn apply_until_fixed_point<F, I>(self, rules: I, limit_guard: u32) -> NormalizedExpr<A>
     where
         I: IntoIterator<Item = (NormalizedExpr<A>, F)>,
-        F: Fn(&mut MatchContext<'_, A>) -> Expr<A> + Send + Sync + 'static,
+        F: Fn(&Environment<'_, '_, A>) -> Expr<A> + Send + Sync + 'static,
     {
         let rw: Rewriter<A> = Rewriter::new()
             .commutative_if(|head| head.matches_symbol(ADD_HEAD) || head.matches_symbol(MUL_HEAD))

@@ -5,7 +5,7 @@ use crate::{
     expr::{Expr, NormalizedExpr},
 };
 
-pub fn trigonometric_rules() -> Vec<(NormalizedExpr, Expr)> {
+pub(super) fn trigonometric_rules() -> Vec<(NormalizedExpr, Expr)> {
     vec![
         // =============== Pythagorean identity ===============
         (

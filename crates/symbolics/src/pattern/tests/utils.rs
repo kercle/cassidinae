@@ -1,4 +1,7 @@
-use crate::{expr::Expr, pattern::{program::Compiler, runtime::{Environment, Runtime}}};
+use crate::{
+    expr::Expr,
+    pattern::{environment::Environment, program::Compiler, runtime::Runtime},
+};
 
 pub(super) fn first_match<'p, 's>(
     program: &'p crate::pattern::program::Program<()>,

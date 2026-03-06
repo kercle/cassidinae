@@ -5,7 +5,7 @@ use crate::{
     expr::{Expr, NormalizedExpr},
 };
 
-pub fn indefinite_integrals_rules() -> Vec<(NormalizedExpr, Expr)> {
+pub(crate) fn indefinite_integrals_rules() -> Vec<(NormalizedExpr, Expr)> {
     vec![
         // =============== Linearity ===============
         (

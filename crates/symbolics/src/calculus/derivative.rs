@@ -5,7 +5,7 @@ use crate::{
     expr::{Expr, NormalizedExpr},
 };
 
-pub fn derivative_rules() -> Vec<(NormalizedExpr, Expr)> {
+pub(crate) fn derivative_rules() -> Vec<(NormalizedExpr, Expr)> {
     vec![
         // =============== Linearity ===============
         (
