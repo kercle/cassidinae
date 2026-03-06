@@ -94,7 +94,7 @@ fn ast_to_token_stream(ast: ParserAst) -> proc_macro2::TokenStream {
         }
         Negation { arg } => {
             let arg = ast_to_token_stream(*arg);
-            quote! { #ast_path::new_neg(#arg) }
+            quote! { #ast_path::new_negation(#arg) }
         }
         Mul { lhs, rhs } => {
             let lhs = ast_to_token_stream(*lhs);

@@ -1,9 +1,5 @@
-use expr_macro::{expr, norm_expr};
-
-use crate::{
-    atom::Atom,
-    expr::{Expr, NormalizedExpr},
-};
+use crate::expr::{Expr, NormalizedExpr};
+use crate::{expr, norm_expr};
 
 pub(crate) fn derivative_rules() -> Vec<(NormalizedExpr, Expr)> {
     vec![

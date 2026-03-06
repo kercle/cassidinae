@@ -9,5 +9,4 @@ debug_matcher = []
 [dependencies]
 numbers = { path = "../numbers" }
 parser = { path = "../parser" }
-expr_macro = { path = "../expr-macro" }
 parser_macros = { path = "../parser-macros" }

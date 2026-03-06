@@ -19,10 +19,8 @@
 //  f[]                 | f[1]                | 0
 //  f[]                 | g[]                 | 0
 
-use crate::atom::Atom;
-use crate::expr::Expr;
+use crate::expr;
 use crate::pattern::tests::utils::count_matches;
-use expr_macro::expr;
 
 #[test]
 fn test_pattern_literal_1() {

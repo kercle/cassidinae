@@ -40,10 +40,8 @@
 //  f[g[]]                                                                    | f[g[]]         | 1
 //  f[g[]]                                                                    | f[g[1]]        | 0
 
-use crate::atom::Atom;
-use crate::expr::Expr;
+use crate::expr;
 use crate::pattern::tests::utils::count_matches;
-use expr_macro::expr;
 
 // ---- Nested / Mixed Deep Structure ----
 

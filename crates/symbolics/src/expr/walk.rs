@@ -76,11 +76,8 @@ impl<'a, A> Iterator for ExprBottomUpWalker<'a, A> {
 
 #[cfg(test)]
 mod tests {
-    use expr_macro::expr;
-
-    use crate::atom::Atom;
-
     use super::*;
+    use crate::expr;
 
     #[test]
     fn test_walker() {

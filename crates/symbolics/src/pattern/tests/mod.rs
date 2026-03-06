@@ -8,13 +8,10 @@ mod sequence;
 mod utils;
 mod wildcards;
 
-use expr_macro::expr;
+use crate::expr;
 
 use super::*;
-use crate::{
-    atom::Atom,
-    expr::{Expr, generator::*},
-};
+use crate::expr::generator::*;
 
 #[test]
 fn test_dbg() {

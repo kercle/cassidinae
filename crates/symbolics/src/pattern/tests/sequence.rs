@@ -64,10 +64,8 @@
 //  f[Pattern[x, BlankSeq[]], Blank[], Pattern[x, BlankSeq[]]] | f[1, 2, 1]    | 1
 //  f[Pattern[x, BlankSeq[]], Blank[], Pattern[x, BlankSeq[]]] | f[1, 2, 3]    | 0
 
-use crate::atom::Atom;
-use crate::expr::Expr;
+use crate::expr;
 use crate::pattern::tests::utils::count_matches;
-use expr_macro::expr;
 
 // ---- BlankSeq (1 or more) Tests ----
 

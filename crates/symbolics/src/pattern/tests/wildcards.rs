@@ -51,10 +51,8 @@
 //  f[Pattern[x, Blank[f]], Pattern[x, Blank[f]]]                    | f[f[1], f[1]] | 1
 //  f[Pattern[x, Blank[f]], Pattern[x, Blank[f]]]                    | f[f[1], f[2]] | 0
 
-use crate::atom::Atom;
-use crate::expr::Expr;
+use crate::expr;
 use crate::pattern::tests::utils::count_matches;
-use expr_macro::expr;
 
 // ---- Wildcard Tests ----
 

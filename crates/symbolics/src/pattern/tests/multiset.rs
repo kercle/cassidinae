@@ -56,10 +56,8 @@
 //  Add[Pattern[x, BlankSeq[]], 1]     | Add[1]       | 0
 //  Add[Pattern[x, BlankSeq[]], 1]     | Add[2, 1]    | 1
 
-use crate::atom::Atom;
-use crate::expr::Expr;
+use crate::expr;
 use crate::pattern::tests::utils::count_matches;
-use expr_macro::expr;
 
 // ---- Multiset (Commutative) Literal Tests ----
 
