@@ -43,7 +43,7 @@ pub(crate) fn derivative_rules() -> Vec<(NormalizedExpr, Expr)> {
                 PatternTest[Pattern[a, Blank[]], IsSymbolQ],
                 PatternTest[Pattern[x, Blank[]], IsSymbolQ]
             ]),
-            expr!(a),
+            expr!(0),
         ),
         (
             norm_expr!(
@@ -68,7 +68,7 @@ pub(crate) fn derivative_rules() -> Vec<(NormalizedExpr, Expr)> {
                 Pattern[f, Blank[]] ^ Pattern[g, Blank[]],
                 PatternTest[Pattern[x, Blank[]], IsSymbolQ]
             ]),
-            expr!((f ^ g) *(g / f + D[g, x] * Log[f])),
+            expr!((f ^ g) *((g / f) * D[f, x] + Log[f] * D[g, x])),
         ),
         // =============== Exponential ===============
         (
