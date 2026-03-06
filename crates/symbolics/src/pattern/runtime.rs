@@ -11,12 +11,12 @@ use crate::{
 
 #[derive(Debug)]
 struct ChoicePoint<'p, 's, A: Clone + PartialEq> {
-    pub frame_stack_len: usize,
+    pub frame_stack_snapshot: Vec<Frame<'p, 's, A>>,
     pub bind_stack_len: usize,
     pub resume_frame: Frame<'p, 's, A>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 enum Frame<'p, 's, A: Clone + PartialEq> {
     Exec {
         instr: InstrId,
@@ -176,7 +176,7 @@ pub struct Runtime<'p, 's, A: Clone + PartialEq> {
     bind_stack: Vec<VarId>,
 }
 
-impl<'p, 's, A: Clone + PartialEq> Runtime<'p, 's, A> {
+impl<'p, 's, A: Clone + PartialEq + Debug> Runtime<'p, 's, A> {
     pub fn new(program: &'p Program<A>, expr: &'s Expr<A>) -> Self {
         Runtime {
             program,
@@ -599,10 +599,7 @@ impl<'p, 's, A: Clone + PartialEq> Runtime<'p, 's, A> {
 
         // among the unmatched subjects, take the one after `already_tried_count`
         // since they have already been tried in a previous choicepoint
-        let Some(next_subject_pos) = state
-            .subject_index_iter(true)
-            .nth(already_tried_count)
-        else {
+        let Some(next_subject_pos) = state.subject_index_iter(true).nth(already_tried_count) else {
             return false;
         };
 
@@ -765,7 +762,7 @@ impl<'p, 's, A: Clone + PartialEq> Runtime<'p, 's, A> {
 
     fn push_choice_point(&mut self, resume_frame: Frame<'p, 's, A>) {
         let choice_point = ChoicePoint {
-            frame_stack_len: self.frame_stack.len(),
+            frame_stack_snapshot: self.frame_stack.clone(),
             bind_stack_len: self.bind_stack.len(),
             resume_frame,
         };
@@ -783,7 +780,7 @@ impl<'p, 's, A: Clone + PartialEq> Runtime<'p, 's, A> {
             self.environment.bindings.remove(&var);
         }
 
-        self.frame_stack.truncate(choice_point.frame_stack_len);
+        self.frame_stack = choice_point.frame_stack_snapshot;
         self.frame_stack.push(choice_point.resume_frame);
 
         true
@@ -792,7 +789,7 @@ impl<'p, 's, A: Clone + PartialEq> Runtime<'p, 's, A> {
 
 impl<'p, 's, A> Iterator for Runtime<'p, 's, A>
 where
-    A: PartialEq + Clone,
+    A: PartialEq + Clone + Debug,
 {
     type Item = Environment<'p, 's, A>;
 
