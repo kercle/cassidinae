@@ -83,10 +83,6 @@ impl<'p, 's, A: Clone + PartialEq + Debug> Runtime<'p, 's, A> {
         Runtime {
             program,
             environment: Environment::new(program),
-            // frame_stack: vec![Frame::Exec {
-            //     instr: program.entry,
-            //     subject: expr,
-            // }],
             frame_stack: Rc::new(FrameStack::More {
                 frame: Frame::Exec {
                     instr: program.entry,
@@ -272,7 +268,9 @@ impl<'p, 's, A: Clone + PartialEq + Debug> Runtime<'p, 's, A> {
         subject: &'s Expr<A>,
         bind: Option<VarId>,
     ) -> bool {
-        // TODO: check hash from Merkle tree first once implemented
+        if subject.digest() != inner.digest() {
+            return false;
+        }
 
         if subject != inner {
             return false;
@@ -479,7 +477,11 @@ impl<'p, 's, A: Clone + PartialEq + Debug> Runtime<'p, 's, A> {
 
             let Some(subject_pos) = ('find_subject: {
                 for (subject_pos, subject) in subjects.iter().enumerate() {
-                    if !state.is_subject_set(subject_pos) && self.exec(instr, subject) {
+                    if state.is_subject_set(subject_pos) {
+                        continue;
+                    }
+
+                    if self.exec(instr, subject) {
                         break 'find_subject Some(subject_pos);
                     }
                 }

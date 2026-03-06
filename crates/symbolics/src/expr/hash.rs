@@ -30,6 +30,13 @@ impl<A> Expr<A> {
         state.finish()
     }
 
+    pub fn digest(&self) -> u64 {
+        match self {
+            Expr::Atom { digest, .. } => *digest,
+            Expr::Node { digest, .. } => *digest,
+        }
+    }
+
     pub fn recompute_digest(mut self) -> Self {
         let digest: u64 = self.to_digest();
         match &mut self {
