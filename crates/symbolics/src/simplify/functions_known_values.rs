@@ -1,41 +1,40 @@
-use expr_macro::expr;
+use expr_macro::{expr, norm_expr};
 
 use crate::{
     atom::Atom,
-    builtin::{
-        CANNONICAL_HEAD_COS, CANNONICAL_HEAD_EXP, CANNONICAL_HEAD_LOG, CANNONICAL_HEAD_SIN,
-        CANNONICAL_HEAD_TAN, CANNONICAL_SYM_PLUS_INFINITY,
-    },
-    expr::Expr,
-    matcher::MatchIter,
-    parser::ast::NEG_HEAD,
-    pattern::Pattern,
+    expr::{Expr, NormalizedExpr},
 };
 
-pub fn simplify_evaluation_at_zero(expr: Expr) -> Expr {
-    let head_pattern = expr! {
-        PatternTest[Pattern[h, Blank[]], IsSymbolQ]
-    };
-    let pattern_expr = Expr::new_node(head_pattern, vec![0.into()]).normalize();
-
-    expr.map_bottom_up(&|e| {
-        let pattern = Pattern::from_expr(&pattern_expr);
-
-        if let Some(ctx) = MatchIter::new(&e, pattern).next() {
-            let head_symbol = ctx.get_one("h").unwrap().get_symbol().unwrap();
-            match head_symbol {
-                CANNONICAL_HEAD_EXP => Expr::new_number(1),
-                CANNONICAL_HEAD_LOG => Expr::new_node(
-                    NEG_HEAD,
-                    vec![Expr::new_symbol(CANNONICAL_SYM_PLUS_INFINITY)],
-                ),
-                CANNONICAL_HEAD_SIN => Expr::new_number(0),
-                CANNONICAL_HEAD_COS => Expr::new_number(1),
-                CANNONICAL_HEAD_TAN => Expr::new_number(0),
-                _ => e,
-            }
-        } else {
-            e
-        }
-    })
+pub fn known_function_values_rules() -> Vec<(NormalizedExpr, Expr)> {
+    vec![
+        // =============== Sin exact values ===============
+        (norm_expr!(Sin[0]), expr!(0)),
+        (norm_expr!(Sin[pi / 12]), expr!(Sqrt[2] * (Sqrt[3] - 1) / 4)),
+        (norm_expr!(Sin[pi / 10]), expr!((Sqrt[5] - 1) / 4)),
+        (norm_expr!(Sin[pi / 8]), expr!(Sqrt[2 - Sqrt[2]] / 2)),
+        (norm_expr!(Sin[pi / 6]), expr!(1 / 2)),
+        (
+            norm_expr!(Sin[pi / 5]),
+            expr!(Sqrt[2] * Sqrt[5 - Sqrt[5]] / 4),
+        ),
+        (norm_expr!(Sin[pi / 4]), expr!(1 / Sqrt[2])),
+        // =============== Cos exact values ===============
+        (norm_expr!(Cos[0]), expr!(1)),
+        (norm_expr!(Cos[pi / 12]), expr!(Sqrt[2] * (Sqrt[3] + 1) / 4)),
+        (
+            norm_expr!(Cos[pi / 10]),
+            expr!(Sqrt[2] * Sqrt[5 + Sqrt[5]] / 4),
+        ),
+        (norm_expr!(Cos[pi / 8]), expr!(Sqrt[2 + Sqrt[2]] / 2)),
+        (norm_expr!(Cos[pi / 6]), expr!(Sqrt[3] / 2)),
+        (norm_expr!(Cos[pi / 5]), expr!((Sqrt[5] + 1) / 4)),
+        (norm_expr!(Cos[pi / 4]), expr!(1 / Sqrt[2])),
+        // =============== Tan exact values ===============
+        (norm_expr!(Tan[0]), expr!(0)),
+        // =============== Exp exact values ===============
+        (norm_expr!(Exp[0]), expr!(1)),
+        // =============== Log exact values ===============
+        (norm_expr!(Log[0]), expr! { -Infinity }),
+        (norm_expr!(Log[1]), expr!(0)),
+    ]
 }
