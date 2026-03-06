@@ -213,6 +213,8 @@ where
                         new_args.push(repl.clone());
                     } else if let Some(repl) = self.get_seq(name) {
                         new_args.extend(repl.into_iter().cloned());
+                    } else {
+                        new_args.push(arg);
                     }
                 }
 
