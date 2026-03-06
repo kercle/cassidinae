@@ -83,17 +83,26 @@ where
     expr.has_head_symbol(ADD_HEAD) || expr.has_head_symbol(MUL_HEAD)
 }
 
-impl<A> Compiler<A>
+impl<A> Default for Compiler<A>
 where
     A: Clone + PartialEq + Default,
 {
-    pub fn new() -> Self {
-        Compiler {
+    fn default() -> Self {
+        Self {
             instructions: Vec::new(),
             var_ids: HashMap::new(),
             vars: Vec::new(),
             is_multiset: is_multiset_default,
         }
+    }
+}
+
+impl<A> Compiler<A>
+where
+    A: Clone + PartialEq + Default,
+{
+    pub fn new() -> Self {
+        Self::default()
     }
 
     pub fn with_multiset_predicate(mut self, f: fn(&Expr<A>) -> bool) -> Self {

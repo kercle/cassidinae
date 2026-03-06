@@ -1,6 +1,6 @@
 use crate::atom::Atom;
 use crate::expr::Expr;
-use crate::pattern::program::{ArgOrder, Compiler};
+use crate::pattern::program::Compiler;
 use crate::pattern::runtime::Runtime;
 use expr_macro::expr;
 

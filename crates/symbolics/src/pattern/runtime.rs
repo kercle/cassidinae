@@ -590,8 +590,7 @@ impl<'p, 's, A: Clone + PartialEq> Runtime<'p, 's, A> {
 
         let Some(next_instr_pos) = state
             .instructions_index_iter(true)
-            .filter(|pos| !self.is_variadic(*instrs.get(*pos).unwrap()))
-            .next()
+            .find(|pos| !self.is_variadic(*instrs.get(*pos).unwrap()))
         else {
             // There is possibly a variadic pattern left
             // handle here!
@@ -602,8 +601,7 @@ impl<'p, 's, A: Clone + PartialEq> Runtime<'p, 's, A> {
         // since they have already been tried in a previous choicepoint
         let Some(next_subject_pos) = state
             .subject_index_iter(true)
-            .skip(already_tried_count)
-            .next()
+            .nth(already_tried_count)
         else {
             return false;
         };
@@ -710,9 +708,9 @@ impl<'p, 's, A: Clone + PartialEq> Runtime<'p, 's, A> {
                 .expect("Referenced instruction does not exist in program.");
 
             if let Variadic { min_len, .. } = instr {
-                sum = sum + *min_len;
+                sum += *min_len;
             } else {
-                sum = sum + 1;
+                sum += 1;
             }
         }
 
