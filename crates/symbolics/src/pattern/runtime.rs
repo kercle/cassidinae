@@ -60,7 +60,7 @@ enum Frame<'p, 's, A: Clone + PartialEq> {
     },
     BindSeq {
         bind_var: VarId,
-        subjects: Vec<&'s Expr<A>>,
+        subjects: Rc<Vec<&'s Expr<A>>>,
     },
     TestPredicate {
         subject: &'s Expr<A>,
@@ -114,7 +114,7 @@ impl<'p, 's, A: Clone + PartialEq> Environment<'p, 's, A> {
     fn bind_seq(
         &mut self,
         bind_var: VarId,
-        subjects: Vec<&'s Expr<A>>,
+        subjects: &[&'s Expr<A>],
     ) -> Result<bool, ErrorBindCollision> {
         match self.bindings.get(&bind_var) {
             Some(EnvBinding::Many(bound_subjects)) => {
@@ -122,7 +122,7 @@ impl<'p, 's, A: Clone + PartialEq> Environment<'p, 's, A> {
                     return Err(ErrorBindCollision);
                 }
 
-                let all_equal = bound_subjects.iter().zip(subjects).all(|(a, b)| *a == b);
+                let all_equal = bound_subjects.iter().zip(subjects).all(|(a, b)| *a == *b);
 
                 if all_equal {
                     Ok(false)
@@ -131,7 +131,8 @@ impl<'p, 's, A: Clone + PartialEq> Environment<'p, 's, A> {
                 }
             }
             None => {
-                self.bindings.insert(bind_var, EnvBinding::Many(subjects));
+                self.bindings
+                    .insert(bind_var, EnvBinding::Many(subjects.to_vec()));
                 Ok(true)
             }
             _ => Err(ErrorBindCollision),
@@ -262,7 +263,7 @@ impl<'p, 's, A: Clone + PartialEq + Debug> Runtime<'p, 's, A> {
                 already_tried_count,
             } => self.match_multiset(instrs, subjects, state, already_tried_count),
             BindOne { bind_var, subject } => self.bind_one(bind_var, subject),
-            BindSeq { bind_var, subjects } => self.bind_seq(bind_var, subjects),
+            BindSeq { bind_var, subjects } => self.bind_seq(bind_var, subjects.as_slice()),
             TestPredicate { subject, predicate } => self.test_predicate(subject, predicate),
         }
     }
@@ -515,7 +516,7 @@ impl<'p, 's, A: Clone + PartialEq + Debug> Runtime<'p, 's, A> {
         if let Some(&bind_var) = bind.as_ref() {
             self.push_frame(Frame::BindSeq {
                 bind_var,
-                subjects: subjects.iter().collect(),
+                subjects: Rc::new(subjects.iter().collect()),
             });
         }
 
@@ -702,7 +703,7 @@ impl<'p, 's, A: Clone + PartialEq + Debug> Runtime<'p, 's, A> {
 
             self.push_frame(Frame::BindSeq {
                 bind_var,
-                subjects: rest,
+                subjects: Rc::new(rest),
             });
         }
 
@@ -767,7 +768,7 @@ impl<'p, 's, A: Clone + PartialEq + Debug> Runtime<'p, 's, A> {
         }
     }
 
-    fn bind_seq(&mut self, bind_var: VarId, subjects: Vec<&'s Expr<A>>) -> bool {
+    fn bind_seq(&mut self, bind_var: VarId, subjects: &[&'s Expr<A>]) -> bool {
         match self.environment.bind_seq(bind_var, subjects) {
             Ok(true) => {
                 self.bind_stack.push(bind_var);
