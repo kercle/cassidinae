@@ -3,8 +3,9 @@ mod functions_known_values;
 mod trigonometric_functions;
 
 use crate::{
-    calculus::{derivative::resolve_derivatives, integrate::resolve_indefinite_integrals},
+    calculus::{derivative::resolve_derivatives, integrate::indefinite_integrals_rules},
     expr::{Expr, NormalizedExpr},
+    matcher::context::MatchContext,
 };
 
 pub struct Simplifier {
@@ -50,7 +51,7 @@ impl Simplifier {
     }
 
     pub fn with_resolved_indefinite_integrals(self) -> Simplifier {
-        Simplifier::new(resolve_indefinite_integrals(self.expr.take_expr()))
+        Simplifier::new(self.simplify_with_rules_until_stable(indefinite_integrals_rules()))
     }
 
     pub fn with_trigonometric_identities(self) -> Simplifier {
@@ -77,5 +78,25 @@ impl Simplifier {
 
     pub fn finish_normalized(self) -> NormalizedExpr {
         self.expr
+    }
+
+    fn simplify_with_rules_until_stable(
+        self,
+        rules: Vec<(NormalizedExpr, Expr)>,
+    ) -> NormalizedExpr {
+        let res = self
+            .expr
+            .take_expr()
+            .drop_annotation()
+            .apply_until_fixed_point(
+                rules.into_iter().map(|(pat, repl)| {
+                    (pat, move |ctx: &mut MatchContext<'_>| {
+                        ctx.fill(repl.clone())
+                    })
+                }),
+                1000,
+            );
+
+        res
     }
 }

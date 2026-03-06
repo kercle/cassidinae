@@ -3,26 +3,9 @@ use expr_macro::{expr, norm_expr};
 use crate::{
     atom::Atom,
     expr::{Expr, NormalizedExpr},
-    matcher::context::MatchContext,
 };
 
-pub fn resolve_indefinite_integrals<A>(expr: Expr<A>) -> NormalizedExpr
-where
-    A: Default + Clone + PartialEq,
-{
-    let rules = indefinite_integrals_rules();
-
-    expr.drop_annotation().apply_until_fixed_point(
-        rules.into_iter().map(|(pat, repl)| {
-            (pat, move |ctx: &mut MatchContext<'_>| {
-                ctx.fill(repl.clone())
-            })
-        }),
-        1000,
-    )
-}
-
-fn indefinite_integrals_rules() -> Vec<(NormalizedExpr, Expr)> {
+pub fn indefinite_integrals_rules() -> Vec<(NormalizedExpr, Expr)> {
     vec![
         // =============== Linearity ===============
         (
