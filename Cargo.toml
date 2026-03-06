@@ -1,8 +1,12 @@
 [workspace]
 resolver = "2"
 members = [
-    "crates/eval-server", "crates/expr-macro",
+    "crates/eval-server",
+    "crates/expr-macro",
     "crates/numbers",
     "crates/symbolics",
-    "crates/cli", "crates/wasm", "crates/common",
+    "crates/cli",
+    "crates/wasm",
+    "crates/common",
+    "crates/parser",
 ]
