@@ -1,11 +1,12 @@
 mod literals;
 mod mixed;
 mod multiset;
+mod other;
 mod predicate;
 mod program;
 mod sequence;
-mod wildcards;
 mod utils;
+mod wildcards;
 
 use expr_macro::expr;
 
