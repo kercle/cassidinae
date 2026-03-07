@@ -6,10 +6,10 @@ use axum::{
 };
 use common::{ClientMessage, KernelMessage};
 use futures_util::{sink::SinkExt, stream::StreamExt};
+use parser::parse;
 use symbolics::{
     expr::{Expr, NormalizedExpr},
     format::MathDisplay,
-    parser::{ast::ParserAst, parse},
     simplify::Simplifier,
 };
 use tracing::Level;
@@ -78,23 +78,17 @@ fn process_message(inbound_msg: String) -> Result<KernelMessage, KernelMessage> 
         msg: format!("Error parsing input: {}", err),
     })?;
 
-    let input_latex = ast_in.to_latex();
-    let input_expr = NormalizedExpr::new(Expr::from_parser_ast(ast_in));
+    let input_expr = Expr::from(ast_in);
+    let input_latex = input_expr.to_latex();
+    let input_expr = NormalizedExpr::new(input_expr);
 
     let result_expr = Simplifier::new(input_expr)
         .simple()
         .resugar()
         .canonicalize();
 
-    if let Ok(ast_out) = ParserAst::try_from(result_expr) {
-        Ok(KernelMessage::EvalResult {
-            input: input_latex,
-            output: ast_out.to_latex(),
-        })
-    } else {
-        Err(KernelMessage::ParseError {
-            input: input_latex,
-            msg: "Cannot recover AST from transformed expression.".to_string(),
-        })
-    }
+    Ok(KernelMessage::EvalResult {
+        input: input_latex,
+        output: result_expr.to_latex(),
+    })
 }

@@ -1,9 +1,9 @@
 use numbers::Number;
+use parser::ast::{ADD_HEAD, DIV_HEAD, MUL_HEAD, NEG_HEAD, POW_HEAD, SUB_HEAD};
 
 use crate::{
     builtin::CANNONICAL_HEAD_SQRT,
     expr::{Expr, NormalizedExpr},
-    parser::ast::{ADD_HEAD, DIV_HEAD, MUL_HEAD, NEG_HEAD, POW_HEAD, SUB_HEAD},
 };
 
 impl<A: Clone + PartialEq + Default> NormalizedExpr<A> {

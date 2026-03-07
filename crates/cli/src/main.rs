@@ -1,8 +1,7 @@
 use clap::Parser;
+use parser::parse;
 use symbolics::expr::{Expr, NormalizedExpr};
 use symbolics::format::MathDisplay;
-use symbolics::parser::ast::ParserAst;
-use symbolics::parser::parse;
 use symbolics::simplify::Simplifier;
 
 #[derive(Parser, Debug)]
@@ -20,15 +19,11 @@ fn print_markdown(input: &str) {
         std::process::exit(1);
     });
 
-    let expr = NormalizedExpr::new(Expr::from_parser_ast(ast));
+    let expr = NormalizedExpr::new(Expr::from(ast));
     let result = Simplifier::new(expr).simple().resugar().canonicalize();
 
-    if let Ok(ast) = ParserAst::try_from(result) {
-        let latex = ast.to_latex();
-        println!("$$\n{}\n$$", latex);
-    } else {
-        eprintln!("Cannot recover ParserAst from Expr");
-    }
+    let latex = result.to_latex();
+    println!("$$\n{}\n$$", latex);
 }
 
 fn main() {

@@ -4,12 +4,12 @@ use std::{
 };
 
 use numbers::Number;
+use parser::ast::{ADD_HEAD, DIV_HEAD, MUL_HEAD, NEG_HEAD, POW_HEAD, SUB_HEAD};
 
 use crate::{
     atom::Atom,
     builtin::{CANNONICAL_HEAD_APPLY, CANNONICAL_HEAD_SQRT, CANNONICAL_SYM_INDETERMINATE},
     expr::{Expr, NormalizedExpr, generator::pow},
-    parser::ast::{ADD_HEAD, DIV_HEAD, MUL_HEAD, NEG_HEAD, POW_HEAD, SUB_HEAD},
 };
 
 fn cannonical_fold_ac_with_neutral_el<A: Default + Clone + PartialEq>(

@@ -258,6 +258,7 @@ dependencies = [
  "axum",
  "common",
  "futures-util",
+ "parser",
  "serde",
  "serde_json",
  "symbolics",
@@ -929,6 +930,7 @@ name = "toy-cas-cli"
 version = "0.1.0"
 dependencies = [
  "clap",
+ "parser",
  "symbolics",
 ]
 
@@ -1063,6 +1065,7 @@ name = "wasm"
 version = "0.1.0"
 dependencies = [
  "common",
+ "parser",
  "serde",
  "serde_json",
  "symbolics",

@@ -2,9 +2,10 @@ use std::collections::HashMap;
 use std::fmt::Debug;
 use std::str::FromStr;
 
+use parser::ast::{ADD_HEAD, MUL_HEAD};
+
 use crate::expr::Expr;
 use crate::expr::walk::ExprTopDownWalker;
-use crate::parser::ast::{ADD_HEAD, MUL_HEAD};
 use crate::pattern::{PatternPredicate, builtin::*};
 
 pub type InstrId = usize;

@@ -1,13 +1,11 @@
 mod util;
 
+use common::{ClientMessage, KernelMessage};
+use parser::parse;
 use symbolics::expr::{Expr, NormalizedExpr};
-use symbolics::parser::ast::ParserAst;
+use symbolics::format::MathDisplay;
 use symbolics::simplify::Simplifier;
 use wasm_bindgen::prelude::*;
-
-use common::{ClientMessage, KernelMessage};
-use symbolics::format::MathDisplay;
-use symbolics::parser::parse;
 
 use crate::util::escape_json;
 
@@ -45,23 +43,14 @@ fn eval_inner(input: String) -> Result<KernelMessage, KernelMessage> {
         msg: format!("Error parsing input: {}", err),
     })?;
 
-    let input_latex = ast_in.to_latex();
-    let input_expr = NormalizedExpr::new(Expr::from_parser_ast(ast_in));
+    let input_expr = Expr::from(ast_in);
+    let input_latex = input_expr.to_latex();
+    let input_expr = NormalizedExpr::new(Expr::from(input_expr));
 
-    let result_expr = Simplifier::new(input_expr)
-        .simple()
-        .resugar()
-        .canonicalize();
+    let result_expr = Simplifier::new(input_expr).simple().resugar();
 
-    if let Ok(ast_out) = ParserAst::try_from(result_expr) {
-        Ok(KernelMessage::EvalResult {
-            input: input_latex,
-            output: ast_out.to_latex(),
-        })
-    } else {
-        Err(KernelMessage::ParseError {
-            input: input_latex,
-            msg: "Cannot recover AST from transformed expression.".to_string(),
-        })
-    }
+    Ok(KernelMessage::EvalResult {
+        input: input_latex,
+        output: result_expr.to_latex(),
+    })
 }

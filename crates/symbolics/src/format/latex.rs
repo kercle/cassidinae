@@ -1,12 +1,15 @@
 use crate::{
+    atom::Atom,
     builtin::{
         CANNONICAL_HEAD_COS, CANNONICAL_HEAD_DERIVATIVE, CANNONICAL_HEAD_EXP,
         CANNONICAL_HEAD_INTEGRATE, CANNONICAL_HEAD_LOG, CANNONICAL_HEAD_SIN, CANNONICAL_HEAD_SQRT,
         CANNONICAL_HEAD_TAN, CANNONICAL_SYM_INDETERMINATE, CANNONICAL_SYM_PLUS_INFINITY,
     },
-    parser::ast::ParserAst,
 };
 use numbers::Number;
+use parser::ast::{ADD_HEAD, DIV_HEAD, MUL_HEAD, NEG_HEAD, POW_HEAD, SUB_HEAD};
+
+use crate::expr::Expr;
 
 fn greek_letter(name: &str) -> String {
     match name {
@@ -38,18 +41,21 @@ fn greek_letter(name: &str) -> String {
     }
 }
 
-fn node_weight<A>(ast: &ParserAst<A>) -> Option<u32>
-where
-    A: Clone + PartialEq,
-{
-    match ast {
-        ParserAst::Negation { .. } => Some(3),
-        ParserAst::Add { .. } => Some(1),
-        ParserAst::Sub { .. } => Some(1),
-        ParserAst::Mul { .. } => Some(2),
-        ParserAst::Div { .. } => Some(2),
-        ParserAst::Pow { .. } => Some(4),
-        _ => None,
+fn node_weight(expr: &Expr) -> Option<u32> {
+    if expr.is_application_of(NEG_HEAD, 1) {
+        Some(3)
+    } else if expr.has_head_symbol(ADD_HEAD) {
+        Some(1)
+    } else if expr.is_application_of(SUB_HEAD, 2) {
+        Some(1)
+    } else if expr.has_head_symbol(MUL_HEAD) {
+        Some(2)
+    } else if expr.is_application_of(DIV_HEAD, 2) {
+        Some(2)
+    } else if expr.is_application_of(POW_HEAD, 2) {
+        Some(4)
+    } else {
+        None
     }
 }
 
@@ -65,15 +71,14 @@ fn wrap_with_parentheses(
     }
 }
 
-pub fn ast_to_latex<A>(ast: &ParserAst<A>, parent_weight: Option<u32>) -> String
-where
-    A: Clone + PartialEq,
-{
-    let weight = node_weight(ast);
+pub fn expr_to_latex(expr: &Expr, parent_weight: Option<u32>) -> String {
+    let weight = node_weight(expr);
 
-    use ParserAst::*;
-    match ast {
-        Constant { value, .. } => {
+    match expr {
+        Expr::Atom {
+            entry: Atom::Number(value),
+            ..
+        } => {
             if let Number::Rational(rational) = value {
                 if rational.is_zero() {
                     "0".to_string()
@@ -90,98 +95,103 @@ where
                 greek_letter(&value.to_string())
             }
         }
-        Symbol { name, .. } if name == CANNONICAL_SYM_INDETERMINATE => {
-            format!(r#"\text{{{name}}}"#)
+        Expr::Atom {
+            entry: Atom::Symbol(name),
+            ..
+        } if name == CANNONICAL_SYM_INDETERMINATE => format!(r#"\text{{{name}}}"#),
+        Expr::Atom {
+            entry: Atom::Symbol(name),
+            ..
+        } if name == CANNONICAL_SYM_PLUS_INFINITY => r#"\infty"#.to_string(),
+        Expr::Atom {
+            entry: Atom::Symbol(name),
+            ..
+        } => greek_letter(name),
+        Expr::Node { args, .. } if expr.is_application_of(NEG_HEAD, 1) => {
+            format!("-{}", expr_to_latex(args.first().unwrap(), weight))
         }
-        Symbol { name, .. } if name == CANNONICAL_SYM_PLUS_INFINITY => r#"\infty"#.to_string(),
-        Symbol { name, .. } => greek_letter(name),
-        Negation { arg, .. } => {
-            format!("-{}", ast_to_latex(arg, weight))
-        }
-        Add { nodes, .. } => {
-            let add_str = nodes
+        Expr::Node { args, .. } if expr.has_head_symbol(ADD_HEAD) => {
+            let args_str = args
                 .iter()
-                .map(|node| ast_to_latex(node, weight))
+                .map(|arg| expr_to_latex(arg, weight))
                 .collect::<Vec<_>>()
                 .join(" + ");
-            wrap_with_parentheses(add_str, weight, parent_weight)
+            wrap_with_parentheses(args_str, weight, parent_weight)
         }
-        Sub { lhs, rhs, .. } => wrap_with_parentheses(
+        Expr::Node { args, .. } if expr.is_application_of(SUB_HEAD, 2) => wrap_with_parentheses(
             format!(
                 "{} - {}",
-                ast_to_latex(lhs, weight),
-                ast_to_latex(rhs, weight)
+                expr_to_latex(args.get(0).unwrap(), weight),
+                expr_to_latex(args.get(1).unwrap(), weight)
             ),
             weight,
             parent_weight,
         ),
-        Mul { nodes, .. } => {
-            let mul_str = nodes
+        Expr::Node { args, .. } if expr.is_application_of(MUL_HEAD, 2) => {
+            let args_str = args
                 .iter()
-                .map(|node| ast_to_latex(node, weight))
+                .map(|arg| expr_to_latex(arg, weight))
                 .collect::<Vec<_>>()
                 .join(" \\cdot ");
-            wrap_with_parentheses(mul_str, weight, parent_weight)
+            wrap_with_parentheses(args_str, weight, parent_weight)
         }
-        Div { lhs, rhs, .. } => {
-            let frac_str = format!(
+        Expr::Node { args, .. } if expr.is_application_of(DIV_HEAD, 2) => wrap_with_parentheses(
+            format!(
                 "\\frac{{{}}}{{{}}}",
-                ast_to_latex(lhs, None),
-                ast_to_latex(rhs, None)
-            );
-
-            wrap_with_parentheses(frac_str, weight, parent_weight)
-        }
-        Pow { lhs, rhs, .. } => {
-            let pow_str = format!(
-                "{{{}^{{{}}}}}",
-                ast_to_latex(lhs, weight),
-                ast_to_latex(rhs, weight)
-            );
-
-            wrap_with_parentheses(pow_str, weight, parent_weight)
-        }
-        FunctionCall { name, args, .. } if name == CANNONICAL_HEAD_EXP && args.len() == 1 => {
+                expr_to_latex(args.get(0).unwrap(), weight),
+                expr_to_latex(args.get(1).unwrap(), weight)
+            ),
+            weight,
+            parent_weight,
+        ),
+        Expr::Node { args, .. } if expr.is_application_of(POW_HEAD, 2) => wrap_with_parentheses(
+            format!(
+                "{{{}}}^{{{}}}",
+                expr_to_latex(args.get(0).unwrap(), weight),
+                expr_to_latex(args.get(1).unwrap(), weight)
+            ),
+            weight,
+            parent_weight,
+        ),
+        Expr::Node { args, .. } if expr.is_application_of(CANNONICAL_HEAD_EXP, 1) => {
             format!(
                 "\\exp\\left({}\\right)",
-                ast_to_latex(args.first().unwrap(), weight)
+                expr_to_latex(args.first().unwrap(), weight)
             )
         }
-        FunctionCall { name, args, .. } if name == CANNONICAL_HEAD_LOG && args.len() == 1 => {
+        Expr::Node { args, .. } if expr.is_application_of(CANNONICAL_HEAD_LOG, 1) => {
             format!(
                 "\\log\\left({}\\right)",
-                ast_to_latex(args.first().unwrap(), weight)
+                expr_to_latex(args.first().unwrap(), weight)
             )
         }
-        FunctionCall { name, args, .. } if name == CANNONICAL_HEAD_SIN && args.len() == 1 => {
+        Expr::Node { args, .. } if expr.is_application_of(CANNONICAL_HEAD_SIN, 1) => {
             format!(
                 "\\sin\\left({}\\right)",
-                ast_to_latex(args.first().unwrap(), weight)
+                expr_to_latex(args.first().unwrap(), weight)
             )
         }
-        FunctionCall { name, args, .. } if name == CANNONICAL_HEAD_COS && args.len() == 1 => {
+        Expr::Node { args, .. } if expr.is_application_of(CANNONICAL_HEAD_COS, 1) => {
             format!(
                 "\\cos\\left({}\\right)",
-                ast_to_latex(args.first().unwrap(), weight)
+                expr_to_latex(args.first().unwrap(), weight)
             )
         }
-        FunctionCall { name, args, .. } if name == CANNONICAL_HEAD_TAN && args.len() == 1 => {
+        Expr::Node { args, .. } if expr.is_application_of(CANNONICAL_HEAD_TAN, 1) => {
             format!(
                 "\\tan\\left({}\\right)",
-                ast_to_latex(args.first().unwrap(), weight)
+                expr_to_latex(args.first().unwrap(), weight)
             )
         }
-        FunctionCall { name, args, .. } if name == CANNONICAL_HEAD_SQRT && args.len() == 1 => {
-            format!("\\sqrt{{{}}}", ast_to_latex(args.first().unwrap(), weight))
+        Expr::Node { args, .. } if expr.is_application_of(CANNONICAL_HEAD_SQRT, 1) => {
+            format!("\\sqrt{{{}}}", expr_to_latex(args.first().unwrap(), weight))
         }
-        FunctionCall { name, args, .. }
-            if name == CANNONICAL_HEAD_DERIVATIVE && args.len() == 2 =>
-        {
+        Expr::Node { args, .. } if expr.is_application_of(CANNONICAL_HEAD_DERIVATIVE, 2) => {
             let f = args.first().unwrap();
             let x = args.last().unwrap();
 
-            let f_latex = ast_to_latex(f, weight);
-            let x_latex = ast_to_latex(x, weight);
+            let f_latex = expr_to_latex(f, weight);
+            let x_latex = expr_to_latex(x, weight);
 
             if x.is_symbol() {
                 format!(
@@ -191,12 +201,12 @@ where
                 format!("\\text{{D}}\\left[{f_latex}, {x_latex}\\right]")
             }
         }
-        FunctionCall { name, args, .. } if name == CANNONICAL_HEAD_INTEGRATE && args.len() == 2 => {
+        Expr::Node { args, .. } if expr.is_application_of(CANNONICAL_HEAD_INTEGRATE, 2) => {
             let f = args.first().unwrap();
             let x = args.last().unwrap();
 
-            let f_latex = ast_to_latex(f, weight);
-            let x_latex = ast_to_latex(x, weight);
+            let f_latex = expr_to_latex(f, weight);
+            let x_latex = expr_to_latex(x, weight);
 
             if x.is_symbol() {
                 format!("\\int {f_latex}\\,\\text{{d}}{x_latex}")
@@ -204,63 +214,72 @@ where
                 format!("\\text{{Integrate}}\\left[{f_latex}, {x_latex}\\right]")
             }
         }
-        FunctionCall { name, args, .. } => {
+        Expr::Node { head, args, .. } => {
+            let Some(name) = head.get_symbol() else {
+                unimplemented!()
+            };
+
             let args_str = args
                 .iter()
-                .map(|arg| ast_to_latex(arg, None))
+                .map(|arg| expr_to_latex(arg, None))
                 .collect::<Vec<_>>()
                 .join(", ");
 
             format!("\\text{{{name}}}\\left[{args_str}\\right]")
         }
-        Block { nodes, .. } => {
-            let mut block_str = String::new();
-            for node in nodes {
-                if !block_str.is_empty() {
-                    block_str.push_str(" \\\\\n");
-                }
-                block_str.push_str(&ast_to_latex(node, parent_weight));
-            }
-            block_str
-        }
+        _ => todo!(),
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::format::MathDisplay;
-    use crate::parser::parse;
+    use crate::{expr::Expr, format::MathDisplay};
+    use parser::parse;
 
     #[test]
-    fn test_ast_to_latex() {
+    fn test_expr_to_latex() {
         let ast = parse("2 + 3").unwrap();
-        assert_eq!(ast.to_latex(), "2 + 3");
+        let expr: Expr = Expr::<()>::from(ast);
+        assert_eq!(expr.to_latex(), "2 + 3");
     }
 
     #[test]
-    fn test_ast_to_latex_with_parenthesis() {
+    fn test_expr_to_latex_with_parenthesis() {
         let ast = parse("(2 + 3) * 6").unwrap();
-        assert_eq!(ast.to_latex(), "\\left(2 + 3\\right) \\cdot 6");
+        let expr: Expr = Expr::<()>::from(ast);
+        assert_eq!(expr.to_latex(), "\\left(2 + 3\\right) \\cdot 6");
     }
 
     #[test]
-    fn test_ast_to_latex_multiple_adds() {
+    fn test_expr_to_latex_multiple_adds() {
         let ast = parse("1+2+3+4").unwrap();
-        assert_eq!(ast.to_latex(), "1 + 2 + 3 + 4");
+        let expr: Expr = Expr::<()>::from(ast);
+        assert_eq!(expr.to_latex(), "1 + 2 + 3 + 4");
     }
 
     #[test]
-    fn test_ast_to_latex_with_unary_op() {
+    fn test_expr_to_latex_with_unary_op() {
         let ast = parse("-2 + 3").unwrap();
-        assert_eq!(ast.to_latex(), "-2 + 3");
+        let expr: Expr = Expr::<()>::from(ast);
+        dbg!(&expr);
+        assert_eq!(expr.to_latex(), "-2 + 3");
     }
 
     #[test]
-    fn test_ast_to_latex_with_function_call() {
+    fn test_expr_to_latex_with_pow() {
+        let ast = parse("pi^2").unwrap();
+        let expr: Expr = Expr::<()>::from(ast);
+        dbg!(&expr);
+        assert_eq!(expr.to_latex(), "{\\pi}^{2}");
+    }
+
+    #[test]
+    fn test_expr_to_latex_with_function_call() {
         let ast = parse("5*pi^2/4*cos[pi*x/2]*sin[π*y/2]").unwrap();
+        let expr: Expr = Expr::<()>::from(ast);
         assert_eq!(
-            ast.to_latex(),
-            "\\frac{5 \\cdot {\\pi^{2}}}{4} \\cdot \\text{cos}\\left[\\frac{\\pi \\cdot x}{2}\\right] \\cdot \\text{sin}\\left[\\frac{\\pi \\cdot y}{2}\\right]"
+            expr.to_latex(),
+            "\\frac{5 \\cdot {\\pi}^{2}}{4} \\cdot \\text{cos}\\left[\\frac{\\pi \\cdot x}{2}\\right] \\cdot \\text{sin}\\left[\\frac{\\pi \\cdot y}{2}\\right]"
         );
     }
 }

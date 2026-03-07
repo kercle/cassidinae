@@ -1,4 +1,4 @@
-use crate::parser::ast::ParserAst;
+use crate::expr::Expr;
 
 mod latex;
 
@@ -6,8 +6,8 @@ pub trait MathDisplay {
     fn to_latex(&self) -> String;
 }
 
-impl<A: Clone + PartialEq> MathDisplay for ParserAst<A> {
+impl MathDisplay for Expr {
     fn to_latex(&self) -> String {
-        latex::ast_to_latex(self, None)
+        latex::expr_to_latex(self, None)
     }
 }
