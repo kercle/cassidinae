@@ -38,6 +38,7 @@ pub enum Token {
     Caret,        // '^'
     Tilde,        // '~'
     Exclamation,  // '!'
+    Question,     // '?'
     LessThan,     // '<'
     GreaterThan,  // '>'
 
@@ -294,6 +295,7 @@ impl TokenStream {
                 '|' => Token::Pipe,
                 '^' => Token::Caret,
                 '~' => Token::Tilde,
+                '?' => Token::Question,
                 _ => return false, // Not an operator character
             };
 
