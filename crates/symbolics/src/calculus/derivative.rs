@@ -5,64 +5,47 @@ pub(crate) fn derivative_rules() -> Vec<(NormalizedExpr, Expr)> {
     vec![
         // =============== Linearity ===============
         (
-            norm_expr!(
-            D[
-                Pattern[f, Blank[]] + Pattern[r, BlankSeq[]],
-                PatternTest[Pattern[x, Blank[]], IsSymbolQ]
-            ]),
-            expr!(
-            D[f, x] + D[Add[r],x]
-            ),
+            norm_expr!( D[f_ + r__, PatternTest[x_, IsSymbolQ]] ),
+            expr!( D[f, x] + D[Add[r],x] ),
         ),
         (
             norm_expr!(
             D[
-                PatternTest[Pattern[c, Blank[]], IsNumberQ] * Pattern[r, BlankSeq[]],
-                PatternTest[Pattern[x, Blank[]], IsSymbolQ]
+                PatternTest[c_, IsNumberQ] * r__,
+                PatternTest[x_, IsSymbolQ]
             ]),
             expr!(
             c * D[Mul[r],x]
             ),
         ),
         // =============== Basic ===============
+        (norm_expr!( D[x_, PatternTest[x_, IsSymbolQ]] ), expr!(1)),
         (
             norm_expr!(
             D[
-                Pattern[x, Blank[]],
-                PatternTest[Pattern[x, Blank[]], IsSymbolQ]
-            ]),
-            expr!(1),
-        ),
-        (
-            norm_expr!(
-            D[
-                PatternTest[Pattern[c, Blank[]], IsNumberQ],
-                PatternTest[Pattern[x, Blank[]], IsSymbolQ]
+                PatternTest[c_, IsNumberQ],
+                PatternTest[x_, IsSymbolQ]
             ]),
             expr!(0),
         ),
         (
             norm_expr!(
             D[
-                PatternTest[Pattern[a, Blank[]], IsSymbolQ],
-                PatternTest[Pattern[x, Blank[]], IsSymbolQ]
+                PatternTest[a_, IsSymbolQ],
+                PatternTest[x_, IsSymbolQ]
             ]),
             expr!(0),
         ),
         (
-            norm_expr!(
-            D[
-                Pattern[f, Blank[]] * Pattern[g, Blank[]],
-                PatternTest[Pattern[x, Blank[]], IsSymbolQ]
-            ]),
+            norm_expr!( D[f_ * g_, PatternTest[x_, IsSymbolQ]] ),
             expr!(D[f, x] * g + f * D[g, x]),
         ),
         // =============== Powers ===============
         (
             norm_expr!(
             D[
-                Pattern[f, Blank[]] ^ Pattern[g, Blank[]],
-                PatternTest[Pattern[x, Blank[]], IsSymbolQ]
+                f_ ^ g_,
+                PatternTest[x_, IsSymbolQ]
             ]),
             expr!((f ^ g) *((g / f) * D[f, x] + Log[f] * D[g, x])),
         ),
@@ -70,8 +53,8 @@ pub(crate) fn derivative_rules() -> Vec<(NormalizedExpr, Expr)> {
         (
             norm_expr!(
             D[
-                Exp[Pattern[f, Blank[]]],
-                PatternTest[Pattern[x, Blank[]], IsSymbolQ]
+                Exp[f_],
+                PatternTest[x_, IsSymbolQ]
             ]),
             expr!(Exp[f] * D[f, x]),
         ),
@@ -79,8 +62,8 @@ pub(crate) fn derivative_rules() -> Vec<(NormalizedExpr, Expr)> {
         (
             norm_expr!(
             D[
-                Log[Pattern[f, Blank[]]],
-                PatternTest[Pattern[x, Blank[]], IsSymbolQ]
+                Log[f_],
+                PatternTest[x_, IsSymbolQ]
             ]),
             expr!((1 / f) * D[f, x]),
         ),
@@ -88,48 +71,48 @@ pub(crate) fn derivative_rules() -> Vec<(NormalizedExpr, Expr)> {
         (
             norm_expr!(
             D[
-                Sin[Pattern[f, Blank[]]],
-                PatternTest[Pattern[x, Blank[]], IsSymbolQ]
+                Sin[f_],
+                PatternTest[x_, IsSymbolQ]
             ]),
             expr!(Cos[f] * D[f, x]),
         ),
         (
             norm_expr!(
             D[
-                Cos[Pattern[f, Blank[]]],
-                PatternTest[Pattern[x, Blank[]], IsSymbolQ]
+                Cos[f_],
+                PatternTest[x_, IsSymbolQ]
             ]),
             expr!(-Sin[f] * D[f, x]),
         ),
         (
             norm_expr!(
             D[
-                Tan[Pattern[f, Blank[]]],
-                PatternTest[Pattern[x, Blank[]], IsSymbolQ]
+                Tan[f_],
+                PatternTest[x_, IsSymbolQ]
             ]),
             expr!((1 / (Cos[f] ^ 2)) * D[f, x]),
         ),
         (
             norm_expr!(
             D[
-                Cot[Pattern[f, Blank[]]],
-                PatternTest[Pattern[x, Blank[]], IsSymbolQ]
+                Cot[f_],
+                PatternTest[x_, IsSymbolQ]
             ]),
             expr!(-(1 / (Sin[f] ^ 2)) * D[f, x]),
         ),
         (
             norm_expr!(
             D[
-                Sec[Pattern[f, Blank[]]],
-                PatternTest[Pattern[x, Blank[]], IsSymbolQ]
+                Sec[f_],
+                PatternTest[x_, IsSymbolQ]
             ]),
             expr!(Sec[f] * Tan[f] * D[f, x]),
         ),
         (
             norm_expr!(
             D[
-                Csc[Pattern[f, Blank[]]],
-                PatternTest[Pattern[x, Blank[]], IsSymbolQ]
+                Csc[f_],
+                PatternTest[x_, IsSymbolQ]
             ]),
             expr!(-Csc[f] * Cot[f] * D[f, x]),
         ),
@@ -137,24 +120,24 @@ pub(crate) fn derivative_rules() -> Vec<(NormalizedExpr, Expr)> {
         (
             norm_expr!(
             D[
-                ArcSin[Pattern[f, Blank[]]],
-                PatternTest[Pattern[x, Blank[]], IsSymbolQ]
+                ArcSin[f_],
+                PatternTest[x_, IsSymbolQ]
             ]),
             expr!((1 / (1 - f ^ 2) ^ (1 / 2)) * D[f, x]),
         ),
         (
             norm_expr!(
             D[
-                ArcCos[Pattern[f, Blank[]]],
-                PatternTest[Pattern[x, Blank[]], IsSymbolQ]
+                ArcCos[f_],
+                PatternTest[x_, IsSymbolQ]
             ]),
             expr!(-(1 / (1 - f ^ 2) ^ (1 / 2)) * D[f, x]),
         ),
         (
             norm_expr!(
             D[
-                ArcTan[Pattern[f, Blank[]]],
-                PatternTest[Pattern[x, Blank[]], IsSymbolQ]
+                ArcTan[f_],
+                PatternTest[x_, IsSymbolQ]
             ]),
             expr!((1 / (1 + f ^ 2)) * D[f, x]),
         ),
@@ -162,24 +145,24 @@ pub(crate) fn derivative_rules() -> Vec<(NormalizedExpr, Expr)> {
         (
             norm_expr!(
             D[
-                ArcSin[Pattern[f, Blank[]]],
-                PatternTest[Pattern[x, Blank[]], IsSymbolQ]
+                ArcSin[f_],
+                PatternTest[x_, IsSymbolQ]
             ]),
             expr!((1 / (1 - f ^ 2) ^ (1 / 2)) * D[f, x]),
         ),
         (
             norm_expr!(
             D[
-                ArcCos[Pattern[f, Blank[]]],
-                PatternTest[Pattern[x, Blank[]], IsSymbolQ]
+                ArcCos[f_],
+                PatternTest[x_, IsSymbolQ]
             ]),
             expr!(-(1 / (1 - f ^ 2) ^ (1 / 2)) * D[f, x]),
         ),
         (
             norm_expr!(
             D[
-                ArcTan[Pattern[f, Blank[]]],
-                PatternTest[Pattern[x, Blank[]], IsSymbolQ]
+                ArcTan[f_],
+                PatternTest[x_, IsSymbolQ]
             ]),
             expr!((1 / (1 + f ^ 2)) * D[f, x]),
         ),
@@ -187,24 +170,24 @@ pub(crate) fn derivative_rules() -> Vec<(NormalizedExpr, Expr)> {
         (
             norm_expr!(
             D[
-                Sinh[Pattern[f, Blank[]]],
-                PatternTest[Pattern[x, Blank[]], IsSymbolQ]
+                Sinh[f_],
+                PatternTest[x_, IsSymbolQ]
             ]),
             expr!(Cosh[f] * D[f, x]),
         ),
         (
             norm_expr!(
             D[
-                Cosh[Pattern[f, Blank[]]],
-                PatternTest[Pattern[x, Blank[]], IsSymbolQ]
+                Cosh[f_],
+                PatternTest[x_, IsSymbolQ]
             ]),
             expr!(Sinh[f] * D[f, x]),
         ),
         (
             norm_expr!(
             D[
-                Tanh[Pattern[f, Blank[]]],
-                PatternTest[Pattern[x, Blank[]], IsSymbolQ]
+                Tanh[f_],
+                PatternTest[x_, IsSymbolQ]
             ]),
             expr!((1 / (Cosh[f] ^ 2)) * D[f, x]),
         ),

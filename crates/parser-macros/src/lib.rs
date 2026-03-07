@@ -121,20 +121,34 @@ fn ast_to_token_stream(ast: ParserAst) -> proc_macro2::TokenStream {
             bind_name,
             head_constraint,
         } => {
-            quote! { #ast_path::new_blank(#bind_name, #head_constraint) }
+            let bind_name_ts = optional_string_to_token_stream(bind_name);
+            let head_constraint_ts = optional_string_to_token_stream(head_constraint);
+            quote! { #ast_path::new_blank(#bind_name_ts, #head_constraint_ts) }
         }
         BlankSeq {
             bind_name,
             head_constraint,
         } => {
-            quote! { #ast_path::new_blank(#bind_name, #head_constraint) }
+            let bind_name_ts = optional_string_to_token_stream(bind_name);
+            let head_constraint_ts = optional_string_to_token_stream(head_constraint);
+            quote! { #ast_path::new_blank_seq(#bind_name_ts, #head_constraint_ts) }
         }
         BlankNullSeq {
             bind_name,
             head_constraint,
         } => {
-            quote! { #ast_path::new_blank(#bind_name, #head_constraint) }
+            let bind_name_ts = optional_string_to_token_stream(bind_name);
+            let head_constraint_ts = optional_string_to_token_stream(head_constraint);
+            quote! { #ast_path::new_blank_null_seq(#bind_name_ts, #head_constraint_ts) }
         }
         Block { .. } => todo!(),
+    }
+}
+
+fn optional_string_to_token_stream(os: Option<String>) -> proc_macro2::TokenStream {
+    if let Some(s) = os {
+        quote! { Some(#s.to_string()) }
+    } else {
+        quote! { None }
     }
 }

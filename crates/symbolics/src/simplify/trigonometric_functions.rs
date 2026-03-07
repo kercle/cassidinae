@@ -4,17 +4,8 @@ use crate::{expr, norm_expr};
 pub(super) fn trigonometric_rules() -> Vec<(NormalizedExpr, Expr)> {
     vec![
         // =============== Pythagorean identity ===============
-        (
-            norm_expr!(Cos[Pattern[a, Blank[]]]^2 + Sin[Pattern[a, Blank[]]]^2 + Pattern[rest, BlankNullSeq[]]),
-            expr!(1 + rest),
-        ),
-        (
-            norm_expr!(Sqrt[1 - Cos[Pattern[x, Blank[]]] ^ 2]),
-            expr!(Sin[x]),
-        ),
-        (
-            norm_expr!(Sqrt[1 - Sin[Pattern[x, Blank[]]] ^ 2]),
-            expr!(Cos[x]),
-        ),
+        (norm_expr!(Cos[a_] ^ 2 + Sin[a_] ^ 2 + r___), expr!(1 + r)),
+        (norm_expr!(Sqrt[1 - Cos[x_] ^ 2]), expr!(Sin[x])),
+        (norm_expr!(Sqrt[1 - Sin[x_] ^ 2]), expr!(Cos[x])),
     ]
 }

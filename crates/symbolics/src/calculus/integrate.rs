@@ -7,8 +7,8 @@ pub(crate) fn indefinite_integrals_rules() -> Vec<(NormalizedExpr, Expr)> {
         (
             norm_expr!(
             Integrate[
-                Pattern[f, Blank[]] + Pattern[r, BlankSeq[]],
-                PatternTest[Pattern[x, Blank[]], IsSymbolQ]
+                f_ + r__,
+                PatternTest[x_, IsSymbolQ]
             ]),
             expr!(
             Integrate[f, x] + Integrate[Add[r],x]
@@ -17,8 +17,8 @@ pub(crate) fn indefinite_integrals_rules() -> Vec<(NormalizedExpr, Expr)> {
         (
             norm_expr!(
             Integrate[
-                PatternTest[Pattern[c, Blank[]], IsNumberQ] * Pattern[r, BlankSeq[]],
-                PatternTest[Pattern[x, Blank[]], IsSymbolQ]
+                PatternTest[c_, IsNumberQ] * r__,
+                PatternTest[x_, IsSymbolQ]
             ]),
             expr!(
             c * Integrate[Mul[r],x]
@@ -28,32 +28,32 @@ pub(crate) fn indefinite_integrals_rules() -> Vec<(NormalizedExpr, Expr)> {
         (
             norm_expr!(
             Integrate[
-                PatternTest[Pattern[c, Blank[]], IsNumberQ],
-                PatternTest[Pattern[x, Blank[]], IsSymbolQ]
+                PatternTest[c_, IsNumberQ],
+                PatternTest[x_, IsSymbolQ]
             ]),
             expr!(c * x),
         ),
         (
             norm_expr!(
             Integrate[
-                Pattern[x, Blank[]],
-                PatternTest[Pattern[x, Blank[]], IsSymbolQ]
+                x_,
+                PatternTest[x_, IsSymbolQ]
             ]),
             expr!(x ^ 2 / 2),
         ),
         (
             norm_expr!(
             Integrate[
-                PatternTest[Pattern[c, Blank[]], IsSymbolQ],
-                PatternTest[Pattern[x, Blank[]], IsSymbolQ]
+                PatternTest[c_, IsSymbolQ],
+                PatternTest[x_, IsSymbolQ]
             ]),
             expr!(c * x),
         ),
         (
             norm_expr!(
             Integrate[
-                PatternTest[Pattern[a, Blank[]], IsSymbolQ],
-                PatternTest[Pattern[x, Blank[]], IsSymbolQ]
+                PatternTest[a_, IsSymbolQ],
+                PatternTest[x_, IsSymbolQ]
             ]),
             expr!(a * x),
         ),
@@ -61,16 +61,16 @@ pub(crate) fn indefinite_integrals_rules() -> Vec<(NormalizedExpr, Expr)> {
         (
             norm_expr!(
             Integrate[
-                1 / Pattern[x, Blank[]],
-                PatternTest[Pattern[x, Blank[]], IsSymbolQ]
+                1 / x_,
+                PatternTest[x_, IsSymbolQ]
             ]),
             expr!(Log[Abs[x]]),
         ),
         (
             norm_expr!(
             Integrate[
-                Pattern[x, Blank[]] ^ PatternTest[Pattern[k, Blank[]], IsNumberQ],
-                PatternTest[Pattern[x, Blank[]], IsSymbolQ]
+                x_ ^ PatternTest[k_, IsNumberQ],
+                PatternTest[x_, IsSymbolQ]
             ]),
             expr!(x ^ (k + 1) / (k + 1)),
         ),
@@ -78,8 +78,8 @@ pub(crate) fn indefinite_integrals_rules() -> Vec<(NormalizedExpr, Expr)> {
         (
             norm_expr!(
             Integrate[
-                Exp[Pattern[x, Blank[]]],
-                PatternTest[Pattern[x, Blank[]], IsSymbolQ]
+                Exp[x_],
+                PatternTest[x_, IsSymbolQ]
             ]),
             expr!(Exp[x]),
         ),
@@ -87,8 +87,8 @@ pub(crate) fn indefinite_integrals_rules() -> Vec<(NormalizedExpr, Expr)> {
         (
             norm_expr!(
             Integrate[
-                Log[Pattern[x, Blank[]]],
-                PatternTest[Pattern[x, Blank[]], IsSymbolQ]
+                Log[x_],
+                PatternTest[x_, IsSymbolQ]
             ]),
             expr!(x * Log[x] - x),
         ),
@@ -96,16 +96,16 @@ pub(crate) fn indefinite_integrals_rules() -> Vec<(NormalizedExpr, Expr)> {
         (
             norm_expr!(
             Integrate[
-                Sin[Pattern[x, Blank[]]],
-                PatternTest[Pattern[x, Blank[]], IsSymbolQ]
+                Sin[x_],
+                PatternTest[x_, IsSymbolQ]
             ]),
             expr!(-Cos[x]),
         ),
         (
             norm_expr!(
             Integrate[
-                Cos[Pattern[x, Blank[]]],
-                PatternTest[Pattern[x, Blank[]], IsSymbolQ]
+                Cos[x_],
+                PatternTest[x_, IsSymbolQ]
             ]),
             expr!(Sin[x]),
         ),
