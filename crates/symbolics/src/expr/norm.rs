@@ -374,6 +374,9 @@ impl NormExpr {
 
         let mut args_map: HashMap<RawExpr, RawExpr> = HashMap::new();
         for (base, exponent) in coeff_expr_pair_iter {
+            let base = Self::collect_like_terms_inner(base);
+            let exponent = Self::collect_like_terms_inner(exponent);
+
             if let Some(current_exponent) = args_map.get_mut(&base) {
                 *current_exponent =
                     RawExpr::new_binary_node(ADD_HEAD, current_exponent.clone(), exponent);
@@ -390,23 +393,33 @@ impl NormExpr {
         RawExpr::new_node(MUL_HEAD, new_args)
     }
 
+    fn collect_like_terms_inner(expr: RawExpr) -> RawExpr {
+        // internall we work with RawExpr, because NormExpr does not
+        // offer constructors for manipulating the expression.
+
+        match expr.kind {
+            ExprKind::Atom { .. } => expr,
+            ExprKind::Node { head, args } => {
+                if head.matches_symbol(ADD_HEAD) {
+                    Self::collect_like_terms_add_head(args)
+                } else if head.matches_symbol(MUL_HEAD) {
+                    Self::collect_like_exponentials_in_mul(args)
+                } else {
+                    let args = args
+                        .into_iter()
+                        .map(Self::collect_like_terms_inner)
+                        .collect();
+                    RawExpr::new_node(*head, args)
+                }
+            }
+        }
+    }
+
     pub fn collect_like_terms(self) -> NormExpr {
         // internall we work with RawExpr, because NormExpr does not
         // offer constructors for manipulating the expression.
         let expr = self.into_raw();
-
-        match expr.kind {
-            ExprKind::Atom { .. } => expr.normalize(),
-            ExprKind::Node { head, args } => {
-                if head.matches_symbol(ADD_HEAD) {
-                    Self::collect_like_terms_add_head(args).normalize()
-                } else if head.matches_symbol(MUL_HEAD) {
-                    Self::collect_like_exponentials_in_mul(args).normalize()
-                } else {
-                    RawExpr::new_node(*head, args).normalize()
-                }
-            }
-        }
+        Self::collect_like_terms_inner(expr).normalize()
     }
 }
 
