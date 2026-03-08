@@ -40,7 +40,7 @@ The syntax of the expressions is Mathematica inspired:
 - [x] Basic Pattern matching
 - [x] More advanced Pattern matching (commutative expressions with at most one sequence)
 - [x] Make Expr into Merkle tree for quicker pattern matching
-- [ ] Remove annotation from Expr, as the intended use case was solved differently
+- [x] Remove annotation from Expr, as the intended use case was solved differently
 - [ ] Allow more sequences in commutative patterns
 - [ ] Support for more flexible predicate in pattern matching
 - [x] Basic Rewrite engine
