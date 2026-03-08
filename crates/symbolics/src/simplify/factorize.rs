@@ -1,15 +1,14 @@
-use crate::expr::{Expr, NormalizedExpr};
-use crate::{expr, norm_expr};
+use crate::{expr::NormExpr, norm_expr};
 
-pub(super) fn factorization_rules() -> Vec<(NormalizedExpr, Expr)> {
+pub(super) fn factorization_rules() -> Vec<(NormExpr, NormExpr)> {
     vec![
         (
             norm_expr!(a_ * b__ + a_ * c__ + r___),
-            expr!(a * (Mul[b] + Mul[c]) + Add[r]),
+            norm_expr!(a * (Mul[b] + Mul[c]) + Add[r]),
         ),
         (
             norm_expr!(a_ + a_ * b__ + r___),
-            expr!(a * (1 + Mul[b]) + Add[r]),
+            norm_expr!(a * (1 + Mul[b]) + Add[r]),
         ),
     ]
 }

@@ -1,7 +1,6 @@
-use crate::expr::{Expr, NormalizedExpr};
-use crate::{expr, norm_expr};
+use crate::{expr::NormExpr, norm_expr};
 
-pub(crate) fn indefinite_integrals_rules() -> Vec<(NormalizedExpr, Expr)> {
+pub(crate) fn indefinite_integrals_rules() -> Vec<(NormExpr, NormExpr)> {
     vec![
         // =============== Linearity ===============
         (
@@ -10,7 +9,7 @@ pub(crate) fn indefinite_integrals_rules() -> Vec<(NormalizedExpr, Expr)> {
                 f_ + r__,
                 PatternTest[x_, IsSymbolQ]
             ]),
-            expr!(
+            norm_expr!(
             Integrate[f, x] + Integrate[Add[r],x]
             ),
         ),
@@ -20,7 +19,7 @@ pub(crate) fn indefinite_integrals_rules() -> Vec<(NormalizedExpr, Expr)> {
                 PatternTest[c_, IsNumberQ] * r__,
                 PatternTest[x_, IsSymbolQ]
             ]),
-            expr!(
+            norm_expr!(
             c * Integrate[Mul[r],x]
             ),
         ),
@@ -31,7 +30,7 @@ pub(crate) fn indefinite_integrals_rules() -> Vec<(NormalizedExpr, Expr)> {
                 PatternTest[c_, IsNumberQ],
                 PatternTest[x_, IsSymbolQ]
             ]),
-            expr!(c * x),
+            norm_expr!(c * x),
         ),
         (
             norm_expr!(
@@ -39,7 +38,7 @@ pub(crate) fn indefinite_integrals_rules() -> Vec<(NormalizedExpr, Expr)> {
                 x_,
                 PatternTest[x_, IsSymbolQ]
             ]),
-            expr!(x ^ 2 / 2),
+            norm_expr!(x ^ 2 / 2),
         ),
         (
             norm_expr!(
@@ -47,7 +46,7 @@ pub(crate) fn indefinite_integrals_rules() -> Vec<(NormalizedExpr, Expr)> {
                 PatternTest[c_, IsSymbolQ],
                 PatternTest[x_, IsSymbolQ]
             ]),
-            expr!(c * x),
+            norm_expr!(c * x),
         ),
         (
             norm_expr!(
@@ -55,7 +54,7 @@ pub(crate) fn indefinite_integrals_rules() -> Vec<(NormalizedExpr, Expr)> {
                 PatternTest[a_, IsSymbolQ],
                 PatternTest[x_, IsSymbolQ]
             ]),
-            expr!(a * x),
+            norm_expr!(a * x),
         ),
         // =============== Powers ===============
         (
@@ -64,7 +63,7 @@ pub(crate) fn indefinite_integrals_rules() -> Vec<(NormalizedExpr, Expr)> {
                 1 / x_,
                 PatternTest[x_, IsSymbolQ]
             ]),
-            expr!(Log[Abs[x]]),
+            norm_expr!(Log[Abs[x]]),
         ),
         (
             norm_expr!(
@@ -72,7 +71,7 @@ pub(crate) fn indefinite_integrals_rules() -> Vec<(NormalizedExpr, Expr)> {
                 x_ ^ PatternTest[k_, IsNumberQ],
                 PatternTest[x_, IsSymbolQ]
             ]),
-            expr!(x ^ (k + 1) / (k + 1)),
+            norm_expr!(x ^ (k + 1) / (k + 1)),
         ),
         // =============== Exponentials ===============
         (
@@ -81,7 +80,7 @@ pub(crate) fn indefinite_integrals_rules() -> Vec<(NormalizedExpr, Expr)> {
                 Exp[x_],
                 PatternTest[x_, IsSymbolQ]
             ]),
-            expr!(Exp[x]),
+            norm_expr!(Exp[x]),
         ),
         // =============== Logarithms ===============
         (
@@ -90,7 +89,7 @@ pub(crate) fn indefinite_integrals_rules() -> Vec<(NormalizedExpr, Expr)> {
                 Log[x_],
                 PatternTest[x_, IsSymbolQ]
             ]),
-            expr!(x * Log[x] - x),
+            norm_expr!(x * Log[x] - x),
         ),
         // =============== Trigonometric functions ===============
         (
@@ -99,7 +98,7 @@ pub(crate) fn indefinite_integrals_rules() -> Vec<(NormalizedExpr, Expr)> {
                 Sin[x_],
                 PatternTest[x_, IsSymbolQ]
             ]),
-            expr!(-Cos[x]),
+            norm_expr!(-Cos[x]),
         ),
         (
             norm_expr!(
@@ -107,7 +106,7 @@ pub(crate) fn indefinite_integrals_rules() -> Vec<(NormalizedExpr, Expr)> {
                 Cos[x_],
                 PatternTest[x_, IsSymbolQ]
             ]),
-            expr!(Sin[x]),
+            norm_expr!(Sin[x]),
         ),
     ]
 }

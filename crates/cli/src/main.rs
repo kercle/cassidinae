@@ -1,6 +1,6 @@
 use clap::Parser;
 use parser::parse;
-use symbolics::expr::{Expr, NormalizedExpr};
+use symbolics::expr::RawExpr;
 use symbolics::format::MathDisplay;
 use symbolics::simplify::Simplifier;
 
@@ -19,7 +19,7 @@ fn print_markdown(input: &str) {
         std::process::exit(1);
     });
 
-    let expr = NormalizedExpr::new(Expr::from(ast));
+    let expr = RawExpr::from(ast).normalize();
     let result = Simplifier::new(expr).simple().resugar().canonicalize();
 
     let latex = result.to_latex();

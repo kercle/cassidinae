@@ -1,3 +1,4 @@
+pub mod fmt;
 pub mod hash;
 
 use std::cmp::Ordering;
@@ -22,6 +23,14 @@ impl Atom {
 
     pub fn string_literal<T: AsRef<str>>(s: T) -> Self {
         Self::StringLiteral(s.as_ref().to_string())
+    }
+
+    pub fn is_number(&self) -> bool {
+        matches!(self, Self::Number(_))
+    }
+
+    pub fn is_symbol(&self) -> bool {
+        matches!(self, Self::Symbol(_))
     }
 
     fn rank(&self) -> u8 {

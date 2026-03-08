@@ -1,52 +1,56 @@
 use numbers::Number;
 
-use crate::{atom::Atom, expr::Expr};
+use crate::{
+    atom::Atom,
+    expr::{Expr, ExprKind},
+};
 
-impl<A> Expr<A> {
+impl<S> Expr<S> {
+
     pub fn as_atom(&self) -> Option<&Atom> {
-        match self {
-            Expr::Atom { entry, .. } => Some(entry),
-            Expr::Node { .. } => None,
+        match self.kind() {
+            ExprKind::Atom { entry, .. } => Some(entry),
+            ExprKind::Node { .. } => None,
         }
     }
 
-    pub fn head(&self) -> Option<&Expr<A>> {
-        match self {
-            Expr::Atom { .. } => None,
-            Expr::Node { head, .. } => Some(head),
+    pub fn head(&self) -> Option<&Expr<S>> {
+        match self.kind() {
+            ExprKind::Atom { .. } => None,
+            ExprKind::Node { head, .. } => Some(head),
         }
     }
 
-    pub fn args(&self) -> Option<&[Expr<A>]> {
-        match self {
-            Expr::Atom { .. } => None,
-            Expr::Node { args, .. } => Some(args.as_slice()),
+    pub fn args(&self) -> Option<&[Expr<S>]> {
+        match self.kind() {
+            ExprKind::Atom { .. } => None,
+            ExprKind::Node { args, .. } => Some(args.as_slice()),
         }
     }
 
     pub fn args_len(&self) -> usize {
-        match self {
-            Expr::Atom { .. } => 0,
-            Expr::Node { args, .. } => args.len(),
+        match self.kind() {
+            ExprKind::Atom { .. } => 0,
+            ExprKind::Node { args, .. } => args.len(),
         }
     }
 
     pub fn get_arg(&self, index: usize) -> Option<&Self> {
-        match self {
-            Expr::Atom { .. } => None,
-            Expr::Node { args, .. } => args.get(index),
+        match self.kind() {
+            ExprKind::Atom { .. } => None,
+            ExprKind::Node { args, .. } => args.get(index),
         }
     }
 
-    pub fn iter_args(&self) -> Option<std::slice::Iter<'_, Expr<A>>> {
-        match self {
-            Expr::Atom { .. } => None,
-            Expr::Node { args, .. } => Some(args.iter()),
+    pub fn iter_args(&self) -> Option<std::slice::Iter<'_, Expr<S>>> {
+        match self.kind() {
+            ExprKind::Atom { .. } => None,
+            ExprKind::Node { args, .. } => Some(args.iter()),
         }
     }
 
     pub fn matches_symbol<T: AsRef<str>>(&self, s: T) -> bool {
-        matches!(self, Expr::Atom { entry: Atom::Symbol(t), .. } if t == s.as_ref())
+        matches!(self.kind(), ExprKind::Atom { entry: Atom::Symbol(t), .. } if t == s.as_ref())
     }
 
     pub fn unpack_binary_node<T: AsRef<str>>(&self, s: T) -> Option<(&Self, &Self)> {
@@ -59,8 +63,8 @@ impl<A> Expr<A> {
 
     pub fn is_symbol(&self) -> bool {
         matches!(
-            self,
-            Expr::Atom {
+            self.kind(),
+            ExprKind::Atom {
                 entry: Atom::Symbol(_),
                 ..
             }
@@ -68,8 +72,8 @@ impl<A> Expr<A> {
     }
 
     pub fn get_symbol(&self) -> Option<&str> {
-        match self {
-            Expr::Atom {
+        match self.kind() {
+            ExprKind::Atom {
                 entry: Atom::Symbol(s),
                 ..
             } => Some(s),
@@ -95,8 +99,8 @@ impl<A> Expr<A> {
 
     pub fn is_number(&self) -> bool {
         matches!(
-            self,
-            Expr::Atom {
+            self.kind(),
+            ExprKind::Atom {
                 entry: Atom::Number(_),
                 ..
             }
@@ -104,8 +108,8 @@ impl<A> Expr<A> {
     }
 
     pub fn get_number(&self) -> Option<&Number> {
-        match self {
-            Expr::Atom {
+        match self.kind() {
+            ExprKind::Atom {
                 entry: Atom::Number(n),
                 ..
             } => Some(n),
@@ -118,18 +122,13 @@ impl<A> Expr<A> {
     }
 
     pub fn has_head_symbol<T: AsRef<str>>(&self, head_sym: T) -> bool {
-        match self {
-            Expr::Atom { .. } => false,
-            Expr::Node { head, .. } => head.matches_symbol(head_sym),
+        match self.kind() {
+            ExprKind::Atom { .. } => false,
+            ExprKind::Node { head, .. } => head.matches_symbol(head_sym),
         }
     }
-}
 
-impl<A> Expr<A>
-where
-    A: Default + Clone + PartialEq,
-{
-    pub fn matches_head<T: Into<Expr<A>>>(&self, test_head: T) -> bool {
+    pub fn matches_head<T: Into<Expr<S>>>(&self, test_head: T) -> bool {
         if let Some(head) = self.head() {
             let test_head = test_head.into();
             *head == test_head

@@ -2,7 +2,7 @@ mod util;
 
 use common::{ClientMessage, KernelMessage};
 use parser::parse;
-use symbolics::expr::{Expr, NormalizedExpr};
+use symbolics::expr::RawExpr;
 use symbolics::format::MathDisplay;
 use symbolics::simplify::Simplifier;
 use wasm_bindgen::prelude::*;
@@ -43,9 +43,9 @@ fn eval_inner(input: String) -> Result<KernelMessage, KernelMessage> {
         msg: format!("Error parsing input: {}", err),
     })?;
 
-    let input_expr = Expr::from(ast_in);
+    let input_expr = RawExpr::from(ast_in);
     let input_latex = input_expr.to_latex();
-    let input_expr = NormalizedExpr::new(input_expr);
+    let input_expr = input_expr.normalize();
 
     let result_expr = Simplifier::new(input_expr).simple().resugar();
 

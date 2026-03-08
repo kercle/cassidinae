@@ -56,15 +56,15 @@
 //  Add[x__, 1]  | Add[1]       | 0
 //  Add[x__, 1]  | Add[2, 1]    | 1
 
-use crate::expr;
+use crate::norm_expr;
 use crate::pattern::tests::utils::count_matches;
 
 // ---- Multiset (Commutative) Literal Tests ----
 
 #[test]
 fn test_multiset_literal_1() {
-    let pattern = expr! { Add[1, 2] };
-    let subject = expr! { Add[1, 2] };
+    let pattern = norm_expr! { Add[1, 2] };
+    let subject = norm_expr! { Add[1, 2] };
     assert_eq!(
         count_matches(&pattern, &subject),
         1,
@@ -74,8 +74,8 @@ fn test_multiset_literal_1() {
 
 #[test]
 fn test_multiset_literal_2() {
-    let pattern = expr! { Add[1, 2] };
-    let subject = expr! { Add[2, 1] };
+    let pattern = norm_expr! { Add[1, 2] };
+    let subject = norm_expr! { Add[2, 1] };
     assert_eq!(
         count_matches(&pattern, &subject),
         1,
@@ -85,8 +85,8 @@ fn test_multiset_literal_2() {
 
 #[test]
 fn test_multiset_literal_3() {
-    let pattern = expr! { Add[1, 2, 3] };
-    let subject = expr! { Add[3, 1, 2] };
+    let pattern = norm_expr! { Add[1, 2, 3] };
+    let subject = norm_expr! { Add[3, 1, 2] };
     assert_eq!(
         count_matches(&pattern, &subject),
         1,
@@ -96,8 +96,8 @@ fn test_multiset_literal_3() {
 
 #[test]
 fn test_multiset_literal_4() {
-    let pattern = expr! { Add[1, 2, 3] };
-    let subject = expr! { Add[1, 2, 4] };
+    let pattern = norm_expr! { Add[1, 2, 3] };
+    let subject = norm_expr! { Add[1, 2, 4] };
     assert_eq!(
         count_matches(&pattern, &subject),
         0,
@@ -107,8 +107,8 @@ fn test_multiset_literal_4() {
 
 #[test]
 fn test_multiset_literal_5() {
-    let pattern = expr! { Add[1, 2] };
-    let subject = expr! { Add[1, 2, 3] };
+    let pattern = norm_expr! { Add[1, 2] };
+    let subject = norm_expr! { Add[1, 2, 3] };
     assert_eq!(
         count_matches(&pattern, &subject),
         0,
@@ -118,8 +118,8 @@ fn test_multiset_literal_5() {
 
 #[test]
 fn test_multiset_literal_6() {
-    let pattern = expr! { Add[1, 1, 2] };
-    let subject = expr! { Add[1, 2, 1] };
+    let pattern = norm_expr! { Add[1, 1, 2] };
+    let subject = norm_expr! { Add[1, 2, 1] };
     assert_eq!(
         count_matches(&pattern, &subject),
         1,
@@ -129,8 +129,8 @@ fn test_multiset_literal_6() {
 
 #[test]
 fn test_multiset_literal_7() {
-    let pattern = expr! { Add[1, 1, 2] };
-    let subject = expr! { Add[2, 1, 1] };
+    let pattern = norm_expr! { Add[1, 1, 2] };
+    let subject = norm_expr! { Add[2, 1, 1] };
     assert_eq!(
         count_matches(&pattern, &subject),
         1,
@@ -140,8 +140,8 @@ fn test_multiset_literal_7() {
 
 #[test]
 fn test_multiset_literal_8() {
-    let pattern = expr! { Add[1, 1, 2] };
-    let subject = expr! { Add[1, 2, 2] };
+    let pattern = norm_expr! { Add[1, 1, 2] };
+    let subject = norm_expr! { Add[1, 2, 2] };
     assert_eq!(
         count_matches(&pattern, &subject),
         0,
@@ -151,8 +151,8 @@ fn test_multiset_literal_8() {
 
 #[test]
 fn test_multiset_literal_9() {
-    let pattern = expr! { Mul[2, 3] };
-    let subject = expr! { Mul[3, 2] };
+    let pattern = norm_expr! { Mul[2, 3] };
+    let subject = norm_expr! { Mul[3, 2] };
     assert_eq!(
         count_matches(&pattern, &subject),
         1,
@@ -162,8 +162,8 @@ fn test_multiset_literal_9() {
 
 #[test]
 fn test_multiset_literal_10() {
-    let pattern = expr! { Mul[2, 3] };
-    let subject = expr! { Mul[2, 4] };
+    let pattern = norm_expr! { Mul[2, 3] };
+    let subject = norm_expr! { Mul[2, 4] };
     assert_eq!(
         count_matches(&pattern, &subject),
         0,
@@ -173,8 +173,8 @@ fn test_multiset_literal_10() {
 
 #[test]
 fn test_multiset_literal_11() {
-    let pattern = expr! { Add[f[1], f[2]] };
-    let subject = expr! { Add[f[2], f[1]] };
+    let pattern = norm_expr! { Add[f[1], f[2]] };
+    let subject = norm_expr! { Add[f[2], f[1]] };
     assert_eq!(
         count_matches(&pattern, &subject),
         1,
@@ -184,8 +184,8 @@ fn test_multiset_literal_11() {
 
 #[test]
 fn test_multiset_literal_12() {
-    let pattern = expr! { Add[f[1], f[2]] };
-    let subject = expr! { Add[f[1], f[3]] };
+    let pattern = norm_expr! { Add[f[1], f[2]] };
+    let subject = norm_expr! { Add[f[1], f[3]] };
     assert_eq!(
         count_matches(&pattern, &subject),
         0,
@@ -197,8 +197,8 @@ fn test_multiset_literal_12() {
 
 #[test]
 fn test_multiset_blank_1() {
-    let pattern = expr! { Add[_, 1] };
-    let subject = expr! { Add[1, 2] };
+    let pattern = norm_expr! { Add[_, 1] };
+    let subject = norm_expr! { Add[1, a] };
     assert_eq!(
         count_matches(&pattern, &subject),
         1,
@@ -208,8 +208,8 @@ fn test_multiset_blank_1() {
 
 #[test]
 fn test_multiset_blank_2() {
-    let pattern = expr! { Add[_, 1] };
-    let subject = expr! { Add[2, 1] };
+    let pattern = norm_expr! { Add[_, 1] };
+    let subject = norm_expr! { Add[a, 1] };
     assert_eq!(
         count_matches(&pattern, &subject),
         1,
@@ -219,8 +219,8 @@ fn test_multiset_blank_2() {
 
 #[test]
 fn test_multiset_blank_3() {
-    let pattern = expr! { Add[_, 1] };
-    let subject = expr! { Add[2, 3] };
+    let pattern = norm_expr! { Add[_, 1] };
+    let subject = norm_expr! { Add[2, 3] };
     assert_eq!(
         count_matches(&pattern, &subject),
         0,
@@ -230,8 +230,8 @@ fn test_multiset_blank_3() {
 
 #[test]
 fn test_multiset_blank_4() {
-    let pattern = expr! { Add[_, _] };
-    let subject = expr! { Add[1, 2] };
+    let pattern = norm_expr! { Add[_, _] };
+    let subject = norm_expr! { Add[x, y] };
     assert_eq!(
         count_matches(&pattern, &subject),
         2,
@@ -241,8 +241,8 @@ fn test_multiset_blank_4() {
 
 #[test]
 fn test_multiset_blank_5() {
-    let pattern = expr! { Add[_, _] };
-    let subject = expr! { Add[1, 1] };
+    let pattern = norm_expr! { Add[_, _] };
+    let subject = norm_expr! { Add[u, v] };
     assert_eq!(
         count_matches(&pattern, &subject),
         2,
@@ -252,8 +252,8 @@ fn test_multiset_blank_5() {
 
 #[test]
 fn test_multiset_blank_6() {
-    let pattern = expr! { Add[_, _, _] };
-    let subject = expr! { Add[1, 2, 3] };
+    let pattern = norm_expr! { Add[_, _, _] };
+    let subject = norm_expr! { Add[x, y, z] };
     assert_eq!(
         count_matches(&pattern, &subject),
         6,
@@ -263,8 +263,8 @@ fn test_multiset_blank_6() {
 
 #[test]
 fn test_multiset_blank_7() {
-    let pattern = expr! { Add[_, 1, 2] };
-    let subject = expr! { Add[2, 3, 1] };
+    let pattern = norm_expr! { Add[_, 1, a] };
+    let subject = norm_expr! { Add[x, a, 1] };
     assert_eq!(
         count_matches(&pattern, &subject),
         1,
@@ -274,8 +274,8 @@ fn test_multiset_blank_7() {
 
 #[test]
 fn test_multiset_blank_8() {
-    let pattern = expr! { Add[_, 1, 2] };
-    let subject = expr! { Add[2, 1, 1] };
+    let pattern = norm_expr! { Add[_, 1, a] };
+    let subject = norm_expr! { Add[a, 1, x] };
     assert_eq!(
         count_matches(&pattern, &subject),
         1,
@@ -285,8 +285,8 @@ fn test_multiset_blank_8() {
 
 #[test]
 fn test_multiset_blank_9() {
-    let pattern = expr! { Add[x_, x_] };
-    let subject = expr! { Add[1, 1] };
+    let pattern = norm_expr! { Add[x_, x_] };
+    let subject = norm_expr! { Add[a, a] };
     assert_eq!(
         count_matches(&pattern, &subject),
         2,
@@ -296,8 +296,8 @@ fn test_multiset_blank_9() {
 
 #[test]
 fn test_multiset_blank_10() {
-    let pattern = expr! { Add[x_, x_] };
-    let subject = expr! { Add[1, 2] };
+    let pattern = norm_expr! { Add[x_, x_] };
+    let subject = norm_expr! { Add[a, b] };
     assert_eq!(
         count_matches(&pattern, &subject),
         0,
@@ -307,8 +307,8 @@ fn test_multiset_blank_10() {
 
 #[test]
 fn test_multiset_blank_11() {
-    let pattern = expr! { Add[x_, y_] };
-    let subject = expr! { Add[1, 2] };
+    let pattern = norm_expr! { Add[x_, y_] };
+    let subject = norm_expr! { Add[a, b] };
     assert_eq!(
         count_matches(&pattern, &subject),
         2,
@@ -320,8 +320,8 @@ fn test_multiset_blank_11() {
 
 #[test]
 fn test_multiset_seq_1() {
-    let pattern = expr! { Add[___] };
-    let subject = expr! { Add[] };
+    let pattern = norm_expr! { CommutativeOp[___] };
+    let subject = norm_expr! { CommutativeOp[] };
     assert_eq!(
         count_matches(&pattern, &subject),
         1,
@@ -331,8 +331,8 @@ fn test_multiset_seq_1() {
 
 #[test]
 fn test_multiset_seq_2() {
-    let pattern = expr! { Add[___] };
-    let subject = expr! { Add[1, 2, 3] };
+    let pattern = norm_expr! { CommutativeOp[___] };
+    let subject = norm_expr! { CommutativeOp[1, 2, 3] };
     assert_eq!(
         count_matches(&pattern, &subject),
         1,
@@ -342,8 +342,8 @@ fn test_multiset_seq_2() {
 
 #[test]
 fn test_multiset_seq_3() {
-    let pattern = expr! { Add[__] };
-    let subject = expr! { Add[] };
+    let pattern = norm_expr! { CommutativeOp[__] };
+    let subject = norm_expr! { CommutativeOp[] };
     assert_eq!(
         count_matches(&pattern, &subject),
         0,
@@ -353,8 +353,8 @@ fn test_multiset_seq_3() {
 
 #[test]
 fn test_multiset_seq_4() {
-    let pattern = expr! { Add[__] };
-    let subject = expr! { Add[1] };
+    let pattern = norm_expr! { CommutativeOp[__] };
+    let subject = norm_expr! { CommutativeOp[1] };
     assert_eq!(
         count_matches(&pattern, &subject),
         1,
@@ -364,8 +364,8 @@ fn test_multiset_seq_4() {
 
 #[test]
 fn test_multiset_seq_5() {
-    let pattern = expr! { Add[__] };
-    let subject = expr! { Add[1, 2, 3] };
+    let pattern = norm_expr! { CommutativeOp[__] };
+    let subject = norm_expr! { CommutativeOp[1, 2, 3] };
     assert_eq!(
         count_matches(&pattern, &subject),
         1,
@@ -375,8 +375,9 @@ fn test_multiset_seq_5() {
 
 #[test]
 fn test_multiset_seq_6() {
-    let pattern = expr! { Add[1, ___] };
-    let subject = expr! { Add[1] };
+    let pattern = norm_expr! { CommutativeOp[1, ___] };
+    let subject = norm_expr! { CommutativeOp[1] };
+
     assert_eq!(
         count_matches(&pattern, &subject),
         1,
@@ -386,8 +387,8 @@ fn test_multiset_seq_6() {
 
 #[test]
 fn test_multiset_seq_7() {
-    let pattern = expr! { Add[1, ___] };
-    let subject = expr! { Add[1, 2, 3] };
+    let pattern = norm_expr! { Add[1, ___] };
+    let subject = norm_expr! { Add[1, x, y] };
     assert_eq!(
         count_matches(&pattern, &subject),
         1,
@@ -397,8 +398,8 @@ fn test_multiset_seq_7() {
 
 #[test]
 fn test_multiset_seq_8() {
-    let pattern = expr! { Add[1, __] };
-    let subject = expr! { Add[1] };
+    let pattern = norm_expr! { Add[1, __] };
+    let subject = norm_expr! { Add[1] };
     assert_eq!(
         count_matches(&pattern, &subject),
         0,
@@ -408,8 +409,8 @@ fn test_multiset_seq_8() {
 
 #[test]
 fn test_multiset_seq_9() {
-    let pattern = expr! { Add[1, __] };
-    let subject = expr! { Add[1, 2] };
+    let pattern = norm_expr! { CommutativeOp[1, __] };
+    let subject = norm_expr! { CommutativeOp[1, 2] };
     assert_eq!(
         count_matches(&pattern, &subject),
         1,
@@ -419,8 +420,8 @@ fn test_multiset_seq_9() {
 
 #[test]
 fn test_multiset_seq_10() {
-    let pattern = expr! { Add[1, __] };
-    let subject = expr! { Add[2, 1, 3] };
+    let pattern = norm_expr! { Add[1, __] };
+    let subject = norm_expr! { Add[a, 1, b] };
     assert_eq!(
         count_matches(&pattern, &subject),
         1,
@@ -430,8 +431,8 @@ fn test_multiset_seq_10() {
 
 #[test]
 fn test_multiset_seq_11() {
-    let pattern = expr! { Add[x___, 1] };
-    let subject = expr! { Add[1] };
+    let pattern = norm_expr! { CommutativeOp[x___, 1] };
+    let subject = norm_expr! { CommutativeOp[1] };
     assert_eq!(
         count_matches(&pattern, &subject),
         1,
@@ -441,8 +442,8 @@ fn test_multiset_seq_11() {
 
 #[test]
 fn test_multiset_seq_12() {
-    let pattern = expr! { Add[x___, 1] };
-    let subject = expr! { Add[2, 3, 1] };
+    let pattern = norm_expr! { CommutativeOp[x___, 1] };
+    let subject = norm_expr! { CommutativeOp[2, 3, 1] };
     assert_eq!(
         count_matches(&pattern, &subject),
         1,
@@ -452,8 +453,8 @@ fn test_multiset_seq_12() {
 
 #[test]
 fn test_multiset_seq_13() {
-    let pattern = expr! { Add[x__, 1] };
-    let subject = expr! { Add[1] };
+    let pattern = norm_expr! { Add[x__, 1] };
+    let subject = norm_expr! { Add[1] };
     assert_eq!(
         count_matches(&pattern, &subject),
         0,
@@ -463,8 +464,8 @@ fn test_multiset_seq_13() {
 
 #[test]
 fn test_multiset_seq_14() {
-    let pattern = expr! { Add[x__, 1] };
-    let subject = expr! { Add[2, 1] };
+    let pattern = norm_expr! { Add[x__, 1] };
+    let subject = norm_expr! { Add[a, 1] };
     assert_eq!(
         count_matches(&pattern, &subject),
         1,

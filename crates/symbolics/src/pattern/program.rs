@@ -3,16 +3,16 @@ use std::fmt::Debug;
 use std::str::FromStr;
 
 use crate::builtin::*;
-use crate::expr::Expr;
 use crate::expr::walk::ExprTopDownWalker;
+use crate::expr::{ExprKind, NormExpr};
 use crate::pattern::{PatternPredicate, builtin::*};
 
 pub type InstrId = usize;
 pub type VarId = u32;
 
-pub struct Program<A: Clone + PartialEq> {
+pub struct Program {
     pub(super) entry: InstrId,
-    pub(super) instructions: Vec<Instruction<A>>,
+    pub(super) instructions: Vec<Instruction>,
     pub(super) vars: Vec<String>,
     pub(super) var_ids: HashMap<String, VarId>,
 }
@@ -22,9 +22,9 @@ pub enum Quantity {
     Many { min: usize },
 }
 
-pub enum Instruction<A: Clone + PartialEq> {
+pub enum Instruction {
     Literal {
-        inner: Expr<A>,
+        inner: NormExpr,
         bind: Option<VarId>,
     },
     Variadic {
@@ -48,7 +48,7 @@ pub enum Instruction<A: Clone + PartialEq> {
     },
 }
 
-impl<A: Clone + PartialEq> Instruction<A> {
+impl Instruction {
     pub fn bind(&self) -> Option<VarId> {
         use Instruction::*;
         match self {
@@ -73,33 +73,24 @@ pub enum ArgOrder {
 }
 
 #[derive(Debug)]
-pub struct MultisetPlan<A: Clone + PartialEq> {
-    pub literals: Vec<Expr<A>>,
+pub struct MultisetPlan {
+    pub literals: Vec<NormExpr>,
     pub fixed: Vec<InstrId>,
     pub rest: Vec<(VarId, usize)>,
 }
 
-pub struct Compiler<A>
-where
-    A: Clone + PartialEq,
-{
-    instructions: Vec<Instruction<A>>,
+pub struct Compiler {
+    instructions: Vec<Instruction>,
     var_ids: HashMap<String, VarId>,
     vars: Vec<String>,
-    is_multiset: fn(&Expr<A>) -> bool,
+    is_multiset: fn(&NormExpr) -> bool,
 }
 
-fn is_multiset_default<A>(expr: &Expr<A>) -> bool
-where
-    A: Clone + PartialEq,
-{
+fn is_multiset_default(expr: &NormExpr) -> bool {
     expr.has_head_symbol(ADD_HEAD) || expr.has_head_symbol(MUL_HEAD)
 }
 
-impl<A> Default for Compiler<A>
-where
-    A: Clone + PartialEq + Default,
-{
+impl Default for Compiler {
     fn default() -> Self {
         Self {
             instructions: Vec::new(),
@@ -110,20 +101,17 @@ where
     }
 }
 
-impl<A> Compiler<A>
-where
-    A: Clone + PartialEq + Default,
-{
+impl Compiler {
     pub fn new() -> Self {
         Self::default()
     }
 
-    pub fn with_multiset_predicate(mut self, f: fn(&Expr<A>) -> bool) -> Self {
+    pub fn with_multiset_predicate(mut self, f: fn(&NormExpr) -> bool) -> Self {
         self.is_multiset = f;
         self
     }
 
-    pub fn compile(mut self, pattern: &Expr<A>) -> Program<A> {
+    pub fn compile(mut self, pattern: &NormExpr) -> Program {
         let entry = self.compile_pattern(pattern, None);
 
         Program {
@@ -134,7 +122,7 @@ where
         }
     }
 
-    fn emit(&mut self, instr: Instruction<A>) -> InstrId {
+    fn emit(&mut self, instr: Instruction) -> InstrId {
         let id = self.instructions.len();
         self.instructions.push(instr);
         id
@@ -150,9 +138,9 @@ where
         id
     }
 
-    fn compile_pattern(&mut self, pat_expr: &Expr<A>, bind: Option<VarId>) -> InstrId {
-        use Expr::*;
-        match pat_expr {
+    fn compile_pattern(&mut self, pat_expr: &NormExpr, bind: Option<VarId>) -> InstrId {
+        use ExprKind::*;
+        match pat_expr.kind() {
             Atom { .. } => self.emit(Instruction::Literal {
                 inner: pat_expr.clone(),
                 bind,
@@ -213,7 +201,7 @@ where
     fn compile_blank_with_head_constraint(
         &mut self,
         quantity: Quantity,
-        head_pattern: Option<&Expr<A>>,
+        head_pattern: Option<&NormExpr>,
         bind: Option<VarId>,
     ) -> InstrId {
         let head_pattern = head_pattern.map(|e| self.compile_pattern(e, None));
@@ -230,9 +218,9 @@ where
 
     fn compile_node(
         &mut self,
-        head: &Expr<A>,
+        head: &NormExpr,
         arg_order: ArgOrder,
-        children: &[Expr<A>],
+        children: &[NormExpr],
         bind: Option<VarId>,
     ) -> InstrId {
         let head = Self::compile_pattern(self, head, None);
@@ -249,7 +237,7 @@ where
         self.emit(Instruction::Node { head, plan, bind })
     }
 
-    fn arg_order(&self, expr: &Expr<A>) -> ArgOrder {
+    fn arg_order(&self, expr: &NormExpr) -> ArgOrder {
         if (self.is_multiset)(expr) {
             ArgOrder::Multiset
         } else {
@@ -257,31 +245,31 @@ where
         }
     }
 
-    fn is_blank(expr: &Expr<A>) -> bool {
-        if let Expr::Node { head, args, .. } = expr {
+    fn is_blank(expr: &NormExpr) -> bool {
+        if let ExprKind::Node { head, args, .. } = expr.kind() {
             head.matches_symbol(HEAD_BLANK) && args.len() <= 1
         } else {
             false
         }
     }
 
-    fn is_blank_seq(expr: &Expr<A>) -> bool {
-        if let Expr::Node { head, args, .. } = expr {
+    fn is_blank_seq(expr: &NormExpr) -> bool {
+        if let ExprKind::Node { head, args, .. } = expr.kind() {
             head.matches_symbol(HEAD_BLANK_SEQUENCE) && args.len() <= 1
         } else {
             false
         }
     }
 
-    fn is_blank_null_seq(expr: &Expr<A>) -> bool {
-        if let Expr::Node { head, args, .. } = expr {
+    fn is_blank_null_seq(expr: &NormExpr) -> bool {
+        if let ExprKind::Node { head, args, .. } = expr.kind() {
             head.matches_symbol(HEAD_BLANK_NULL_SEQUENCE) && args.len() <= 1
         } else {
             false
         }
     }
 
-    fn is_pattern(expr: &Expr<A>) -> bool {
+    fn is_pattern(expr: &NormExpr) -> bool {
         if !expr.is_application_of(HEAD_PATTERN, 2) {
             return false;
         }
@@ -289,7 +277,7 @@ where
         expr.get_arg(0).unwrap().is_symbol()
     }
 
-    fn is_pattern_test(expr: &Expr<A>) -> bool {
+    fn is_pattern_test(expr: &NormExpr) -> bool {
         if !expr.is_application_of(HEAD_PATTERN_TEST, 2) {
             return false;
         }
@@ -297,7 +285,7 @@ where
         expr.get_arg(1).unwrap().is_symbol()
     }
 
-    fn is_literal(&self, root: &Expr<A>) -> bool {
+    fn is_literal(&self, root: &NormExpr) -> bool {
         for expr in ExprTopDownWalker::new(root) {
             if matches!(self.arg_order(expr), ArgOrder::Multiset) {
                 // Since multisets can be ordered arbitrary

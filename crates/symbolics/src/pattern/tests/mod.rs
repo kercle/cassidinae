@@ -8,22 +8,13 @@ mod sequence;
 mod utils;
 mod wildcards;
 
-use crate::expr;
+use crate::norm_expr;
 
 use super::*;
-use crate::expr::generator::*;
-
-#[test]
-fn test_dbg() {
-    let e = blank_sequence(None);
-    dbg!(&e);
-    let p = Pattern::from_expr(&e);
-    dbg!(&p);
-}
 
 #[test]
 fn test_built_pattern_from_expr() {
-    let expr = expr! {
+    let expr = norm_expr! {
         PatternTest[Blank[], IsSymbolQ]
     };
     let pattern = Pattern::from_expr(&expr);
@@ -32,7 +23,7 @@ fn test_built_pattern_from_expr() {
         r#"Blank{None, None, Some(IsSymbolQ)}"#
     );
 
-    let expr = expr! {
+    let expr = norm_expr! {
         PatternTest[Pattern[x, Blank[]], IsSymbolQ]
     };
     let pattern = Pattern::from_expr(&expr);

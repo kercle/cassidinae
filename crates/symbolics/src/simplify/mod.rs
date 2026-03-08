@@ -4,7 +4,7 @@ mod trigonometric_functions;
 
 use crate::{
     calculus::{derivative::derivative_rules, integrate::indefinite_integrals_rules},
-    expr::{Expr, NormalizedExpr},
+    expr::NormExpr,
     pattern::environment::Environment,
     simplify::{
         factorize::factorization_rules, functions_known_values::known_function_values_rules,
@@ -13,19 +13,19 @@ use crate::{
 };
 
 pub struct Simplifier {
-    expr: NormalizedExpr,
+    expr: NormExpr,
     limit_guard: u32,
 }
 
 impl Simplifier {
-    pub fn new(expr: NormalizedExpr) -> Simplifier {
+    pub fn new(expr: NormExpr) -> Simplifier {
         Simplifier {
             expr: expr.collect_like_terms(),
             limit_guard: 100,
         }
     }
 
-    pub fn simple(self) -> NormalizedExpr {
+    pub fn simple(self) -> NormExpr {
         let limit_guard = self.limit_guard;
         let mut current = self;
 
@@ -70,28 +70,22 @@ impl Simplifier {
         Simplifier::new(self.simplify_with_rules_until_stable(factorization_rules()))
     }
 
-    pub fn finish(self) -> Expr {
-        self.expr.take_expr()
-    }
-
-    pub fn finish_normalized(self) -> NormalizedExpr {
+    pub fn finish(self) -> NormExpr {
         self.expr
     }
 
-    fn simplify_with_rules_until_stable(
-        self,
-        rules: Vec<(NormalizedExpr, Expr)>,
-    ) -> NormalizedExpr {
+    pub fn finish_normalized(self) -> NormExpr {
         self.expr
-            .take_expr()
-            .drop_annotation()
-            .apply_until_fixed_point(
-                rules.into_iter().map(|(pat, repl)| {
-                    (pat, move |ctx: &Environment<'_, '_, ()>| {
-                        ctx.fill(repl.clone())
-                    })
-                }),
-                1000,
-            )
+    }
+
+    fn simplify_with_rules_until_stable(self, rules: Vec<(NormExpr, NormExpr)>) -> NormExpr {
+        self.expr.apply_until_fixed_point(
+            rules.into_iter().map(|(pat, repl)| {
+                (pat, move |ctx: &Environment<'_, '_>| {
+                    ctx.fill(repl.clone()).normalize()
+                })
+            }),
+            1000,
+        )
     }
 }

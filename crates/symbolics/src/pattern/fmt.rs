@@ -1,12 +1,48 @@
-use std::fmt::{Debug, Formatter};
+use std::fmt::{Debug, Error, Formatter};
 
 use crate::pattern::{
+    Pattern,
     environment::EnvBinding,
     program::{ArgPlan, Instruction, Program, Quantity, VarId},
 };
 
+impl<'a> Debug for Pattern<'a> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
+        use Pattern::*;
+        match self {
+            Literal(e) => write!(f, "Literal{{{e:?}}}"),
+            Blank {
+                bind_name,
+                match_head,
+                predicate,
+            } => write!(f, "Blank{{{bind_name:?}, {match_head:?}, {predicate:?}}}"),
+            BlankSeq {
+                bind_name,
+                match_head,
+                predicate,
+            } => write!(
+                f,
+                "BlankSeq{{{bind_name:?}, {match_head:?}, {predicate:?}}}"
+            ),
+            BlankNullSeq {
+                bind_name,
+                match_head,
+                predicate,
+            } => write!(
+                f,
+                "BlankNullSeq{{{bind_name:?}, {match_head:?}, {predicate:?}}}"
+            ),
+            Node {
+                head,
+                args,
+                predicate,
+            } => write!(f, "Node{{{head:?}, {args:?}, {predicate:?}}}"),
+        }
+    }
+}
+
 impl Debug for Quantity {
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
         match self {
             Quantity::One => write!(f, "one"),
             Quantity::Many { min } => write!(f, "many({min})"),
@@ -15,7 +51,7 @@ impl Debug for Quantity {
 }
 
 impl Debug for ArgPlan {
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
         use ArgPlan::*;
         match self {
             Sequence(instructions) => {
@@ -46,8 +82,8 @@ impl Debug for ArgPlan {
     }
 }
 
-impl<A: Clone + PartialEq + Debug> Debug for Instruction<A> {
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
+impl Debug for Instruction {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
         use Instruction::*;
         match self {
             Literal { inner, bind } => {
@@ -87,8 +123,8 @@ fn format_bind(bind: &Option<VarId>) -> String {
     }
 }
 
-impl<A: Clone + PartialEq + Debug> Debug for Program<A> {
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
+impl Debug for Program {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
         writeln!(f, "Program:\nEntry point: {:02}", self.entry)?;
         writeln!(f, "Vars:")?;
         for (idx, name) in self.vars.iter().enumerate() {
@@ -103,8 +139,8 @@ impl<A: Clone + PartialEq + Debug> Debug for Program<A> {
     }
 }
 
-impl<'a, A: Clone + PartialEq + Debug> Debug for EnvBinding<'a, A> {
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
+impl<'a> Debug for EnvBinding<'a> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
         match self {
             EnvBinding::One(s) => write!(f, "{s:?}"),
             EnvBinding::Many(subjects) => {

@@ -1,4 +1,5 @@
 use crate::builtin::*;
+use crate::expr::{ExprKind, RawExpr};
 use crate::{
     atom::Atom,
     builtin::{
@@ -8,8 +9,6 @@ use crate::{
     },
 };
 use numbers::Number;
-
-use crate::expr::Expr;
 
 fn greek_letter(name: &str) -> String {
     match name {
@@ -41,7 +40,7 @@ fn greek_letter(name: &str) -> String {
     }
 }
 
-fn node_weight(expr: &Expr) -> Option<u32> {
+fn node_weight(expr: &RawExpr) -> Option<u32> {
     if expr.is_application_of(NEG_HEAD, 1) {
         Some(3)
     } else if expr.has_head_symbol(ADD_HEAD) || expr.is_application_of(SUB_HEAD, 2) {
@@ -67,11 +66,11 @@ fn wrap_with_parentheses(
     }
 }
 
-pub fn expr_to_latex(expr: &Expr, parent_weight: Option<u32>) -> String {
+pub fn expr_to_latex(expr: &RawExpr, parent_weight: Option<u32>) -> String {
     let weight = node_weight(expr);
 
-    match expr {
-        Expr::Atom {
+    match expr.kind() {
+        ExprKind::Atom {
             entry: Atom::Number(value),
             ..
         } => {
@@ -91,22 +90,22 @@ pub fn expr_to_latex(expr: &Expr, parent_weight: Option<u32>) -> String {
                 greek_letter(&value.to_string())
             }
         }
-        Expr::Atom {
+        ExprKind::Atom {
             entry: Atom::Symbol(name),
             ..
         } if name == CANNONICAL_SYM_INDETERMINATE => format!(r#"\text{{{name}}}"#),
-        Expr::Atom {
+        ExprKind::Atom {
             entry: Atom::Symbol(name),
             ..
         } if name == CANNONICAL_SYM_PLUS_INFINITY => r#"\infty"#.to_string(),
-        Expr::Atom {
+        ExprKind::Atom {
             entry: Atom::Symbol(name),
             ..
         } => greek_letter(name),
-        Expr::Node { args, .. } if expr.is_application_of(NEG_HEAD, 1) => {
+        ExprKind::Node { args, .. } if expr.is_application_of(NEG_HEAD, 1) => {
             format!("-{}", expr_to_latex(args.first().unwrap(), weight))
         }
-        Expr::Node { args, .. } if expr.has_head_symbol(ADD_HEAD) => {
+        ExprKind::Node { args, .. } if expr.has_head_symbol(ADD_HEAD) => {
             let args_str = args
                 .iter()
                 .map(|arg| expr_to_latex(arg, weight))
@@ -114,16 +113,18 @@ pub fn expr_to_latex(expr: &Expr, parent_weight: Option<u32>) -> String {
                 .join(" + ");
             wrap_with_parentheses(args_str, weight, parent_weight)
         }
-        Expr::Node { args, .. } if expr.is_application_of(SUB_HEAD, 2) => wrap_with_parentheses(
-            format!(
-                "{} - {}",
-                expr_to_latex(args.first().unwrap(), weight),
-                expr_to_latex(args.last().unwrap(), weight)
-            ),
-            weight,
-            parent_weight,
-        ),
-        Expr::Node { args, .. } if expr.is_application_of(MUL_HEAD, 2) => {
+        ExprKind::Node { args, .. } if expr.is_application_of(SUB_HEAD, 2) => {
+            wrap_with_parentheses(
+                format!(
+                    "{} - {}",
+                    expr_to_latex(args.first().unwrap(), weight),
+                    expr_to_latex(args.last().unwrap(), weight)
+                ),
+                weight,
+                parent_weight,
+            )
+        }
+        ExprKind::Node { args, .. } if expr.is_application_of(MUL_HEAD, 2) => {
             let args_str = args
                 .iter()
                 .map(|arg| expr_to_latex(arg, weight))
@@ -131,58 +132,62 @@ pub fn expr_to_latex(expr: &Expr, parent_weight: Option<u32>) -> String {
                 .join(" \\cdot ");
             wrap_with_parentheses(args_str, weight, parent_weight)
         }
-        Expr::Node { args, .. } if expr.is_application_of(DIV_HEAD, 2) => wrap_with_parentheses(
-            format!(
-                "\\frac{{{}}}{{{}}}",
-                expr_to_latex(args.first().unwrap(), weight),
-                expr_to_latex(args.last().unwrap(), weight)
-            ),
-            weight,
-            parent_weight,
-        ),
-        Expr::Node { args, .. } if expr.is_application_of(POW_HEAD, 2) => wrap_with_parentheses(
-            format!(
-                "{{{}}}^{{{}}}",
-                expr_to_latex(args.first().unwrap(), weight),
-                expr_to_latex(args.last().unwrap(), weight)
-            ),
-            weight,
-            parent_weight,
-        ),
-        Expr::Node { args, .. } if expr.is_application_of(CANNONICAL_HEAD_EXP, 1) => {
+        ExprKind::Node { args, .. } if expr.is_application_of(DIV_HEAD, 2) => {
+            wrap_with_parentheses(
+                format!(
+                    "\\frac{{{}}}{{{}}}",
+                    expr_to_latex(args.first().unwrap(), weight),
+                    expr_to_latex(args.last().unwrap(), weight)
+                ),
+                weight,
+                parent_weight,
+            )
+        }
+        ExprKind::Node { args, .. } if expr.is_application_of(POW_HEAD, 2) => {
+            wrap_with_parentheses(
+                format!(
+                    "{{{}}}^{{{}}}",
+                    expr_to_latex(args.first().unwrap(), weight),
+                    expr_to_latex(args.last().unwrap(), weight)
+                ),
+                weight,
+                parent_weight,
+            )
+        }
+        ExprKind::Node { args, .. } if expr.is_application_of(CANNONICAL_HEAD_EXP, 1) => {
             format!(
                 "\\exp\\left({}\\right)",
                 expr_to_latex(args.first().unwrap(), weight)
             )
         }
-        Expr::Node { args, .. } if expr.is_application_of(CANNONICAL_HEAD_LOG, 1) => {
+        ExprKind::Node { args, .. } if expr.is_application_of(CANNONICAL_HEAD_LOG, 1) => {
             format!(
                 "\\log\\left({}\\right)",
                 expr_to_latex(args.first().unwrap(), weight)
             )
         }
-        Expr::Node { args, .. } if expr.is_application_of(CANNONICAL_HEAD_SIN, 1) => {
+        ExprKind::Node { args, .. } if expr.is_application_of(CANNONICAL_HEAD_SIN, 1) => {
             format!(
                 "\\sin\\left({}\\right)",
                 expr_to_latex(args.first().unwrap(), weight)
             )
         }
-        Expr::Node { args, .. } if expr.is_application_of(CANNONICAL_HEAD_COS, 1) => {
+        ExprKind::Node { args, .. } if expr.is_application_of(CANNONICAL_HEAD_COS, 1) => {
             format!(
                 "\\cos\\left({}\\right)",
                 expr_to_latex(args.first().unwrap(), weight)
             )
         }
-        Expr::Node { args, .. } if expr.is_application_of(CANNONICAL_HEAD_TAN, 1) => {
+        ExprKind::Node { args, .. } if expr.is_application_of(CANNONICAL_HEAD_TAN, 1) => {
             format!(
                 "\\tan\\left({}\\right)",
                 expr_to_latex(args.first().unwrap(), weight)
             )
         }
-        Expr::Node { args, .. } if expr.is_application_of(CANNONICAL_HEAD_SQRT, 1) => {
+        ExprKind::Node { args, .. } if expr.is_application_of(CANNONICAL_HEAD_SQRT, 1) => {
             format!("\\sqrt{{{}}}", expr_to_latex(args.first().unwrap(), weight))
         }
-        Expr::Node { args, .. } if expr.is_application_of(CANNONICAL_HEAD_DERIVATIVE, 2) => {
+        ExprKind::Node { args, .. } if expr.is_application_of(CANNONICAL_HEAD_DERIVATIVE, 2) => {
             let f = args.first().unwrap();
             let x = args.last().unwrap();
 
@@ -197,7 +202,7 @@ pub fn expr_to_latex(expr: &Expr, parent_weight: Option<u32>) -> String {
                 format!("\\text{{D}}\\left[{f_latex}, {x_latex}\\right]")
             }
         }
-        Expr::Node { args, .. } if expr.is_application_of(CANNONICAL_HEAD_INTEGRATE, 2) => {
+        ExprKind::Node { args, .. } if expr.is_application_of(CANNONICAL_HEAD_INTEGRATE, 2) => {
             let f = args.first().unwrap();
             let x = args.last().unwrap();
 
@@ -210,7 +215,7 @@ pub fn expr_to_latex(expr: &Expr, parent_weight: Option<u32>) -> String {
                 format!("\\text{{Integrate}}\\left[{f_latex}, {x_latex}\\right]")
             }
         }
-        Expr::Node { head, args, .. } => {
+        ExprKind::Node { head, args, .. } => {
             let Some(name) = head.get_symbol() else {
                 unimplemented!()
             };
@@ -229,34 +234,34 @@ pub fn expr_to_latex(expr: &Expr, parent_weight: Option<u32>) -> String {
 
 #[cfg(test)]
 mod tests {
-    use crate::{expr::Expr, format::MathDisplay};
+    use crate::{expr::RawExpr, format::MathDisplay};
     use parser::parse;
 
     #[test]
     fn test_expr_to_latex() {
         let ast = parse("2 + 3").unwrap();
-        let expr: Expr = Expr::<()>::from(ast);
+        let expr = RawExpr::from(ast);
         assert_eq!(expr.to_latex(), "2 + 3");
     }
 
     #[test]
     fn test_expr_to_latex_with_parenthesis() {
         let ast = parse("(2 + 3) * 6").unwrap();
-        let expr: Expr = Expr::<()>::from(ast);
+        let expr = RawExpr::from(ast);
         assert_eq!(expr.to_latex(), "\\left(2 + 3\\right) \\cdot 6");
     }
 
     #[test]
     fn test_expr_to_latex_multiple_adds() {
         let ast = parse("1+2+3+4").unwrap();
-        let expr: Expr = Expr::<()>::from(ast);
+        let expr = RawExpr::from(ast);
         assert_eq!(expr.to_latex(), "1 + 2 + 3 + 4");
     }
 
     #[test]
     fn test_expr_to_latex_with_unary_op() {
         let ast = parse("-2 + 3").unwrap();
-        let expr: Expr = Expr::<()>::from(ast);
+        let expr = RawExpr::from(ast);
         dbg!(&expr);
         assert_eq!(expr.to_latex(), "-2 + 3");
     }
@@ -264,7 +269,7 @@ mod tests {
     #[test]
     fn test_expr_to_latex_with_pow() {
         let ast = parse("pi^2").unwrap();
-        let expr: Expr = Expr::<()>::from(ast);
+        let expr = RawExpr::from(ast);
         dbg!(&expr);
         assert_eq!(expr.to_latex(), "{\\pi}^{2}");
     }
@@ -272,7 +277,7 @@ mod tests {
     #[test]
     fn test_expr_to_latex_with_function_call() {
         let ast = parse("5*pi^2/4*cos[pi*x/2]*sin[π*y/2]").unwrap();
-        let expr: Expr = Expr::<()>::from(ast);
+        let expr = RawExpr::from(ast);
         assert_eq!(
             expr.to_latex(),
             "\\frac{5 \\cdot {\\pi}^{2}}{4} \\cdot \\text{cos}\\left[\\frac{\\pi \\cdot x}{2}\\right] \\cdot \\text{sin}\\left[\\frac{\\pi \\cdot y}{2}\\right]"

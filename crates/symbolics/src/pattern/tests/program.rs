@@ -1,10 +1,10 @@
-use crate::expr;
+use crate::norm_expr;
 use crate::pattern::program::Compiler;
 use crate::pattern::runtime::Runtime;
 
 #[test]
 fn test_program_compilation() {
-    let pattern = expr! {
+    let pattern = norm_expr! {
         Pattern[y, f[Pattern[x, BlankSeq[]]]]+g[Blank[]]
     };
 
@@ -15,13 +15,13 @@ fn test_program_compilation() {
 
 #[test]
 fn test_program_executation_no_blanks_no_multiset() {
-    let pattern = expr! {
+    let pattern = norm_expr! {
         f[1, g[Pattern[x, a], b]]
     };
 
     let program = Compiler::new().compile(&pattern);
 
-    let subject = expr! {
+    let subject = norm_expr! {
         f[1, g[a, b]]
     };
     let mut runtime = Runtime::new(&program, &subject);
@@ -30,14 +30,14 @@ fn test_program_executation_no_blanks_no_multiset() {
 
 #[test]
 fn test_program_executation_one_blank_no_multiset() {
-    let pattern = expr! {
+    let pattern = norm_expr! {
         f[g[Pattern[x, Blank[]], b], Pattern[y, BlankSeq[]], Pattern[z, Blank[]]]
     };
 
     let program = Compiler::new().compile(&pattern);
     dbg!(&program);
 
-    let subject = expr! {
+    let subject = norm_expr! {
         f[g[h[2, 4, 8], b], 10, x, 5]
     };
     let mut runtime = Runtime::new(&program, &subject);
@@ -46,12 +46,12 @@ fn test_program_executation_one_blank_no_multiset() {
 
 #[test]
 fn test_predicate_matching() {
-    let pattern = expr! { f[PatternTest[Pattern[x, Blank[]], IsNumberQ]] };
+    let pattern = norm_expr! { f[PatternTest[Pattern[x, Blank[]], IsNumberQ]] };
     let program = Compiler::new().compile(&pattern);
 
     dbg!(&program);
 
-    let subject = expr! { f[42] };
+    let subject = norm_expr! { f[42] };
     let mut runtime = Runtime::new(&program, &subject);
     let m = runtime.next_match();
 
@@ -62,10 +62,10 @@ fn test_predicate_matching() {
 
 #[test]
 fn test_multiple_blank_sequences() {
-    let pattern = expr! { f[Pattern[x, BlankSeq[]], Blank[], Pattern[z, BlankNullSeq[]], Pattern[w, BlankNullSeq[]]] };
+    let pattern = norm_expr! { f[Pattern[x, BlankSeq[]], Blank[], Pattern[z, BlankNullSeq[]], Pattern[w, BlankNullSeq[]]] };
     let program = Compiler::new().compile(&pattern);
 
-    let subject = expr! { f[a,b,c,d,e] };
+    let subject = norm_expr! { f[a,b,c,d,e] };
     let mut runtime = Runtime::new(&program, &subject);
 
     let mut counter = 0;
@@ -81,9 +81,9 @@ fn test_multiple_blank_sequences() {
 
 #[test]
 fn test_variadic_empty_instrs_nonempty_subjects() {
-    let pattern = expr! { f[] };
+    let pattern = norm_expr! { f[] };
     let program = Compiler::new().compile(&pattern);
-    let subject = expr! { f[a, b] };
+    let subject = norm_expr! { f[a, b] };
     let mut runtime = Runtime::new(&program, &subject);
     assert!(
         runtime.next_match().is_none(),
@@ -93,9 +93,9 @@ fn test_variadic_empty_instrs_nonempty_subjects() {
 
 #[test]
 fn test_no_spurious_match_after_length_mismatch() {
-    let pattern = expr! { f[a, Pattern[x, BlankNullSeq[]], b, c] };
+    let pattern = norm_expr! { f[a, Pattern[x, BlankNullSeq[]], b, c] };
     let program = Compiler::new().compile(&pattern);
-    let subject = expr! { f[a, b] };
+    let subject = norm_expr! { f[a, b] };
     let mut runtime = Runtime::new(&program, &subject);
     assert!(
         runtime.next_match().is_none(),
@@ -105,22 +105,22 @@ fn test_no_spurious_match_after_length_mismatch() {
 
 #[test]
 fn test_confirming_rebind_not_wiped_on_backtrack() {
-    let pattern = expr! { f[Pattern[x, Blank[]], Pattern[x, Blank[]], Pattern[y, BlankNullSeq[]]] };
+    let pattern = norm_expr! { f[Pattern[x, Blank[]], Pattern[x, Blank[]], Pattern[y, BlankNullSeq[]]] };
     let program = Compiler::new().compile(&pattern);
-    let subject = expr! { f[a, a, b] };
+    let subject = norm_expr! { f[a, a, b] };
     let mut runtime = Runtime::new(&program, &subject);
 
     let env = runtime.next_match().expect("should match");
-    assert_eq!(env.get_one("x"), Some(&expr! { a }));
+    assert_eq!(env.get_one("x"), Some(&norm_expr! { a }));
 
     assert!(runtime.next_match().is_none());
 }
 
 #[test]
 fn test_simple_multiset_matching_only_literals() {
-    let pattern = expr! { Add[4, 2, 3, 1] };
+    let pattern = norm_expr! { Add[4, 2, 3, 1] };
     let program = Compiler::new().compile(&pattern);
-    let subject = expr! {
+    let subject = norm_expr! {
         Add[1, 2, 3, 4]
     };
     dbg!(&program);
@@ -132,10 +132,10 @@ fn test_simple_multiset_matching_only_literals() {
 #[test]
 fn test_simple_multiset_matching() {
     let pattern =
-        expr! { Add[g[a], b, Pattern[x, Blank[]], Pattern[y, Blank[]], Pattern[z, BlankSeq[]]] };
+        norm_expr! { Add[g[a], b, Pattern[x, Blank[]], Pattern[y, Blank[]], Pattern[z, BlankSeq[]]] };
 
     let program = Compiler::new().compile(&pattern);
-    let subject = expr! {
+    let subject = norm_expr! {
         Add[c,d,g[a],e,f,b]
     };
 

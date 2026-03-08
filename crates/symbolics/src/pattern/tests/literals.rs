@@ -19,13 +19,13 @@
 //  f[]                 | f[1]                | 0
 //  f[]                 | g[]                 | 0
 
-use crate::expr;
+use crate::norm_expr;
 use crate::pattern::tests::utils::count_matches;
 
 #[test]
 fn test_pattern_literal_1() {
-    let pattern = expr! { 5 };
-    let subject = expr! { 5 };
+    let pattern = norm_expr! { 5 };
+    let subject = norm_expr! { 5 };
     let expected_count = 1usize;
 
     assert_eq!(
@@ -37,8 +37,8 @@ fn test_pattern_literal_1() {
 
 #[test]
 fn test_pattern_literal_2() {
-    let pattern = expr! { 5 };
-    let subject = expr! { 6 };
+    let pattern = norm_expr! { 5 };
+    let subject = norm_expr! { 6 };
     let expected_count = 0usize;
 
     assert_eq!(
@@ -50,8 +50,8 @@ fn test_pattern_literal_2() {
 
 #[test]
 fn test_pattern_literal_3() {
-    let pattern = expr! { foo };
-    let subject = expr! { foo };
+    let pattern = norm_expr! { foo };
+    let subject = norm_expr! { foo };
     let expected_count = 1usize;
 
     assert_eq!(
@@ -63,8 +63,8 @@ fn test_pattern_literal_3() {
 
 #[test]
 fn test_pattern_literal_4() {
-    let pattern = expr! { f[1, 2, 3] };
-    let subject = expr! { f[1, 2, 3] };
+    let pattern = norm_expr! { f[1, 2, 3] };
+    let subject = norm_expr! { f[1, 2, 3] };
     let expected_count = 1usize;
 
     assert_eq!(
@@ -76,8 +76,8 @@ fn test_pattern_literal_4() {
 
 #[test]
 fn test_pattern_literal_5() {
-    let pattern = expr! { f[1, 2, 3] };
-    let subject = expr! { f[1, 2, 4] };
+    let pattern = norm_expr! { f[1, 2, 3] };
+    let subject = norm_expr! { f[1, 2, 4] };
     let expected_count = 0usize;
 
     assert_eq!(
@@ -89,8 +89,8 @@ fn test_pattern_literal_5() {
 
 #[test]
 fn test_pattern_literal_6() {
-    let pattern = expr! { f[1, 2, 3] };
-    let subject = expr! { f[1, 2] };
+    let pattern = norm_expr! { f[1, 2, 3] };
+    let subject = norm_expr! { f[1, 2] };
     let expected_count = 0usize;
 
     assert_eq!(
@@ -102,8 +102,8 @@ fn test_pattern_literal_6() {
 
 #[test]
 fn test_pattern_literal_7() {
-    let pattern = expr! { f[1, 2, 3] };
-    let subject = expr! { f[3, 2, 1] };
+    let pattern = norm_expr! { f[1, 2, 3] };
+    let subject = norm_expr! { f[3, 2, 1] };
     let expected_count = 0usize;
 
     assert_eq!(
@@ -115,8 +115,8 @@ fn test_pattern_literal_7() {
 
 #[test]
 fn test_pattern_literal_8() {
-    let pattern = expr! { f[g[1, 2], h[3, 4]] };
-    let subject = expr! { f[g[1, 2], h[3, 4]] };
+    let pattern = norm_expr! { f[g[1, 2], h[3, 4]] };
+    let subject = norm_expr! { f[g[1, 2], h[3, 4]] };
     let expected_count = 1usize;
 
     assert_eq!(
@@ -128,8 +128,8 @@ fn test_pattern_literal_8() {
 
 #[test]
 fn test_pattern_literal_9() {
-    let pattern = expr! { f[g[1, 2], h[3, 4]] };
-    let subject = expr! { f[g[1, 2], h[3, 5]] };
+    let pattern = norm_expr! { f[g[1, 2], h[3, 4]] };
+    let subject = norm_expr! { f[g[1, 2], h[3, 5]] };
     let expected_count = 0usize;
 
     assert_eq!(
@@ -141,8 +141,8 @@ fn test_pattern_literal_9() {
 
 #[test]
 fn test_pattern_literal_10() {
-    let pattern = expr! { f[g[h[1]]] };
-    let subject = expr! { f[g[h[1]]] };
+    let pattern = norm_expr! { f[g[h[1]]] };
+    let subject = norm_expr! { f[g[h[1]]] };
     let expected_count = 1usize;
 
     assert_eq!(
@@ -154,8 +154,8 @@ fn test_pattern_literal_10() {
 
 #[test]
 fn test_pattern_literal_11() {
-    let pattern = expr! { f[g[h[1]]] };
-    let subject = expr! { f[g[h[2]]] };
+    let pattern = norm_expr! { f[g[h[1]]] };
+    let subject = norm_expr! { f[g[h[2]]] };
     let expected_count = 0usize;
 
     assert_eq!(
@@ -167,8 +167,8 @@ fn test_pattern_literal_11() {
 
 #[test]
 fn test_pattern_literal_12() {
-    let pattern = expr! { f[] };
-    let subject = expr! { f[] };
+    let pattern = norm_expr! { f[] };
+    let subject = norm_expr! { f[] };
     let expected_count = 1usize;
 
     assert_eq!(
@@ -180,8 +180,8 @@ fn test_pattern_literal_12() {
 
 #[test]
 fn test_pattern_literal_13() {
-    let pattern = expr! { f[] };
-    let subject = expr! { f[1] };
+    let pattern = norm_expr! { f[] };
+    let subject = norm_expr! { f[1] };
     let expected_count = 0usize;
 
     assert_eq!(
@@ -193,8 +193,8 @@ fn test_pattern_literal_13() {
 
 #[test]
 fn test_pattern_literal_14() {
-    let pattern = expr! { f[] };
-    let subject = expr! { g[] };
+    let pattern = norm_expr! { f[] };
+    let subject = norm_expr! { g[] };
     let expected_count = 0usize;
 
     assert_eq!(

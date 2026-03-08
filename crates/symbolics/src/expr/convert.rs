@@ -1,23 +1,46 @@
 use crate::{
     builtin::*,
+    expr::{Expr, ExprKind, NormExpr, RawExpr},
     pattern::{BLANK_NULL_SEQ_HEAD, BLANK_ONE_HEAD, BLANK_SEQ_HEAD, PATTERN_HEAD},
 };
 
 use numbers::Number;
 use parser::ast::ParserAst;
 
-use crate::{atom::Atom, expr::Expr};
+use crate::atom::Atom;
 
-impl<A, T: Into<Atom>> From<T> for Expr<A>
-where
-    A: Default,
-{
-    fn from(x: T) -> Self {
-        Expr::new_atom(x.into())
+impl ExprKind<NormExpr> {
+    pub fn into_raw_expr(self) -> RawExpr {
+        let raw: ExprKind<RawExpr> = unsafe { std::mem::transmute(self) };
+        RawExpr::new(raw)
     }
 }
 
-impl<A: Default> From<ParserAst> for Expr<A> {
+impl<S> Expr<S> {
+    pub fn into_raw(self) -> RawExpr {
+        unsafe { std::mem::transmute(self) }
+    }
+}
+
+impl<T: Into<Atom>> From<T> for RawExpr {
+    fn from(x: T) -> Self {
+        RawExpr::new_atom(x.into())
+    }
+}
+
+impl From<ExprKind<RawExpr>> for RawExpr {
+    fn from(value: ExprKind<RawExpr>) -> Self {
+        Self::new_unchecked(value)
+    }
+}
+
+impl RawExpr {
+    pub fn from_i64(value: i64) -> Self {
+        Self::new_number(Number::from_i64(value))
+    }
+}
+
+impl From<ParserAst> for RawExpr {
     fn from(ast: ParserAst) -> Self {
         use ParserAst::*;
         match ast {
@@ -67,33 +90,21 @@ impl<A: Default> From<ParserAst> for Expr<A> {
     }
 }
 
-fn make_blank_variant<A>(
+fn make_blank_variant(
     head: &str,
     bind_name: Option<String>,
     head_constraint: Option<String>,
-) -> Expr<A>
-where
-    A: Default,
-{
+) -> RawExpr {
     let args = if let Some(head_constraint) = head_constraint {
-        vec![Expr::<A>::new_symbol(head_constraint)]
+        vec![RawExpr::new_symbol(head_constraint)]
     } else {
         Vec::new()
     };
-    let ret = Expr::<A>::new_node(head, args);
+    let ret = RawExpr::new_node(head, args);
 
     if let Some(bind_name) = bind_name {
-        Expr::<A>::new_node(PATTERN_HEAD, vec![Expr::<A>::new_symbol(bind_name), ret])
+        RawExpr::new_node(PATTERN_HEAD, vec![RawExpr::new_symbol(bind_name), ret])
     } else {
         ret
-    }
-}
-
-impl<A> Expr<A>
-where
-    A: Default + Clone + PartialEq,
-{
-    pub fn from_i64(value: i64) -> Self {
-        Self::new_number(Number::from_i64(value))
     }
 }

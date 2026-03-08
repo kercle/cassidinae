@@ -1,87 +1,43 @@
-use crate::expr::Expr;
+use crate::expr::{Expr, ExprKind, RawExpr};
 
-impl<A> Expr<A>
-where
-    A: Default + Clone + PartialEq,
-{
-    pub fn annotation_to_default(self) -> Self {
-        match self {
-            Expr::Atom { entry, .. } => Expr::new_atom(entry),
-            Expr::Node { head, args, .. } => Expr::new_node(*head, args),
-        }
-    }
-
-    pub fn drop_annotation(self) -> Expr {
-        self.map_annotations(&|_| ())
-    }
-
-    pub fn with_annotation(self, annotation: A) -> Self {
-        use Expr::*;
-        match self {
-            Atom { entry, .. } => Expr::new_atom_with_annotation(entry, annotation),
-            Node { head, args, .. } => Expr::new_node_with_annotation(*head, args, annotation),
-        }
-    }
-
-    pub fn map_annotations<B, F>(self, f: &F) -> Expr<B>
+impl<S> Expr<S> {
+    pub fn replace<F>(self, f: &F) -> RawExpr
     where
-        F: Fn(A) -> B + Copy,
-    {
-        match self {
-            Expr::Atom {
-                entry, annotation, ..
-            } => Expr::new_atom_with_annotation(entry, f(annotation)),
-            Expr::Node {
-                head,
-                args,
-                annotation,
-                ..
-            } => {
-                let head = head.map_annotations(f);
-                let args = args.into_iter().map(|a| a.map_annotations(f)).collect();
-                let annotation = f(annotation);
-
-                Expr::new_node_with_annotation(head, args, annotation)
-            }
-        }
-    }
-
-    pub fn replace<F>(self, f: &F) -> Expr<A>
-    where
-        F: Fn(&Expr<A>) -> Option<Expr<A>> + Copy,
+        F: Fn(&Expr<S>) -> Option<Expr<S>> + Copy,
     {
         if let Some(replacement) = f(&self) {
-            return replacement;
+            return replacement.into_raw();
         }
 
-        match self {
-            Expr::Atom { .. } => f(&self).unwrap_or(self),
-            Expr::Node {
-                head,
-                args,
-                annotation,
-                ..
-            } => {
-                let head = f(&head).unwrap_or(head.replace(f));
+        match self.kind {
+            ExprKind::Atom { .. } => {
+                let e = Expr::new_unchecked(self.kind);
+                f(&e).unwrap_or(e).into_raw()
+            }
+            ExprKind::Node { head, args, .. } => {
+                let head = f(&head).map(Self::into_raw).unwrap_or(head.replace(f));
                 let args = args
                     .into_iter()
-                    .map(|arg| f(&arg).unwrap_or(arg.replace(f)))
+                    .map(|arg| f(&arg).map(Self::into_raw).unwrap_or(arg.replace(f)))
                     .collect();
 
-                Expr::new_node(head, args).with_annotation(annotation)
+                Expr::new_node(head, args)
             }
         }
     }
+}
 
-    pub fn map_top_down<F>(self, f: &F) -> Expr<A>
+impl RawExpr {
+    pub fn map_top_down<F>(self, f: &F) -> RawExpr
     where
-        F: Fn(Expr<A>) -> Expr<A> + Copy,
+        F: Fn(RawExpr) -> RawExpr + Copy,
     {
         let transformed = f(self);
 
-        match transformed {
-            Expr::Atom { .. } => transformed,
-            Expr::Node { head, args, .. } => {
+        use ExprKind::*;
+        match transformed.kind {
+            Atom { .. } => transformed,
+            Node { head, args, .. } => {
                 let head = head.map_top_down(f);
                 let args = args.into_iter().map(|a| a.map_top_down(f)).collect();
                 Expr::new_node(head, args)
@@ -89,13 +45,14 @@ where
         }
     }
 
-    pub fn map_bottom_up<F>(self, f: &F) -> Expr<A>
+    pub fn map_bottom_up<F>(self, f: &F) -> RawExpr
     where
-        F: Fn(Expr<A>) -> Expr<A> + Copy,
+        F: Fn(RawExpr) -> RawExpr + Copy,
     {
-        match self {
-            Expr::Atom { .. } => f(self),
-            Expr::Node { head, args, .. } => {
+        use ExprKind::*;
+        match self.kind {
+            Atom { .. } => self,
+            Node { head, args, .. } => {
                 let head = head.map_bottom_up(f);
                 let args = args.into_iter().map(|a| a.map_bottom_up(f)).collect();
                 f(Expr::new_node(head, args))

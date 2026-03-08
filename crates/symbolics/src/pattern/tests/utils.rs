@@ -1,17 +1,23 @@
 use crate::{
-    expr::Expr,
+    expr::NormExpr,
     pattern::{environment::Environment, program::Compiler, runtime::Runtime},
 };
 
 pub(super) fn first_match<'p, 's>(
-    program: &'p crate::pattern::program::Program<()>,
-    subject: &'s Expr,
-) -> Option<Environment<'p, 's, ()>> {
+    program: &'p crate::pattern::program::Program,
+    subject: &'s NormExpr,
+) -> Option<Environment<'p, 's>> {
     Runtime::new(program, subject).next()
 }
 
-pub(super) fn count_matches(pattern: &Expr, subject: &Expr) -> usize {
-    let program = Compiler::new().compile(pattern);
+pub(super) fn count_matches(pattern: &NormExpr, subject: &NormExpr) -> usize {
+    let program = Compiler::new()
+        .with_multiset_predicate(|e| {
+            e.has_head_symbol("CommutativeOp")
+                || e.has_head_symbol("Add")
+                || e.has_head_symbol("Mul")
+        })
+        .compile(pattern);
     let runtime = Runtime::new(&program, subject);
     runtime.count()
 }

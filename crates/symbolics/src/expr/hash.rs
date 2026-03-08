@@ -1,10 +1,16 @@
 use std::hash::{DefaultHasher, Hash, Hasher};
 
-use crate::expr::Expr;
+use crate::expr::{Expr, ExprKind};
 
-impl<A> Hash for Expr<A> {
+impl<S> Hash for Expr<S> {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        use Expr::*;
+        self.kind().hash(state);
+    }
+}
+
+impl<E: Hash> Hash for ExprKind<E> {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        use ExprKind::*;
 
         match self {
             Atom { entry, .. } => {
@@ -23,30 +29,10 @@ impl<A> Hash for Expr<A> {
     }
 }
 
-impl<A> Expr<A> {
-    pub fn to_digest(&self) -> u64 {
+impl<E: Hash> ExprKind<E> {
+    pub fn digest(&self) -> u64 {
         let mut state = DefaultHasher::new();
         self.hash(&mut state);
         state.finish()
-    }
-
-    pub fn digest(&self) -> u64 {
-        match self {
-            Expr::Atom { digest, .. } => *digest,
-            Expr::Node { digest, .. } => *digest,
-        }
-    }
-
-    pub fn recompute_digest(mut self) -> Self {
-        let digest: u64 = self.to_digest();
-        match &mut self {
-            Expr::Atom {
-                digest: digest_ref, ..
-            }
-            | Expr::Node {
-                digest: digest_ref, ..
-            } => *digest_ref = digest,
-        }
-        self
     }
 }

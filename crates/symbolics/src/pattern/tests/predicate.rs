@@ -18,13 +18,13 @@
 //  Add[PatternTest[Blank[], IsNumberQ], PatternTest[Blank[], IsSymbolQ]] | Add[x, 1] | 1
 //  Add[PatternTest[Blank[], IsNumberQ], PatternTest[Blank[], IsSymbolQ]] | Add[1, 2] | 0
 
-use crate::expr;
+use crate::norm_expr;
 use crate::pattern::tests::utils::count_matches;
 
 #[test]
 fn test_predicate_1() {
-    let pattern = expr! { PatternTest[Blank[], IsNumberQ] };
-    let subject = expr! { 5 };
+    let pattern = norm_expr! { PatternTest[Blank[], IsNumberQ] };
+    let subject = norm_expr! { 5 };
     assert_eq!(
         count_matches(&pattern, &subject),
         1,
@@ -34,8 +34,8 @@ fn test_predicate_1() {
 
 #[test]
 fn test_predicate_2() {
-    let pattern = expr! { PatternTest[Blank[], IsNumberQ] };
-    let subject = expr! { foo };
+    let pattern = norm_expr! { PatternTest[Blank[], IsNumberQ] };
+    let subject = norm_expr! { foo };
     assert_eq!(
         count_matches(&pattern, &subject),
         0,
@@ -45,8 +45,8 @@ fn test_predicate_2() {
 
 #[test]
 fn test_predicate_3() {
-    let pattern = expr! { PatternTest[Blank[], IsNumberQ] };
-    let subject = expr! { f[1] };
+    let pattern = norm_expr! { PatternTest[Blank[], IsNumberQ] };
+    let subject = norm_expr! { f[1] };
     assert_eq!(
         count_matches(&pattern, &subject),
         0,
@@ -56,8 +56,8 @@ fn test_predicate_3() {
 
 #[test]
 fn test_predicate_4() {
-    let pattern = expr! { PatternTest[Blank[], IsSymbolQ] };
-    let subject = expr! { foo };
+    let pattern = norm_expr! { PatternTest[Blank[], IsSymbolQ] };
+    let subject = norm_expr! { foo };
     assert_eq!(
         count_matches(&pattern, &subject),
         1,
@@ -67,8 +67,8 @@ fn test_predicate_4() {
 
 #[test]
 fn test_predicate_5() {
-    let pattern = expr! { PatternTest[Blank[], IsSymbolQ] };
-    let subject = expr! { 5 };
+    let pattern = norm_expr! { PatternTest[Blank[], IsSymbolQ] };
+    let subject = norm_expr! { 5 };
     assert_eq!(
         count_matches(&pattern, &subject),
         0,
@@ -78,8 +78,8 @@ fn test_predicate_5() {
 
 #[test]
 fn test_predicate_6() {
-    let pattern = expr! { f[PatternTest[Blank[], IsNumberQ]] };
-    let subject = expr! { f[3] };
+    let pattern = norm_expr! { f[PatternTest[Blank[], IsNumberQ]] };
+    let subject = norm_expr! { f[3] };
     assert_eq!(
         count_matches(&pattern, &subject),
         1,
@@ -89,8 +89,8 @@ fn test_predicate_6() {
 
 #[test]
 fn test_predicate_7() {
-    let pattern = expr! { f[PatternTest[Blank[], IsNumberQ]] };
-    let subject = expr! { f[x] };
+    let pattern = norm_expr! { f[PatternTest[Blank[], IsNumberQ]] };
+    let subject = norm_expr! { f[x] };
     assert_eq!(
         count_matches(&pattern, &subject),
         0,
@@ -100,8 +100,8 @@ fn test_predicate_7() {
 
 #[test]
 fn test_predicate_8() {
-    let pattern = expr! { f[PatternTest[Blank[], IsNumberQ], PatternTest[Blank[], IsSymbolQ]] };
-    let subject = expr! { f[1, x] };
+    let pattern = norm_expr! { f[PatternTest[Blank[], IsNumberQ], PatternTest[Blank[], IsSymbolQ]] };
+    let subject = norm_expr! { f[1, x] };
     assert_eq!(
         count_matches(&pattern, &subject),
         1,
@@ -111,8 +111,8 @@ fn test_predicate_8() {
 
 #[test]
 fn test_predicate_9() {
-    let pattern = expr! { f[PatternTest[Blank[], IsNumberQ], PatternTest[Blank[], IsSymbolQ]] };
-    let subject = expr! { f[x, 1] };
+    let pattern = norm_expr! { f[PatternTest[Blank[], IsNumberQ], PatternTest[Blank[], IsSymbolQ]] };
+    let subject = norm_expr! { f[x, 1] };
     assert_eq!(
         count_matches(&pattern, &subject),
         0,
@@ -122,8 +122,8 @@ fn test_predicate_9() {
 
 #[test]
 fn test_predicate_10() {
-    let pattern = expr! { f[PatternTest[Pattern[x, Blank[]], IsNumberQ]] };
-    let subject = expr! { f[3] };
+    let pattern = norm_expr! { f[PatternTest[Pattern[x, Blank[]], IsNumberQ]] };
+    let subject = norm_expr! { f[3] };
     assert_eq!(
         count_matches(&pattern, &subject),
         1,
@@ -133,8 +133,8 @@ fn test_predicate_10() {
 
 #[test]
 fn test_predicate_11() {
-    let pattern = expr! { f[PatternTest[Pattern[x, Blank[]], IsNumberQ]] };
-    let subject = expr! { f[foo] };
+    let pattern = norm_expr! { f[PatternTest[Pattern[x, Blank[]], IsNumberQ]] };
+    let subject = norm_expr! { f[foo] };
     assert_eq!(
         count_matches(&pattern, &subject),
         0,
@@ -144,8 +144,8 @@ fn test_predicate_11() {
 
 #[test]
 fn test_predicate_12() {
-    let pattern = expr! { Add[PatternTest[Blank[], IsNumberQ], PatternTest[Blank[], IsSymbolQ]] };
-    let subject = expr! { Add[x, 1] };
+    let pattern = norm_expr! { Add[PatternTest[Blank[], IsNumberQ], PatternTest[Blank[], IsSymbolQ]] };
+    let subject = norm_expr! { Add[x, 1] };
     assert_eq!(
         count_matches(&pattern, &subject),
         1,
@@ -155,8 +155,8 @@ fn test_predicate_12() {
 
 #[test]
 fn test_predicate_13() {
-    let pattern = expr! { Add[PatternTest[Blank[], IsNumberQ], PatternTest[Blank[], IsSymbolQ]] };
-    let subject = expr! { Add[1, 2] };
+    let pattern = norm_expr! { Add[PatternTest[Blank[], IsNumberQ], PatternTest[Blank[], IsSymbolQ]] };
+    let subject = norm_expr! { Add[1, 2] };
     assert_eq!(
         count_matches(&pattern, &subject),
         0,

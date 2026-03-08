@@ -8,7 +8,7 @@ use common::{ClientMessage, KernelMessage};
 use futures_util::{sink::SinkExt, stream::StreamExt};
 use parser::parse;
 use symbolics::{
-    expr::{Expr, NormalizedExpr},
+    expr::RawExpr,
     format::MathDisplay,
     simplify::Simplifier,
 };
@@ -78,9 +78,9 @@ fn process_message(inbound_msg: String) -> Result<KernelMessage, KernelMessage> 
         msg: format!("Error parsing input: {}", err),
     })?;
 
-    let input_expr = Expr::from(ast_in);
+    let input_expr = RawExpr::from(ast_in);
     let input_latex = input_expr.to_latex();
-    let input_expr = NormalizedExpr::new(input_expr);
+    let input_expr = input_expr.normalize();
 
     let result_expr = Simplifier::new(input_expr)
         .simple()

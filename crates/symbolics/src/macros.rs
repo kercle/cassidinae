@@ -1,21 +1,28 @@
 #[macro_export]
-macro_rules! expr {
+macro_rules! expr_old {
     ($($tt:tt)*) => {
-        $crate::expr::Expr::<()>::from(parser_macros::tcas_parse!($($tt)*))
+        $crate::expr_old::ExprOld::from(parser_macros::tcas_parse!($($tt)*))
+    };
+}
+
+#[macro_export]
+macro_rules! norm_expr_old {
+    ($($tt:tt)*) => {
+        $crate::expr_old::NormExprOld::new($crate::expr_old::ExprOld::from(parser_macros::tcas_parse!($($tt)*)))
+    };
+}
+
+#[macro_export]
+macro_rules! raw_expr {
+    ($($tt:tt)*) => {
+        $crate::expr::RawExpr::from(parser_macros::tcas_parse!($($tt)*))
     };
 }
 
 #[macro_export]
 macro_rules! norm_expr {
     ($($tt:tt)*) => {
-        $crate::expr::NormalizedExpr::new($crate::expr::Expr::<()>::from(parser_macros::tcas_parse!($($tt)*)))
-    };
-}
-
-#[macro_export]
-macro_rules! symbol {
-    ( $($x:expr),* $(,)? ) => {
-        ( $($crate::expr::generator::SymbolGenerator::new($x)),* )
+        $crate::raw_expr!($($tt)*).normalize()
     };
 }
 

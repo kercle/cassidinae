@@ -64,15 +64,15 @@
 //  f[Pattern[x, BlankSeq[]], Blank[], Pattern[x, BlankSeq[]]] | f[1, 2, 1]    | 1
 //  f[Pattern[x, BlankSeq[]], Blank[], Pattern[x, BlankSeq[]]] | f[1, 2, 3]    | 0
 
-use crate::expr;
+use crate::norm_expr;
 use crate::pattern::tests::utils::count_matches;
 
 // ---- BlankSeq (1 or more) Tests ----
 
 #[test]
 fn test_blank_seq_1() {
-    let pattern = expr! { f[BlankSeq[]] };
-    let subject = expr! { f[1] };
+    let pattern = norm_expr! { f[BlankSeq[]] };
+    let subject = norm_expr! { f[1] };
     assert_eq!(
         count_matches(&pattern, &subject),
         1,
@@ -82,8 +82,8 @@ fn test_blank_seq_1() {
 
 #[test]
 fn test_blank_seq_2() {
-    let pattern = expr! { f[BlankSeq[]] };
-    let subject = expr! { f[1, 2, 3] };
+    let pattern = norm_expr! { f[BlankSeq[]] };
+    let subject = norm_expr! { f[1, 2, 3] };
     assert_eq!(
         count_matches(&pattern, &subject),
         1,
@@ -93,8 +93,8 @@ fn test_blank_seq_2() {
 
 #[test]
 fn test_blank_seq_3() {
-    let pattern = expr! { f[BlankSeq[]] };
-    let subject = expr! { f[] };
+    let pattern = norm_expr! { f[BlankSeq[]] };
+    let subject = norm_expr! { f[] };
     assert_eq!(
         count_matches(&pattern, &subject),
         0,
@@ -104,8 +104,8 @@ fn test_blank_seq_3() {
 
 #[test]
 fn test_blank_seq_4() {
-    let pattern = expr! { f[1, BlankSeq[]] };
-    let subject = expr! { f[1, 2] };
+    let pattern = norm_expr! { f[1, BlankSeq[]] };
+    let subject = norm_expr! { f[1, 2] };
     assert_eq!(
         count_matches(&pattern, &subject),
         1,
@@ -115,8 +115,8 @@ fn test_blank_seq_4() {
 
 #[test]
 fn test_blank_seq_5() {
-    let pattern = expr! { f[1, BlankSeq[]] };
-    let subject = expr! { f[1] };
+    let pattern = norm_expr! { f[1, BlankSeq[]] };
+    let subject = norm_expr! { f[1] };
     assert_eq!(
         count_matches(&pattern, &subject),
         0,
@@ -126,8 +126,8 @@ fn test_blank_seq_5() {
 
 #[test]
 fn test_blank_seq_6() {
-    let pattern = expr! { f[1, BlankSeq[]] };
-    let subject = expr! { f[1, 2, 3, 4] };
+    let pattern = norm_expr! { f[1, BlankSeq[]] };
+    let subject = norm_expr! { f[1, 2, 3, 4] };
     assert_eq!(
         count_matches(&pattern, &subject),
         1,
@@ -137,8 +137,8 @@ fn test_blank_seq_6() {
 
 #[test]
 fn test_blank_seq_7() {
-    let pattern = expr! { f[BlankSeq[], 1] };
-    let subject = expr! { f[2, 1] };
+    let pattern = norm_expr! { f[BlankSeq[], 1] };
+    let subject = norm_expr! { f[2, 1] };
     assert_eq!(
         count_matches(&pattern, &subject),
         1,
@@ -148,8 +148,8 @@ fn test_blank_seq_7() {
 
 #[test]
 fn test_blank_seq_8() {
-    let pattern = expr! { f[BlankSeq[], 1] };
-    let subject = expr! { f[1] };
+    let pattern = norm_expr! { f[BlankSeq[], 1] };
+    let subject = norm_expr! { f[1] };
     assert_eq!(
         count_matches(&pattern, &subject),
         0,
@@ -159,8 +159,8 @@ fn test_blank_seq_8() {
 
 #[test]
 fn test_blank_seq_9() {
-    let pattern = expr! { f[BlankSeq[], 1] };
-    let subject = expr! { f[2, 3, 1] };
+    let pattern = norm_expr! { f[BlankSeq[], 1] };
+    let subject = norm_expr! { f[2, 3, 1] };
     assert_eq!(
         count_matches(&pattern, &subject),
         1,
@@ -170,8 +170,8 @@ fn test_blank_seq_9() {
 
 #[test]
 fn test_blank_seq_10() {
-    let pattern = expr! { f[1, BlankSeq[], 2] };
-    let subject = expr! { f[1, 99, 2] };
+    let pattern = norm_expr! { f[1, BlankSeq[], 2] };
+    let subject = norm_expr! { f[1, 99, 2] };
     assert_eq!(
         count_matches(&pattern, &subject),
         1,
@@ -181,8 +181,8 @@ fn test_blank_seq_10() {
 
 #[test]
 fn test_blank_seq_11() {
-    let pattern = expr! { f[1, BlankSeq[], 2] };
-    let subject = expr! { f[1, 2] };
+    let pattern = norm_expr! { f[1, BlankSeq[], 2] };
+    let subject = norm_expr! { f[1, 2] };
     assert_eq!(
         count_matches(&pattern, &subject),
         0,
@@ -192,8 +192,8 @@ fn test_blank_seq_11() {
 
 #[test]
 fn test_blank_seq_12() {
-    let pattern = expr! { f[1, BlankSeq[], 2] };
-    let subject = expr! { f[1, 3, 4, 2] };
+    let pattern = norm_expr! { f[1, BlankSeq[], 2] };
+    let subject = norm_expr! { f[1, 3, 4, 2] };
     assert_eq!(
         count_matches(&pattern, &subject),
         1,
@@ -203,8 +203,8 @@ fn test_blank_seq_12() {
 
 #[test]
 fn test_blank_seq_13() {
-    let pattern = expr! { f[BlankSeq[], BlankSeq[]] };
-    let subject = expr! { f[1] };
+    let pattern = norm_expr! { f[BlankSeq[], BlankSeq[]] };
+    let subject = norm_expr! { f[1] };
     assert_eq!(
         count_matches(&pattern, &subject),
         0,
@@ -214,8 +214,8 @@ fn test_blank_seq_13() {
 
 #[test]
 fn test_blank_seq_14() {
-    let pattern = expr! { f[BlankSeq[], BlankSeq[]] };
-    let subject = expr! { f[1, 2] };
+    let pattern = norm_expr! { f[BlankSeq[], BlankSeq[]] };
+    let subject = norm_expr! { f[1, 2] };
     assert_eq!(
         count_matches(&pattern, &subject),
         1,
@@ -225,8 +225,8 @@ fn test_blank_seq_14() {
 
 #[test]
 fn test_blank_seq_15() {
-    let pattern = expr! { f[BlankSeq[], BlankSeq[]] };
-    let subject = expr! { f[1, 2, 3] };
+    let pattern = norm_expr! { f[BlankSeq[], BlankSeq[]] };
+    let subject = norm_expr! { f[1, 2, 3] };
     assert_eq!(
         count_matches(&pattern, &subject),
         2,
@@ -236,8 +236,8 @@ fn test_blank_seq_15() {
 
 #[test]
 fn test_blank_seq_16() {
-    let pattern = expr! { f[BlankSeq[], BlankSeq[]] };
-    let subject = expr! { f[1, 2, 3, 4] };
+    let pattern = norm_expr! { f[BlankSeq[], BlankSeq[]] };
+    let subject = norm_expr! { f[1, 2, 3, 4] };
     assert_eq!(
         count_matches(&pattern, &subject),
         3,
@@ -249,8 +249,8 @@ fn test_blank_seq_16() {
 
 #[test]
 fn test_blank_null_seq_1() {
-    let pattern = expr! { f[BlankNullSeq[]] };
-    let subject = expr! { f[] };
+    let pattern = norm_expr! { f[BlankNullSeq[]] };
+    let subject = norm_expr! { f[] };
     assert_eq!(
         count_matches(&pattern, &subject),
         1,
@@ -260,8 +260,8 @@ fn test_blank_null_seq_1() {
 
 #[test]
 fn test_blank_null_seq_2() {
-    let pattern = expr! { f[BlankNullSeq[]] };
-    let subject = expr! { f[1] };
+    let pattern = norm_expr! { f[BlankNullSeq[]] };
+    let subject = norm_expr! { f[1] };
     assert_eq!(
         count_matches(&pattern, &subject),
         1,
@@ -271,8 +271,8 @@ fn test_blank_null_seq_2() {
 
 #[test]
 fn test_blank_null_seq_3() {
-    let pattern = expr! { f[BlankNullSeq[]] };
-    let subject = expr! { f[1, 2, 3] };
+    let pattern = norm_expr! { f[BlankNullSeq[]] };
+    let subject = norm_expr! { f[1, 2, 3] };
     assert_eq!(
         count_matches(&pattern, &subject),
         1,
@@ -282,8 +282,8 @@ fn test_blank_null_seq_3() {
 
 #[test]
 fn test_blank_null_seq_4() {
-    let pattern = expr! { f[1, BlankNullSeq[]] };
-    let subject = expr! { f[1] };
+    let pattern = norm_expr! { f[1, BlankNullSeq[]] };
+    let subject = norm_expr! { f[1] };
     assert_eq!(
         count_matches(&pattern, &subject),
         1,
@@ -293,8 +293,8 @@ fn test_blank_null_seq_4() {
 
 #[test]
 fn test_blank_null_seq_5() {
-    let pattern = expr! { f[1, BlankNullSeq[]] };
-    let subject = expr! { f[1, 2, 3] };
+    let pattern = norm_expr! { f[1, BlankNullSeq[]] };
+    let subject = norm_expr! { f[1, 2, 3] };
     assert_eq!(
         count_matches(&pattern, &subject),
         1,
@@ -304,8 +304,8 @@ fn test_blank_null_seq_5() {
 
 #[test]
 fn test_blank_null_seq_6() {
-    let pattern = expr! { f[BlankNullSeq[], 1] };
-    let subject = expr! { f[1] };
+    let pattern = norm_expr! { f[BlankNullSeq[], 1] };
+    let subject = norm_expr! { f[1] };
     assert_eq!(
         count_matches(&pattern, &subject),
         1,
@@ -315,8 +315,8 @@ fn test_blank_null_seq_6() {
 
 #[test]
 fn test_blank_null_seq_7() {
-    let pattern = expr! { f[BlankNullSeq[], 1] };
-    let subject = expr! { f[2, 3, 1] };
+    let pattern = norm_expr! { f[BlankNullSeq[], 1] };
+    let subject = norm_expr! { f[2, 3, 1] };
     assert_eq!(
         count_matches(&pattern, &subject),
         1,
@@ -326,8 +326,8 @@ fn test_blank_null_seq_7() {
 
 #[test]
 fn test_blank_null_seq_8() {
-    let pattern = expr! { f[BlankNullSeq[], BlankNullSeq[]] };
-    let subject = expr! { f[] };
+    let pattern = norm_expr! { f[BlankNullSeq[], BlankNullSeq[]] };
+    let subject = norm_expr! { f[] };
     assert_eq!(
         count_matches(&pattern, &subject),
         1,
@@ -337,8 +337,8 @@ fn test_blank_null_seq_8() {
 
 #[test]
 fn test_blank_null_seq_9() {
-    let pattern = expr! { f[BlankNullSeq[], BlankNullSeq[]] };
-    let subject = expr! { f[1] };
+    let pattern = norm_expr! { f[BlankNullSeq[], BlankNullSeq[]] };
+    let subject = norm_expr! { f[1] };
     assert_eq!(
         count_matches(&pattern, &subject),
         2,
@@ -348,8 +348,8 @@ fn test_blank_null_seq_9() {
 
 #[test]
 fn test_blank_null_seq_10() {
-    let pattern = expr! { f[BlankNullSeq[], BlankNullSeq[]] };
-    let subject = expr! { f[1, 2] };
+    let pattern = norm_expr! { f[BlankNullSeq[], BlankNullSeq[]] };
+    let subject = norm_expr! { f[1, 2] };
     assert_eq!(
         count_matches(&pattern, &subject),
         3,
@@ -359,8 +359,8 @@ fn test_blank_null_seq_10() {
 
 #[test]
 fn test_blank_null_seq_11() {
-    let pattern = expr! { f[BlankNullSeq[], BlankNullSeq[]] };
-    let subject = expr! { f[1, 2, 3] };
+    let pattern = norm_expr! { f[BlankNullSeq[], BlankNullSeq[]] };
+    let subject = norm_expr! { f[1, 2, 3] };
     assert_eq!(
         count_matches(&pattern, &subject),
         4,
@@ -370,8 +370,8 @@ fn test_blank_null_seq_11() {
 
 #[test]
 fn test_blank_null_seq_12() {
-    let pattern = expr! { f[BlankSeq[], BlankNullSeq[]] };
-    let subject = expr! { f[1] };
+    let pattern = norm_expr! { f[BlankSeq[], BlankNullSeq[]] };
+    let subject = norm_expr! { f[1] };
     assert_eq!(
         count_matches(&pattern, &subject),
         1,
@@ -381,8 +381,8 @@ fn test_blank_null_seq_12() {
 
 #[test]
 fn test_blank_null_seq_13() {
-    let pattern = expr! { f[BlankSeq[], BlankNullSeq[]] };
-    let subject = expr! { f[1, 2] };
+    let pattern = norm_expr! { f[BlankSeq[], BlankNullSeq[]] };
+    let subject = norm_expr! { f[1, 2] };
     assert_eq!(
         count_matches(&pattern, &subject),
         2,
@@ -392,8 +392,8 @@ fn test_blank_null_seq_13() {
 
 #[test]
 fn test_blank_null_seq_14() {
-    let pattern = expr! { f[BlankSeq[], BlankNullSeq[]] };
-    let subject = expr! { f[1, 2, 3] };
+    let pattern = norm_expr! { f[BlankSeq[], BlankNullSeq[]] };
+    let subject = norm_expr! { f[1, 2, 3] };
     assert_eq!(
         count_matches(&pattern, &subject),
         3,
@@ -403,8 +403,8 @@ fn test_blank_null_seq_14() {
 
 #[test]
 fn test_blank_null_seq_15() {
-    let pattern = expr! { f[BlankNullSeq[], BlankSeq[]] };
-    let subject = expr! { f[1] };
+    let pattern = norm_expr! { f[BlankNullSeq[], BlankSeq[]] };
+    let subject = norm_expr! { f[1] };
     assert_eq!(
         count_matches(&pattern, &subject),
         1,
@@ -414,8 +414,8 @@ fn test_blank_null_seq_15() {
 
 #[test]
 fn test_blank_null_seq_16() {
-    let pattern = expr! { f[BlankNullSeq[], BlankSeq[]] };
-    let subject = expr! { f[1, 2] };
+    let pattern = norm_expr! { f[BlankNullSeq[], BlankSeq[]] };
+    let subject = norm_expr! { f[1, 2] };
     assert_eq!(
         count_matches(&pattern, &subject),
         2,
@@ -427,8 +427,8 @@ fn test_blank_null_seq_16() {
 
 #[test]
 fn test_named_seq_1() {
-    let pattern = expr! { f[Pattern[x, BlankSeq[]]] };
-    let subject = expr! { f[1] };
+    let pattern = norm_expr! { f[Pattern[x, BlankSeq[]]] };
+    let subject = norm_expr! { f[1] };
     assert_eq!(
         count_matches(&pattern, &subject),
         1,
@@ -438,8 +438,8 @@ fn test_named_seq_1() {
 
 #[test]
 fn test_named_seq_2() {
-    let pattern = expr! { f[Pattern[x, BlankSeq[]]] };
-    let subject = expr! { f[1, 2, 3] };
+    let pattern = norm_expr! { f[Pattern[x, BlankSeq[]]] };
+    let subject = norm_expr! { f[1, 2, 3] };
     assert_eq!(
         count_matches(&pattern, &subject),
         1,
@@ -449,8 +449,8 @@ fn test_named_seq_2() {
 
 #[test]
 fn test_named_seq_3() {
-    let pattern = expr! { f[Pattern[x, BlankNullSeq[]]] };
-    let subject = expr! { f[] };
+    let pattern = norm_expr! { f[Pattern[x, BlankNullSeq[]]] };
+    let subject = norm_expr! { f[] };
     assert_eq!(
         count_matches(&pattern, &subject),
         1,
@@ -460,8 +460,8 @@ fn test_named_seq_3() {
 
 #[test]
 fn test_named_seq_4() {
-    let pattern = expr! { f[Pattern[x, BlankNullSeq[]]] };
-    let subject = expr! { f[1, 2] };
+    let pattern = norm_expr! { f[Pattern[x, BlankNullSeq[]]] };
+    let subject = norm_expr! { f[1, 2] };
     assert_eq!(
         count_matches(&pattern, &subject),
         1,
@@ -471,8 +471,8 @@ fn test_named_seq_4() {
 
 #[test]
 fn test_named_seq_5() {
-    let pattern = expr! { f[Pattern[x, BlankSeq[]], Pattern[x, BlankSeq[]]] };
-    let subject = expr! { f[1, 1] };
+    let pattern = norm_expr! { f[Pattern[x, BlankSeq[]], Pattern[x, BlankSeq[]]] };
+    let subject = norm_expr! { f[1, 1] };
     assert_eq!(
         count_matches(&pattern, &subject),
         1,
@@ -482,8 +482,8 @@ fn test_named_seq_5() {
 
 #[test]
 fn test_named_seq_6() {
-    let pattern = expr! { f[Pattern[x, BlankSeq[]], Pattern[x, BlankSeq[]]] };
-    let subject = expr! { f[1, 2, 1, 2] };
+    let pattern = norm_expr! { f[Pattern[x, BlankSeq[]], Pattern[x, BlankSeq[]]] };
+    let subject = norm_expr! { f[1, 2, 1, 2] };
     assert_eq!(
         count_matches(&pattern, &subject),
         1,
@@ -493,8 +493,8 @@ fn test_named_seq_6() {
 
 #[test]
 fn test_named_seq_7() {
-    let pattern = expr! { f[Pattern[x, BlankSeq[]], Pattern[x, BlankSeq[]]] };
-    let subject = expr! { f[1, 2] };
+    let pattern = norm_expr! { f[Pattern[x, BlankSeq[]], Pattern[x, BlankSeq[]]] };
+    let subject = norm_expr! { f[1, 2] };
     assert_eq!(
         count_matches(&pattern, &subject),
         0,
@@ -504,8 +504,8 @@ fn test_named_seq_7() {
 
 #[test]
 fn test_named_seq_8() {
-    let pattern = expr! { f[Pattern[x, BlankSeq[]], Pattern[x, BlankSeq[]]] };
-    let subject = expr! { f[1, 2, 3] };
+    let pattern = norm_expr! { f[Pattern[x, BlankSeq[]], Pattern[x, BlankSeq[]]] };
+    let subject = norm_expr! { f[1, 2, 3] };
     assert_eq!(
         count_matches(&pattern, &subject),
         0,
@@ -515,8 +515,8 @@ fn test_named_seq_8() {
 
 #[test]
 fn test_named_seq_9() {
-    let pattern = expr! { f[Pattern[x, BlankNullSeq[]], Pattern[x, BlankNullSeq[]]] };
-    let subject = expr! { f[] };
+    let pattern = norm_expr! { f[Pattern[x, BlankNullSeq[]], Pattern[x, BlankNullSeq[]]] };
+    let subject = norm_expr! { f[] };
     assert_eq!(
         count_matches(&pattern, &subject),
         1,
@@ -526,8 +526,8 @@ fn test_named_seq_9() {
 
 #[test]
 fn test_named_seq_10() {
-    let pattern = expr! { f[Pattern[x, BlankNullSeq[]], Pattern[x, BlankNullSeq[]]] };
-    let subject = expr! { f[1, 1] };
+    let pattern = norm_expr! { f[Pattern[x, BlankNullSeq[]], Pattern[x, BlankNullSeq[]]] };
+    let subject = norm_expr! { f[1, 1] };
     assert_eq!(
         count_matches(&pattern, &subject),
         1,
@@ -537,8 +537,8 @@ fn test_named_seq_10() {
 
 #[test]
 fn test_named_seq_11() {
-    let pattern = expr! { f[1, Pattern[x, BlankSeq[]], 2] };
-    let subject = expr! { f[1, 5, 6, 2] };
+    let pattern = norm_expr! { f[1, Pattern[x, BlankSeq[]], 2] };
+    let subject = norm_expr! { f[1, 5, 6, 2] };
     assert_eq!(
         count_matches(&pattern, &subject),
         1,
@@ -548,8 +548,8 @@ fn test_named_seq_11() {
 
 #[test]
 fn test_named_seq_12() {
-    let pattern = expr! { f[Pattern[x, BlankSeq[]], Blank[], Pattern[x, BlankSeq[]]] };
-    let subject = expr! { f[1, 2, 1] };
+    let pattern = norm_expr! { f[Pattern[x, BlankSeq[]], Blank[], Pattern[x, BlankSeq[]]] };
+    let subject = norm_expr! { f[1, 2, 1] };
     assert_eq!(
         count_matches(&pattern, &subject),
         1,
@@ -559,8 +559,8 @@ fn test_named_seq_12() {
 
 #[test]
 fn test_named_seq_13() {
-    let pattern = expr! { f[Pattern[x, BlankSeq[]], Blank[], Pattern[x, BlankSeq[]]] };
-    let subject = expr! { f[1, 2, 3] };
+    let pattern = norm_expr! { f[Pattern[x, BlankSeq[]], Blank[], Pattern[x, BlankSeq[]]] };
+    let subject = norm_expr! { f[1, 2, 3] };
     assert_eq!(
         count_matches(&pattern, &subject),
         0,

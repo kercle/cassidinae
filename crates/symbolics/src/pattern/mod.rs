@@ -12,7 +12,7 @@ mod tests;
 
 use std::{fmt::Debug, str::FromStr};
 
-use crate::expr::{Expr, walk::ExprTopDownWalker};
+use crate::expr::{ExprKind, NormExpr, walk::ExprTopDownWalker};
 
 pub const PATTERN_HEAD: &str = "Pattern";
 pub const PATTERN_TEST_HEAD: &str = "PatternTest";
@@ -27,7 +27,7 @@ pub enum PatternPredicate {
 }
 
 impl PatternPredicate {
-    pub fn check<A: Clone + Debug + PartialEq>(&self, expr: &Expr<A>) -> bool {
+    pub fn check(&self, expr: &NormExpr) -> bool {
         use PatternPredicate::*;
         match self {
             IsSymbolQ => expr.is_symbol(),
@@ -52,41 +52,38 @@ impl FromStr for PatternPredicate {
 }
 
 #[derive(Clone)]
-pub enum Pattern<'a, A> {
-    Literal(&'a Expr<A>),
+pub enum Pattern<'a> {
+    Literal(&'a NormExpr),
     Blank {
         bind_name: Option<&'a str>,
-        match_head: Option<&'a Expr<A>>,
+        match_head: Option<&'a NormExpr>,
         predicate: Option<PatternPredicate>,
     },
     BlankSeq {
         bind_name: Option<&'a str>,
-        match_head: Option<&'a Expr<A>>,
+        match_head: Option<&'a NormExpr>,
         predicate: Option<PatternPredicate>,
     },
     BlankNullSeq {
         bind_name: Option<&'a str>,
-        match_head: Option<&'a Expr<A>>,
+        match_head: Option<&'a NormExpr>,
         predicate: Option<PatternPredicate>,
     },
     Node {
-        head: Box<Pattern<'a, A>>,
-        args: Vec<Pattern<'a, A>>,
+        head: Box<Pattern<'a>>,
+        args: Vec<Pattern<'a>>,
         predicate: Option<PatternPredicate>,
     },
 }
 
-impl<'a, A> Pattern<'a, A>
-where
-    A: PartialEq + Clone,
-{
-    pub fn from_expr(expr: &'a Expr<A>) -> Self {
+impl<'a> Pattern<'a> {
+    pub fn from_expr(expr: &'a NormExpr) -> Self {
         Self::from_expr_inner(expr)
     }
 
-    fn from_pattern_node(expr: &'a Expr<A>) -> Option<Pattern<'a, A>> {
-        match expr {
-            Expr::Node { head, args, .. }
+    fn from_pattern_node(expr: &'a NormExpr) -> Option<Pattern<'a>> {
+        match expr.kind() {
+            ExprKind::Node { head, args, .. }
                 if head.matches_symbol(PATTERN_TEST_HEAD) && args.len() == 2 =>
             {
                 let pat = args.first()?;
@@ -111,7 +108,7 @@ where
                     }
                 }
             }
-            Expr::Node { head, args, .. }
+            ExprKind::Node { head, args, .. }
                 if head.matches_symbol(PATTERN_HEAD) && args.len() == 2 =>
             {
                 let e = args.last()?;
@@ -127,7 +124,7 @@ where
                     unimplemented!()
                 }
             }
-            Expr::Node { head, args, .. } if args.len() <= 1 => {
+            ExprKind::Node { head, args, .. } if args.len() <= 1 => {
                 if head.matches_symbol(BLANK_ONE_HEAD) {
                     Some(Pattern::Blank {
                         bind_name: None,
@@ -154,10 +151,10 @@ where
         }
     }
 
-    fn from_expr_inner(expr: &'a Expr<A>) -> Self {
+    fn from_expr_inner(expr: &'a NormExpr) -> Self {
         let mut descend = false;
         for e in ExprTopDownWalker::new(expr) {
-            if let Expr::Node { head, .. } = e
+            if let ExprKind::Node { head, .. } = e.kind()
                 && (head.matches_symbol(PATTERN_HEAD)
                     || head.matches_symbol(BLANK_ONE_HEAD)
                     || head.matches_symbol(BLANK_SEQ_HEAD)
@@ -169,15 +166,15 @@ where
             }
         }
 
-        match expr {
-            Expr::Atom { .. } => Pattern::Literal(expr),
-            Expr::Node { head, args, .. } if descend => {
+        match expr.kind() {
+            ExprKind::Atom { .. } => Pattern::Literal(expr),
+            ExprKind::Node { head, args, .. } if descend => {
                 if let Some(p) = Self::from_pattern_node(expr) {
                     p
                 } else {
                     Pattern::Node {
                         head: Box::new(Self::from_expr_inner(head.as_ref())),
-                        args: args.iter().map(|e| Self::from_expr_inner(e)).collect(),
+                        args: args.iter().map(Self::from_expr_inner).collect(),
                         predicate: None,
                     }
                 }

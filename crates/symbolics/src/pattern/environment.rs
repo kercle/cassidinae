@@ -1,26 +1,27 @@
 use std::{collections::HashMap, fmt::Debug, rc::Rc};
 
 use crate::{
-    expr::Expr,
+    atom::Atom,
+    expr::{ExprKind, NormExpr, RawExpr},
     pattern::program::{Program, VarId},
 };
 
 #[derive(Clone)]
-pub(super) enum EnvBinding<'s, A: Clone + PartialEq> {
-    One(&'s Expr<A>),
-    Many(Rc<Vec<&'s Expr<A>>>),
+pub(super) enum EnvBinding<'s> {
+    One(&'s NormExpr),
+    Many(Rc<Vec<&'s NormExpr>>),
 }
 
 #[derive(Debug, Clone)]
-pub struct Environment<'p, 's, A: Clone + PartialEq> {
-    bindings: HashMap<VarId, EnvBinding<'s, A>>,
-    program: &'p Program<A>,
+pub struct Environment<'p, 's> {
+    bindings: HashMap<VarId, EnvBinding<'s>>,
+    program: &'p Program,
 }
 
 pub struct ErrorBindCollision;
 
-impl<'p, 's, A: Clone + PartialEq> Environment<'p, 's, A> {
-    pub(super) fn new(program: &'p Program<A>) -> Self {
+impl<'p, 's> Environment<'p, 's> {
+    pub(super) fn new(program: &'p Program) -> Self {
         Self {
             bindings: HashMap::new(),
             program,
@@ -30,7 +31,7 @@ impl<'p, 's, A: Clone + PartialEq> Environment<'p, 's, A> {
     pub(super) fn bind_one(
         &mut self,
         bind_var: VarId,
-        subject: &'s Expr<A>,
+        subject: &'s NormExpr,
     ) -> Result<bool, ErrorBindCollision> {
         match self.bindings.get(&bind_var) {
             Some(EnvBinding::One(bound_subject)) => {
@@ -51,7 +52,7 @@ impl<'p, 's, A: Clone + PartialEq> Environment<'p, 's, A> {
     pub(super) fn bind_seq(
         &mut self,
         bind_var: VarId,
-        subjects: Rc<Vec<&'s Expr<A>>>,
+        subjects: Rc<Vec<&'s NormExpr>>,
     ) -> Result<bool, ErrorBindCollision> {
         match self.bindings.get(&bind_var) {
             Some(EnvBinding::Many(bound_subjects)) => {
@@ -86,7 +87,7 @@ impl<'p, 's, A: Clone + PartialEq> Environment<'p, 's, A> {
         self.program.var_ids.get(name.as_ref()).cloned()
     }
 
-    pub fn get_one<T: AsRef<str>>(&self, name: T) -> Option<&'s Expr<A>> {
+    pub fn get_one<T: AsRef<str>>(&self, name: T) -> Option<&'s NormExpr> {
         use EnvBinding::*;
 
         let var_id = self.var_id_from_name(name.as_ref())?;
@@ -97,7 +98,7 @@ impl<'p, 's, A: Clone + PartialEq> Environment<'p, 's, A> {
         }
     }
 
-    pub fn get_seq<T: AsRef<str>>(&self, name: T) -> Option<&[&'s Expr<A>]> {
+    pub fn get_seq<T: AsRef<str>>(&self, name: T) -> Option<&[&'s NormExpr]> {
         use EnvBinding::*;
 
         let var_id = self.var_id_from_name(name.as_ref())?;
@@ -109,18 +110,19 @@ impl<'p, 's, A: Clone + PartialEq> Environment<'p, 's, A> {
     }
 }
 
-impl<'p, 's, A> Environment<'p, 's, A>
-where
-    A: PartialEq + Clone + Default,
-{
-    pub fn fill(&self, target_expr: Expr<A>) -> Expr<A> {
-        match target_expr {
-            Expr::Atom { .. } if target_expr.is_symbol() => {
+impl<'p, 's> Environment<'p, 's> {
+    pub fn fill(&self, target_expr: NormExpr) -> RawExpr {
+        match target_expr.into_kind() {
+            ExprKind::Atom {
+                entry: Atom::Symbol(name),
+            } => {
                 // In case of a symbol -> Replace with blanks
-                let name = target_expr.get_symbol().unwrap();
-                self.get_one(name).cloned().unwrap_or(target_expr)
+                self.get_one(&name)
+                    .cloned()
+                    .map(NormExpr::into_raw)
+                    .unwrap_or(RawExpr::new_symbol(name).into_raw())
             }
-            Expr::Node { head, args, .. } => {
+            ExprKind::Node { head, args, .. } => {
                 let new_head = self.fill(*head);
                 let mut new_args = vec![];
 
@@ -132,22 +134,22 @@ where
                     };
 
                     if let Some(repl) = self.get_one(name) {
-                        new_args.push(repl.clone());
+                        new_args.push(repl.clone().into_raw());
                     } else if let Some(repl) = self.get_seq(name) {
-                        new_args.extend(repl.iter().map(|&e| e.clone()));
+                        new_args.extend(repl.iter().map(|&e| e.clone().into_raw()));
                     } else {
-                        new_args.push(arg);
+                        new_args.push(arg.into_raw());
                     }
                 }
 
-                Expr::new_node(new_head, new_args)
+                RawExpr::new_node(new_head, new_args)
             }
-            _ => target_expr,
+            other => other.into_raw_expr(),
         }
     }
 }
 
-impl<'p, 's, A: Clone + PartialEq + Debug> Environment<'p, 's, A> {
+impl<'p, 's> Environment<'p, 's> {
     pub fn dbg_print_bindings(&self) {
         let mut keys: Vec<&VarId> = self.bindings.keys().collect();
         keys.sort();

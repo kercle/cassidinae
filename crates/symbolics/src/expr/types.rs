@@ -1,48 +1,48 @@
+use std::marker::PhantomData;
+
 use crate::atom::Atom;
 
+#[derive(Clone)]
+pub struct Raw;
+
+#[derive(Clone)]
+pub struct Normalized;
+
 #[derive(Clone, PartialEq)]
-pub enum Expr<A = ()> {
-    Atom {
-        entry: Atom,
-        digest: u64,
-        annotation: A,
-    },
-    Node {
-        head: Box<Expr<A>>,
-        args: Vec<Expr<A>>,
-        digest: u64,
-        annotation: A,
-    },
+pub enum ExprKind<E> {
+    Atom { entry: Atom },
+    Node { head: Box<E>, args: Vec<E> },
 }
 
-#[repr(transparent)]
-#[derive(Debug, Clone, PartialEq)]
-pub struct NormalizedExpr<A = ()>(Expr<A>)
-where
-    A: Clone + PartialEq;
-
-impl<A: Clone + PartialEq + Default> NormalizedExpr<A> {
-    pub fn new(expr: Expr<A>) -> Self {
-        NormalizedExpr(expr.normalize())
-    }
-
-    pub fn drop_annotations(self) -> Expr {
-        self.take_expr().drop_annotation()
-    }
-
-    pub fn map_annotations(self) -> Self {
-        NormalizedExpr(self.take_expr().map_annotations(&|_| A::default()))
-    }
+#[derive(Clone)]
+pub struct Expr<S> {
+    pub(super) kind: ExprKind<Expr<S>>,
+    digest: u64,
+    _state: PhantomData<S>,
 }
 
-impl<A: Clone + PartialEq> NormalizedExpr<A> {
-    pub fn take_expr(self) -> Expr<A> {
-        self.0
-    }
-}
+pub type RawExpr = Expr<Raw>;
+pub type NormExpr = Expr<Normalized>;
 
-impl<A: Clone + PartialEq> AsRef<Expr<A>> for NormalizedExpr<A> {
-    fn as_ref(&self) -> &Expr<A> {
-        &self.0
+impl<S> Expr<S> {
+    pub(super) fn new_unchecked(kind: ExprKind<Expr<S>>) -> Self {
+        let digest = kind.digest();
+        Self {
+            kind,
+            digest,
+            _state: PhantomData,
+        }
+    }
+
+    pub fn digest(&self) -> u64 {
+        self.digest
+    }
+
+    pub fn kind(&self) -> &ExprKind<Self> {
+        &self.kind
+    }
+
+    pub fn into_kind(self) -> ExprKind<Self> {
+        self.kind
     }
 }

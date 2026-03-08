@@ -1,12 +1,12 @@
-use crate::expr::{Expr, NormalizedExpr};
-use crate::{expr, norm_expr};
+use crate::expr::NormExpr;
+use crate::norm_expr;
 
-pub(crate) fn derivative_rules() -> Vec<(NormalizedExpr, Expr)> {
+pub(crate) fn derivative_rules() -> Vec<(NormExpr, NormExpr)> {
     vec![
         // =============== Linearity ===============
         (
             norm_expr!( D[f_ + r__, PatternTest[x_, IsSymbolQ]] ),
-            expr!( D[f, x] + D[Add[r],x] ),
+            norm_expr!( D[f, x] + D[Add[r],x] ),
         ),
         (
             norm_expr!(
@@ -14,19 +14,22 @@ pub(crate) fn derivative_rules() -> Vec<(NormalizedExpr, Expr)> {
                 PatternTest[c_, IsNumberQ] * r__,
                 PatternTest[x_, IsSymbolQ]
             ]),
-            expr!(
+            norm_expr!(
             c * D[Mul[r],x]
             ),
         ),
         // =============== Basic ===============
-        (norm_expr!( D[x_, PatternTest[x_, IsSymbolQ]] ), expr!(1)),
+        (
+            norm_expr!( D[x_, PatternTest[x_, IsSymbolQ]] ),
+            norm_expr!(1),
+        ),
         (
             norm_expr!(
             D[
                 PatternTest[c_, IsNumberQ],
                 PatternTest[x_, IsSymbolQ]
             ]),
-            expr!(0),
+            norm_expr!(0),
         ),
         (
             norm_expr!(
@@ -34,11 +37,11 @@ pub(crate) fn derivative_rules() -> Vec<(NormalizedExpr, Expr)> {
                 PatternTest[a_, IsSymbolQ],
                 PatternTest[x_, IsSymbolQ]
             ]),
-            expr!(0),
+            norm_expr!(0),
         ),
         (
             norm_expr!( D[f_ * g_, PatternTest[x_, IsSymbolQ]] ),
-            expr!(D[f, x] * g + f * D[g, x]),
+            norm_expr!(D[f, x] * g + f * D[g, x]),
         ),
         // =============== Powers ===============
         (
@@ -47,7 +50,7 @@ pub(crate) fn derivative_rules() -> Vec<(NormalizedExpr, Expr)> {
                 f_ ^ g_,
                 PatternTest[x_, IsSymbolQ]
             ]),
-            expr!((f ^ g) *((g / f) * D[f, x] + Log[f] * D[g, x])),
+            norm_expr!((f ^ g) *((g / f) * D[f, x] + Log[f] * D[g, x])),
         ),
         // =============== Exponential ===============
         (
@@ -56,7 +59,7 @@ pub(crate) fn derivative_rules() -> Vec<(NormalizedExpr, Expr)> {
                 Exp[f_],
                 PatternTest[x_, IsSymbolQ]
             ]),
-            expr!(Exp[f] * D[f, x]),
+            norm_expr!(Exp[f] * D[f, x]),
         ),
         // =============== Logarithms ===============
         (
@@ -65,7 +68,7 @@ pub(crate) fn derivative_rules() -> Vec<(NormalizedExpr, Expr)> {
                 Log[f_],
                 PatternTest[x_, IsSymbolQ]
             ]),
-            expr!((1 / f) * D[f, x]),
+            norm_expr!((1 / f) * D[f, x]),
         ),
         // =============== Trigonometric functions ===============
         (
@@ -74,7 +77,7 @@ pub(crate) fn derivative_rules() -> Vec<(NormalizedExpr, Expr)> {
                 Sin[f_],
                 PatternTest[x_, IsSymbolQ]
             ]),
-            expr!(Cos[f] * D[f, x]),
+            norm_expr!(Cos[f] * D[f, x]),
         ),
         (
             norm_expr!(
@@ -82,7 +85,7 @@ pub(crate) fn derivative_rules() -> Vec<(NormalizedExpr, Expr)> {
                 Cos[f_],
                 PatternTest[x_, IsSymbolQ]
             ]),
-            expr!(-Sin[f] * D[f, x]),
+            norm_expr!(-Sin[f] * D[f, x]),
         ),
         (
             norm_expr!(
@@ -90,7 +93,7 @@ pub(crate) fn derivative_rules() -> Vec<(NormalizedExpr, Expr)> {
                 Tan[f_],
                 PatternTest[x_, IsSymbolQ]
             ]),
-            expr!((1 / (Cos[f] ^ 2)) * D[f, x]),
+            norm_expr!((1 / (Cos[f] ^ 2)) * D[f, x]),
         ),
         (
             norm_expr!(
@@ -98,7 +101,7 @@ pub(crate) fn derivative_rules() -> Vec<(NormalizedExpr, Expr)> {
                 Cot[f_],
                 PatternTest[x_, IsSymbolQ]
             ]),
-            expr!(-(1 / (Sin[f] ^ 2)) * D[f, x]),
+            norm_expr!(-(1 / (Sin[f] ^ 2)) * D[f, x]),
         ),
         (
             norm_expr!(
@@ -106,7 +109,7 @@ pub(crate) fn derivative_rules() -> Vec<(NormalizedExpr, Expr)> {
                 Sec[f_],
                 PatternTest[x_, IsSymbolQ]
             ]),
-            expr!(Sec[f] * Tan[f] * D[f, x]),
+            norm_expr!(Sec[f] * Tan[f] * D[f, x]),
         ),
         (
             norm_expr!(
@@ -114,7 +117,7 @@ pub(crate) fn derivative_rules() -> Vec<(NormalizedExpr, Expr)> {
                 Csc[f_],
                 PatternTest[x_, IsSymbolQ]
             ]),
-            expr!(-Csc[f] * Cot[f] * D[f, x]),
+            norm_expr!(-Csc[f] * Cot[f] * D[f, x]),
         ),
         // =============== Inverse Trigonometric functions ===============
         (
@@ -123,7 +126,7 @@ pub(crate) fn derivative_rules() -> Vec<(NormalizedExpr, Expr)> {
                 ArcSin[f_],
                 PatternTest[x_, IsSymbolQ]
             ]),
-            expr!((1 / (1 - f ^ 2) ^ (1 / 2)) * D[f, x]),
+            norm_expr!((1 / (1 - f ^ 2) ^ (1 / 2)) * D[f, x]),
         ),
         (
             norm_expr!(
@@ -131,7 +134,7 @@ pub(crate) fn derivative_rules() -> Vec<(NormalizedExpr, Expr)> {
                 ArcCos[f_],
                 PatternTest[x_, IsSymbolQ]
             ]),
-            expr!(-(1 / (1 - f ^ 2) ^ (1 / 2)) * D[f, x]),
+            norm_expr!(-(1 / (1 - f ^ 2) ^ (1 / 2)) * D[f, x]),
         ),
         (
             norm_expr!(
@@ -139,7 +142,7 @@ pub(crate) fn derivative_rules() -> Vec<(NormalizedExpr, Expr)> {
                 ArcTan[f_],
                 PatternTest[x_, IsSymbolQ]
             ]),
-            expr!((1 / (1 + f ^ 2)) * D[f, x]),
+            norm_expr!((1 / (1 + f ^ 2)) * D[f, x]),
         ),
         // =============== Inverse Trigonometric functions ===============
         (
@@ -148,7 +151,7 @@ pub(crate) fn derivative_rules() -> Vec<(NormalizedExpr, Expr)> {
                 ArcSin[f_],
                 PatternTest[x_, IsSymbolQ]
             ]),
-            expr!((1 / (1 - f ^ 2) ^ (1 / 2)) * D[f, x]),
+            norm_expr!((1 / (1 - f ^ 2) ^ (1 / 2)) * D[f, x]),
         ),
         (
             norm_expr!(
@@ -156,7 +159,7 @@ pub(crate) fn derivative_rules() -> Vec<(NormalizedExpr, Expr)> {
                 ArcCos[f_],
                 PatternTest[x_, IsSymbolQ]
             ]),
-            expr!(-(1 / (1 - f ^ 2) ^ (1 / 2)) * D[f, x]),
+            norm_expr!(-(1 / (1 - f ^ 2) ^ (1 / 2)) * D[f, x]),
         ),
         (
             norm_expr!(
@@ -164,7 +167,7 @@ pub(crate) fn derivative_rules() -> Vec<(NormalizedExpr, Expr)> {
                 ArcTan[f_],
                 PatternTest[x_, IsSymbolQ]
             ]),
-            expr!((1 / (1 + f ^ 2)) * D[f, x]),
+            norm_expr!((1 / (1 + f ^ 2)) * D[f, x]),
         ),
         // =============== Hyperbolic functions ===============
         (
@@ -173,7 +176,7 @@ pub(crate) fn derivative_rules() -> Vec<(NormalizedExpr, Expr)> {
                 Sinh[f_],
                 PatternTest[x_, IsSymbolQ]
             ]),
-            expr!(Cosh[f] * D[f, x]),
+            norm_expr!(Cosh[f] * D[f, x]),
         ),
         (
             norm_expr!(
@@ -181,7 +184,7 @@ pub(crate) fn derivative_rules() -> Vec<(NormalizedExpr, Expr)> {
                 Cosh[f_],
                 PatternTest[x_, IsSymbolQ]
             ]),
-            expr!(Sinh[f] * D[f, x]),
+            norm_expr!(Sinh[f] * D[f, x]),
         ),
         (
             norm_expr!(
@@ -189,7 +192,7 @@ pub(crate) fn derivative_rules() -> Vec<(NormalizedExpr, Expr)> {
                 Tanh[f_],
                 PatternTest[x_, IsSymbolQ]
             ]),
-            expr!((1 / (Cosh[f] ^ 2)) * D[f, x]),
+            norm_expr!((1 / (Cosh[f] ^ 2)) * D[f, x]),
         ),
     ]
 }
