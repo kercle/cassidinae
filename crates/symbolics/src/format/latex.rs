@@ -230,11 +230,7 @@ fn expr_to_latex_inner(expr: &RawExpr) -> String {
         ),
 
         ExprKind::Node { args, .. } if expr.is_application_of(POW_HEAD, 2) => {
-            let base = wrap(
-                expr_to_latex_with_pos(&args[0], Position::PowBase),
-                &args[0],
-                Position::PowBase,
-            );
+            let base = expr_to_latex_with_pos(&args[0], Position::PowBase);
             let exp = expr_to_latex_with_pos(&args[1], Position::PowExp);
             format!("{{{base}}}^{{{exp}}}")
         }
@@ -282,7 +278,6 @@ fn expr_to_latex_inner(expr: &RawExpr) -> String {
 }
 
 pub fn expr_to_latex(expr: &RawExpr) -> String {
-    dbg!(&expr);
     expr_to_latex_with_pos(expr, Position::Root)
 }
 
