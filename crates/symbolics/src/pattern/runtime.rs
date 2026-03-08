@@ -276,10 +276,7 @@ impl<'p, 's> Runtime<'p, 's> {
     }
 
     fn expressions_equal(inner: &NormExpr, subject: &'s NormExpr) -> bool {
-        if subject.digest() != inner.digest() {
-            return false;
-        }
-
+        // digest checking is implemented in PartialEq for NormExpr
         subject == inner
     }
 
