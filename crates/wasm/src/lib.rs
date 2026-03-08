@@ -47,7 +47,10 @@ fn eval_inner(input: String) -> Result<KernelMessage, KernelMessage> {
     let input_latex = input_expr.to_latex();
     let input_expr = input_expr.normalize();
 
-    let result_expr = Simplifier::new(input_expr).simple().resugar();
+    let result_expr = Simplifier::new(input_expr)
+        .simple()
+        .resugar()
+        .canonicalize();
 
     Ok(KernelMessage::EvalResult {
         input: input_latex,
