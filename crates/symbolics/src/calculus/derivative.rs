@@ -1,12 +1,12 @@
 use crate::expr::NormExpr;
-use crate::norm_expr;
+use crate::{norm_expr, hold_expr};
 
 pub(crate) fn derivative_rules() -> Vec<(NormExpr, NormExpr)> {
     vec![
         // =============== Linearity ===============
         (
             norm_expr!( D[f_ + r__, PatternTest[x_, IsSymbolQ]] ),
-            norm_expr!( D[f, x] + D[Add[r],x] ),
+            hold_expr!( D[f, x] + D[Add[r],x] ),
         ),
         (
             norm_expr!(
@@ -14,7 +14,7 @@ pub(crate) fn derivative_rules() -> Vec<(NormExpr, NormExpr)> {
                 PatternTest[c_, IsNumberQ] * r__,
                 PatternTest[x_, IsSymbolQ]
             ]),
-            norm_expr!(
+            hold_expr!(
             c * D[Mul[r],x]
             ),
         ),
@@ -41,7 +41,7 @@ pub(crate) fn derivative_rules() -> Vec<(NormExpr, NormExpr)> {
         ),
         (
             norm_expr!( D[f_ * g_, PatternTest[x_, IsSymbolQ]] ),
-            norm_expr!(D[f, x] * g + f * D[g, x]),
+            hold_expr!(D[f, x] * g + f * D[g, x]),
         ),
         // =============== Powers ===============
         (
@@ -50,7 +50,7 @@ pub(crate) fn derivative_rules() -> Vec<(NormExpr, NormExpr)> {
                 f_ ^ g_,
                 PatternTest[x_, IsSymbolQ]
             ]),
-            norm_expr!((f ^ g) *((g / f) * D[f, x] + Log[f] * D[g, x])),
+            hold_expr!((f ^ g) *((g / f) * D[f, x] + Log[f] * D[g, x])),
         ),
         // =============== Exponential ===============
         (
@@ -59,7 +59,7 @@ pub(crate) fn derivative_rules() -> Vec<(NormExpr, NormExpr)> {
                 Exp[f_],
                 PatternTest[x_, IsSymbolQ]
             ]),
-            norm_expr!(Exp[f] * D[f, x]),
+            hold_expr!(Exp[f] * D[f, x]),
         ),
         // =============== Logarithms ===============
         (
@@ -68,7 +68,7 @@ pub(crate) fn derivative_rules() -> Vec<(NormExpr, NormExpr)> {
                 Log[f_],
                 PatternTest[x_, IsSymbolQ]
             ]),
-            norm_expr!((1 / f) * D[f, x]),
+            hold_expr!((1 / f) * D[f, x]),
         ),
         // =============== Trigonometric functions ===============
         (
@@ -77,7 +77,7 @@ pub(crate) fn derivative_rules() -> Vec<(NormExpr, NormExpr)> {
                 Sin[f_],
                 PatternTest[x_, IsSymbolQ]
             ]),
-            norm_expr!(Cos[f] * D[f, x]),
+            hold_expr!(Cos[f] * D[f, x]),
         ),
         (
             norm_expr!(
@@ -85,7 +85,7 @@ pub(crate) fn derivative_rules() -> Vec<(NormExpr, NormExpr)> {
                 Cos[f_],
                 PatternTest[x_, IsSymbolQ]
             ]),
-            norm_expr!(-Sin[f] * D[f, x]),
+            hold_expr!(-Sin[f] * D[f, x]),
         ),
         (
             norm_expr!(
@@ -93,7 +93,7 @@ pub(crate) fn derivative_rules() -> Vec<(NormExpr, NormExpr)> {
                 Tan[f_],
                 PatternTest[x_, IsSymbolQ]
             ]),
-            norm_expr!((1 / (Cos[f] ^ 2)) * D[f, x]),
+            hold_expr!((1 / (Cos[f] ^ 2)) * D[f, x]),
         ),
         (
             norm_expr!(
@@ -101,7 +101,7 @@ pub(crate) fn derivative_rules() -> Vec<(NormExpr, NormExpr)> {
                 Cot[f_],
                 PatternTest[x_, IsSymbolQ]
             ]),
-            norm_expr!(-(1 / (Sin[f] ^ 2)) * D[f, x]),
+            hold_expr!(-(1 / (Sin[f] ^ 2)) * D[f, x]),
         ),
         (
             norm_expr!(
@@ -109,7 +109,7 @@ pub(crate) fn derivative_rules() -> Vec<(NormExpr, NormExpr)> {
                 Sec[f_],
                 PatternTest[x_, IsSymbolQ]
             ]),
-            norm_expr!(Sec[f] * Tan[f] * D[f, x]),
+            hold_expr!(Sec[f] * Tan[f] * D[f, x]),
         ),
         (
             norm_expr!(
@@ -117,7 +117,7 @@ pub(crate) fn derivative_rules() -> Vec<(NormExpr, NormExpr)> {
                 Csc[f_],
                 PatternTest[x_, IsSymbolQ]
             ]),
-            norm_expr!(-Csc[f] * Cot[f] * D[f, x]),
+            hold_expr!(-Csc[f] * Cot[f] * D[f, x]),
         ),
         // =============== Inverse Trigonometric functions ===============
         (

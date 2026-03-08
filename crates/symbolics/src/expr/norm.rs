@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use crate::{
     builtin::*,
-    expr::{ExprKind, NormExpr, RawExpr},
+    expr::{Expr, ExprKind, NormExpr, RawExpr},
 };
 use numbers::Number;
 
@@ -263,6 +263,11 @@ impl RawExpr {
     pub fn desugar(self) -> Self {
         match self.kind {
             ExprKind::Atom { .. } => self,
+            ExprKind::Node { head, args }
+                if head.matches_symbol(CANNONICAL_HEAD_HOLD) && args.len() == 1 =>
+            {
+                Expr::new_node(CANNONICAL_HEAD_HOLD, args)
+            }
             ExprKind::Node { head, args } if head.matches_symbol(SUB_HEAD) && args.len() == 2 => {
                 let [lhs, rhs]: [RawExpr; 2] = args.try_into().unwrap();
 
@@ -302,6 +307,11 @@ impl RawExpr {
     fn apply_to_nodes(self, f: impl Fn(&RawExpr, &[RawExpr]) -> Option<RawExpr> + Copy) -> Self {
         match self.kind {
             ExprKind::Atom { .. } => self,
+            ExprKind::Node { head, args }
+                if head.matches_symbol(CANNONICAL_HEAD_HOLD) && args.len() == 1 =>
+            {
+                Expr::new_node(CANNONICAL_HEAD_HOLD, args)
+            }
             ExprKind::Node { head, args } => {
                 let args: Vec<Self> = args.into_iter().map(|a| a.apply_to_nodes(f)).collect();
 
@@ -464,5 +474,13 @@ mod tests {
         let expr = norm_expr! { x - y };
 
         assert_eq!(expr.resugar(), raw_expr! { Sub[x, y] });
+    }
+
+    #[test]
+    fn test_hold() {
+        let expr = norm_expr!(Hold[1 + 1]);
+        let expected = raw_expr!(Hold[1 + 1]);
+        dbg!(&expr);
+        assert_eq!(expr.into_raw(), expected);
     }
 }

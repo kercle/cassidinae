@@ -1,44 +1,30 @@
-use crate::{expr::NormExpr, norm_expr};
+use crate::{expr::NormExpr, norm_expr, hold_expr};
 
 pub(crate) fn indefinite_integrals_rules() -> Vec<(NormExpr, NormExpr)> {
     vec![
         // =============== Linearity ===============
         (
-            norm_expr!(
-            Integrate[
-                f_ + r__,
-                PatternTest[x_, IsSymbolQ]
-            ]),
-            norm_expr!(
-            Integrate[f, x] + Integrate[Add[r],x]
-            ),
+            norm_expr!( Integrate[f_ + r__, PatternTest[x_, IsSymbolQ]] ),
+            hold_expr!( Integrate[f, x] + Integrate[Add[r],x] ),
         ),
         (
-            norm_expr!(
-            Integrate[
-                PatternTest[c_, IsNumberQ] * r__,
-                PatternTest[x_, IsSymbolQ]
-            ]),
-            norm_expr!(
-            c * Integrate[Mul[r],x]
-            ),
+            norm_expr!( Integrate[PatternTest[c_, IsNumberQ] * r__, PatternTest[x_, IsSymbolQ]] ),
+            hold_expr!( c * Integrate[Mul[r],x] ),
         ),
         // =============== Basic ===============
         (
-            norm_expr!(
-            Integrate[
-                PatternTest[c_, IsNumberQ],
-                PatternTest[x_, IsSymbolQ]
-            ]),
-            norm_expr!(c * x),
+            norm_expr!( Integrate[PatternTest[c_, IsNumberQ], PatternTest[x_, IsSymbolQ]] ),
+            hold_expr!( c * x ),
         ),
         (
             norm_expr!(
-            Integrate[
-                x_,
-                PatternTest[x_, IsSymbolQ]
-            ]),
-            norm_expr!(x ^ 2 / 2),
+                Integrate[
+                    x_,
+                    PatternTest[x_, IsSymbolQ]
+                ]),
+            hold_expr!(
+                x ^ 2 / 2
+            ),
         ),
         (
             norm_expr!(
@@ -46,7 +32,7 @@ pub(crate) fn indefinite_integrals_rules() -> Vec<(NormExpr, NormExpr)> {
                 PatternTest[c_, IsSymbolQ],
                 PatternTest[x_, IsSymbolQ]
             ]),
-            norm_expr!(c * x),
+            hold_expr!(c * x),
         ),
         (
             norm_expr!(
@@ -54,7 +40,7 @@ pub(crate) fn indefinite_integrals_rules() -> Vec<(NormExpr, NormExpr)> {
                 PatternTest[a_, IsSymbolQ],
                 PatternTest[x_, IsSymbolQ]
             ]),
-            norm_expr!(a * x),
+            hold_expr!(a * x),
         ),
         // =============== Powers ===============
         (
@@ -63,7 +49,7 @@ pub(crate) fn indefinite_integrals_rules() -> Vec<(NormExpr, NormExpr)> {
                 1 / x_,
                 PatternTest[x_, IsSymbolQ]
             ]),
-            norm_expr!(Log[Abs[x]]),
+            hold_expr!(Log[Abs[x]]),
         ),
         (
             norm_expr!(
@@ -71,7 +57,7 @@ pub(crate) fn indefinite_integrals_rules() -> Vec<(NormExpr, NormExpr)> {
                 x_ ^ PatternTest[k_, IsNumberQ],
                 PatternTest[x_, IsSymbolQ]
             ]),
-            norm_expr!(x ^ (k + 1) / (k + 1)),
+            hold_expr!(x ^ (k + 1) / (k + 1)),
         ),
         // =============== Exponentials ===============
         (
@@ -80,7 +66,7 @@ pub(crate) fn indefinite_integrals_rules() -> Vec<(NormExpr, NormExpr)> {
                 Exp[x_],
                 PatternTest[x_, IsSymbolQ]
             ]),
-            norm_expr!(Exp[x]),
+            hold_expr!(Exp[x]),
         ),
         // =============== Logarithms ===============
         (
@@ -89,7 +75,7 @@ pub(crate) fn indefinite_integrals_rules() -> Vec<(NormExpr, NormExpr)> {
                 Log[x_],
                 PatternTest[x_, IsSymbolQ]
             ]),
-            norm_expr!(x * Log[x] - x),
+            hold_expr!(x * Log[x] - x),
         ),
         // =============== Trigonometric functions ===============
         (
@@ -98,7 +84,7 @@ pub(crate) fn indefinite_integrals_rules() -> Vec<(NormExpr, NormExpr)> {
                 Sin[x_],
                 PatternTest[x_, IsSymbolQ]
             ]),
-            norm_expr!(-Cos[x]),
+            hold_expr!(-Cos[x]),
         ),
         (
             norm_expr!(
@@ -106,7 +92,7 @@ pub(crate) fn indefinite_integrals_rules() -> Vec<(NormExpr, NormExpr)> {
                 Cos[x_],
                 PatternTest[x_, IsSymbolQ]
             ]),
-            norm_expr!(Sin[x]),
+            hold_expr!(Sin[x]),
         ),
     ]
 }

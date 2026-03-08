@@ -71,11 +71,11 @@ impl Simplifier {
     }
 
     pub fn finish(self) -> NormExpr {
-        self.expr
+        self.expr.release_all_holds()
     }
 
     pub fn finish_normalized(self) -> NormExpr {
-        self.expr
+        self.expr.release_all_holds()
     }
 
     fn simplify_with_rules_until_stable(self, rules: Vec<(NormExpr, NormExpr)>) -> NormExpr {

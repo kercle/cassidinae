@@ -27,6 +27,13 @@ macro_rules! norm_expr {
 }
 
 #[macro_export]
+macro_rules! hold_expr {
+    ($($tt:tt)*) => {
+        $crate::raw_expr!(Hold[$($tt)*]).normalize()
+    };
+}
+
+#[macro_export]
 macro_rules! chain_replace_quick_and_dirty {
     // allow trailing comma
     ($expr:expr, $({ $($pat:tt)* } => { $($rep:tt)* }),+ $(,)?) => {{

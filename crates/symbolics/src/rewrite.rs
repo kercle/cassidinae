@@ -1,5 +1,6 @@
 use crate::{
-    expr::NormExpr,
+    builtin::CANNONICAL_HEAD_HOLD,
+    expr::{ExprKind, NormExpr},
     pattern::{
         environment::Environment,
         program::{Compiler, Program},
@@ -91,5 +92,21 @@ impl NormExpr {
         }
 
         expr
+    }
+
+    pub fn release_all_holds(self) -> Self {
+        self.into_raw()
+            .map_bottom_up(&|expr| {
+                if expr.is_application_of(CANNONICAL_HEAD_HOLD, 1) {
+                    let ExprKind::Node { mut args, .. } = expr.into_kind() else {
+                        unreachable!()
+                    };
+
+                    args.pop().unwrap()
+                } else {
+                    expr
+                }
+            })
+            .normalize()
     }
 }
