@@ -10,5 +10,4 @@ proc-macro = true
 parser = { path = "../parser" }
 numbers = { path = "../numbers" }
 proc-macro2 = { version = "1.0.106", features = ["span-locations"] }
-syn = "2.0.117"
 quote = "1.0.45"
