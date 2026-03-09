@@ -1,13 +1,18 @@
+mod exponentials;
 mod factorize;
 mod functions_known_values;
 mod trigonometric_functions;
+
+#[cfg(test)]
+mod tests;
 
 use crate::{
     calculus::{derivative::derivative_rules, integrate::indefinite_integrals_rules},
     expr::NormExpr,
     pattern::environment::Environment,
     simplify::{
-        factorize::factorization_rules, functions_known_values::known_function_values_rules,
+        exponentials::exponentials_rules, factorize::factorization_rules,
+        functions_known_values::known_function_values_rules,
         trigonometric_functions::trigonometric_rules,
     },
 };
@@ -33,12 +38,13 @@ impl Simplifier {
             let prev_expr = current.expr.clone();
 
             let next_expr = current
-                .with_factorization() // TODO: There is a nasty bug in the matcher :(
+                .with_exponentials()
+                .with_factorization()
                 .with_known_function_values()
                 .with_resolved_derivatives()
                 .with_resolved_indefinite_integrals()
                 .with_trigonometric_identities()
-                .finish_normalized();
+                .finish();
 
             if next_expr == prev_expr {
                 return next_expr;
@@ -47,7 +53,7 @@ impl Simplifier {
             current = Simplifier::new(next_expr);
         }
 
-        current.finish_normalized()
+        current.finish()
     }
 
     pub fn with_resolved_derivatives(self) -> Simplifier {
@@ -70,12 +76,12 @@ impl Simplifier {
         Simplifier::new(self.simplify_with_rules_until_stable(factorization_rules()))
     }
 
-    pub fn finish(self) -> NormExpr {
-        self.expr.release_all_holds()
+    pub fn with_exponentials(self) -> Simplifier {
+        Simplifier::new(self.simplify_with_rules_until_stable(exponentials_rules()))
     }
 
-    pub fn finish_normalized(self) -> NormExpr {
-        self.expr.release_all_holds()
+    pub fn finish(self) -> NormExpr {
+        self.expr.release_all_holds().collect_like_terms()
     }
 
     fn simplify_with_rules_until_stable(self, rules: Vec<(NormExpr, NormExpr)>) -> NormExpr {
