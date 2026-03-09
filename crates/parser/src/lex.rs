@@ -9,13 +9,21 @@ pub struct TokenPos {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Quantity {
+    One,
+    Many(usize),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Token {
     // Double-character operators
-    EqEq,      // '=='
-    NotEq,     // '!='
-    LesserEq,  // '<='
-    GreaterEq, // '>='
-    ColonEq,   // ':='
+    EqEq,       // '=='
+    NotEq,      // '!='
+    LesserEq,   // '<='
+    GreaterEq,  // '>='
+    ColonEq,    // ':='
+    ColonGt,    // ':>'
+    DoubleExcl, // '!!'
 
     // Single-character operators
     LeftBrace,    // '{'
@@ -46,7 +54,16 @@ pub enum Token {
     Number(String),
     Identifier(String),
     StringLiteral(String),
-    CodeBlock { language: String, code: String },
+    CodeBlock {
+        language: String,
+        code: String,
+    },
+    Pattern {
+        quantitiy: Quantity,
+        prefix: Option<String>,
+        postfix: Option<String>,
+        optional: bool,
+    },
 }
 
 struct CharIterator<'a> {
@@ -246,6 +263,9 @@ impl TokenStream {
             if matches!(iter.peek(), Some('=')) {
                 iter.next(); // Consume '='
                 tokens.push((Token::NotEq, pos));
+            } else if matches!(iter.peek(), Some('!')) {
+                iter.next(); // Consume '!'
+                tokens.push((Token::DoubleExcl, pos));
             } else {
                 tokens.push((Token::Exclamation, pos));
             }
@@ -273,6 +293,9 @@ impl TokenStream {
             if matches!(iter.peek(), Some('=')) {
                 iter.next(); // Consume '='
                 tokens.push((Token::ColonEq, pos));
+            } else if matches!(iter.peek(), Some('>')) {
+                iter.next(); // Consume '>'
+                tokens.push((Token::ColonGt, pos));
             } else {
                 tokens.push((Token::Colon, pos));
             }
