@@ -22,7 +22,7 @@ fn print_markdown(input: &str) {
     let expr = RawExpr::from(ast).normalize();
     let result = Simplifier::new(expr).simple().resugar().canonicalize();
 
-    let latex = result.to_latex();
+    let latex = result.to_latex_form();
     println!("$$\n{}\n$$", latex);
 }
 

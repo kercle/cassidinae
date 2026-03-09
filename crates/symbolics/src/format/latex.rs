@@ -107,26 +107,7 @@ fn render_text(value: &str) -> String {
     format!(r#"\text{{{value}}}"#)
 }
 
-// ---- Atom rendering ----
-
-fn number_to_latex(value: &Number) -> String {
-    if let Number::Rational(rational) = value {
-        if rational.is_zero() {
-            return "0".to_string();
-        } else if rational.denominator().is_one() {
-            return rational.numerator().to_string();
-        } else {
-            return format!(
-                "\\frac{{{}}}{{{}}}",
-                rational.numerator(),
-                rational.denominator()
-            );
-        }
-    }
-    greek_letter(&value.to_string())
-}
-
-// ---- Node rendering ----
+// ---- Rendering ----
 
 fn render_one_arg(cmd: &str, arg: &RawExpr) -> String {
     format!(
@@ -169,8 +150,6 @@ fn render_generic_node(head_name: &str, args: &[RawExpr]) -> String {
     format!("\\text{{{head_name}}}\\left[{args_str}\\right]")
 }
 
-// ---- Main ----
-
 fn expr_to_latex_with_pos(expr: &RawExpr, pos: Position) -> String {
     let latex = expr_to_latex_inner(expr);
     wrap(latex, expr, pos)
@@ -179,9 +158,14 @@ fn expr_to_latex_with_pos(expr: &RawExpr, pos: Position) -> String {
 fn expr_to_latex_inner(expr: &RawExpr) -> String {
     match expr.kind() {
         ExprKind::Atom {
-            entry: Atom::Number(value),
+            entry: Atom::Number(Number::Integer(value)),
             ..
-        } => number_to_latex(value),
+        } => value.to_string(),
+
+        ExprKind::Atom {
+            entry: Atom::Number(Number::Rational(_)),
+            ..
+        } => unimplemented!("Should have been resgared to Div"),
 
         ExprKind::Atom {
             entry: Atom::Symbol(name),
@@ -277,50 +261,51 @@ fn expr_to_latex_inner(expr: &RawExpr) -> String {
     }
 }
 
-pub fn expr_to_latex(expr: &RawExpr) -> String {
+pub fn render(expr: &RawExpr) -> String {
     expr_to_latex_with_pos(expr, Position::Root)
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::{expr::RawExpr, format::MathDisplay};
+    use super::render;
+    use crate::expr::RawExpr;
     use parser::parse;
 
     #[test]
-    fn test_expr_to_latex() {
+    fn test_render() {
         let expr = RawExpr::from(parse("2 + 3").unwrap());
-        assert_eq!(expr.to_latex(), "2 + 3");
+        assert_eq!(render(&expr), "2 + 3");
     }
 
     #[test]
-    fn test_expr_to_latex_with_parenthesis() {
+    fn test_render_with_parenthesis() {
         let expr = RawExpr::from(parse("(2 + 3) * 6").unwrap());
-        assert_eq!(expr.to_latex(), "\\left(2 + 3\\right) \\cdot 6");
+        assert_eq!(render(&expr), "\\left(2 + 3\\right) \\cdot 6");
     }
 
     #[test]
-    fn test_expr_to_latex_multiple_adds() {
+    fn test_render_multiple_adds() {
         let expr = RawExpr::from(parse("1+2+3+4").unwrap());
-        assert_eq!(expr.to_latex(), "1 + 2 + 3 + 4");
+        assert_eq!(render(&expr), "1 + 2 + 3 + 4");
     }
 
     #[test]
-    fn test_expr_to_latex_with_unary_op() {
+    fn test_render_with_unary_op() {
         let expr = RawExpr::from(parse("-2 + 3").unwrap());
-        assert_eq!(expr.to_latex(), "-2 + 3");
+        assert_eq!(render(&expr), "-2 + 3");
     }
 
     #[test]
-    fn test_expr_to_latex_with_pow() {
+    fn test_render_with_pow() {
         let expr = RawExpr::from(parse("pi^2").unwrap());
-        assert_eq!(expr.to_latex(), "{\\pi}^{2}");
+        assert_eq!(render(&expr), "{\\pi}^{2}");
     }
 
     #[test]
-    fn test_expr_to_latex_with_function_call() {
-        let expr = RawExpr::from(parse("5*pi^2/4*cos[pi*x/2]*sin[π*y/2]").unwrap());
+    fn test_render_with_function_call() {
+        let expr = RawExpr::from(parse("5*pi^2/4*Cos[pi*x/2]*Sin[π*y/2]").unwrap());
         assert_eq!(
-            expr.to_latex(),
+            render(&expr),
             "\\frac{5 \\cdot {\\pi}^{2}}{4} \\cdot \\cos\\left(\\frac{\\pi \\cdot x}{2}\\right) \\cdot \\sin\\left(\\frac{\\pi \\cdot y}{2}\\right)"
         );
     }
@@ -329,24 +314,24 @@ mod tests {
     #[test]
     fn test_sub_rhs_parens() {
         let expr = RawExpr::from(parse("a - (b + c)").unwrap());
-        assert_eq!(expr.to_latex(), "a - \\left(b + c\\right)");
+        assert_eq!(render(&expr), "a - \\left(b + c\\right)");
     }
 
     #[test]
     fn test_sub_rhs_sub_parens() {
         let expr = RawExpr::from(parse("a - (b - c)").unwrap());
-        assert_eq!(expr.to_latex(), "a - \\left(b - c\\right)");
+        assert_eq!(render(&expr), "a - \\left(b - c\\right)");
     }
 
     #[test]
     fn test_pow_base_sum_parens() {
         let expr = RawExpr::from(parse("(a + b)^2").unwrap());
-        assert_eq!(expr.to_latex(), "{\\left(a + b\\right)}^{2}");
+        assert_eq!(render(&expr), "{\\left(a + b\\right)}^{2}");
     }
 
     #[test]
     fn test_neg_sum_parens() {
         let expr = RawExpr::from(parse("-(a + b)").unwrap());
-        assert_eq!(expr.to_latex(), "-\\left(a + b\\right)");
+        assert_eq!(render(&expr), "-\\left(a + b\\right)");
     }
 }

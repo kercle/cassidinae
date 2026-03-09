@@ -1,7 +1,13 @@
 type ServerMessage = {
     evalResult: {
-        input: string,
-        output: string,
+        input: {
+            raw: string,
+            latex: string
+        },
+        output: {
+            raw: string,
+            latex: string
+        }
     }
 } | {
     parseError: {

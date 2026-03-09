@@ -9,6 +9,19 @@ pub enum ClientMessage {
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub enum KernelMessage {
-    EvalResult { input: String, output: String },
-    ParseError { input: String, msg: String },
+    EvalResult {
+        input: ExpressionForms,
+        output: ExpressionForms,
+    },
+    ParseError {
+        input: String,
+        msg: String,
+    },
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ExpressionForms {
+    pub raw: String,
+    pub latex: String,
 }

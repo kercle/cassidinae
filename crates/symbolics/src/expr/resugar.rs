@@ -1,4 +1,5 @@
 use crate::{
+    atom::Atom,
     builtin::*,
     expr::{Expr, ExprKind, NormExpr, RawExpr},
 };
@@ -11,6 +12,22 @@ impl NormExpr {
 
     fn resugar_inner(expr: RawExpr) -> RawExpr {
         match expr.kind {
+            ExprKind::Atom {
+                entry: Atom::Number(Number::Rational(value)),
+            } => {
+                let numerator = Number::Integer(value.numerator().clone());
+                let denominator = Number::Integer(value.denominator().clone());
+
+                if denominator.is_one() {
+                    Atom::number(numerator).into()
+                } else {
+                    RawExpr::new_binary_node(
+                        DIV_HEAD,
+                        Atom::number(numerator).into(),
+                        Atom::number(denominator).into(),
+                    )
+                }
+            }
             ExprKind::Node { head, args } if head.matches_symbol(ADD_HEAD) => {
                 Self::resugar_add(args)
             }

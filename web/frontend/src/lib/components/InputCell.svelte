@@ -22,12 +22,14 @@
 	}
 </script>
 
-<div class="bg-base-200 w-full rounded-sm p-3 shadow-md">
-	<label class="input input-ghost flex w-full items-center gap-2">
-		<i class="fa-solid fa-angle-right"></i>
+<div class="bg-base-200 w-full p-1">
+	<label
+		class="input input-ghost flex w-full items-center gap-2 focus-within:bg-transparent focus-within:outline-none"
+	>
+		<i class="fa-solid fa-angle-right text-info-content"></i>
+
 		<input
 			type="text"
-			class="grow"
 			placeholder="Input expression"
 			bind:value={inputValue}
 			onkeydown={handleKeydown}

@@ -18,17 +18,26 @@ function createGlobalState() {
 
     let socket: WebSocket | undefined;
 
+    function push_message(state: AppState, msg: ServerMessage) {
+        let last = state.history.pop();
+
+        if (last !== undefined && !("parseError" in last)) {
+            state.history.push(last);
+        }
+
+        state.history.push(msg);
+    }
+
     async function connectWasm() {
         update(s => ({ ...s, connected: true }));
 
         return {
             send: async (msg: string) => {
                 const result = await eval_input(msg);
-
                 const parsed = typeof result === 'string' ? JSON.parse(result) : result;
 
                 update(s => {
-                    s.data.history.push(parsed);
+                    push_message(s.data, parsed);
                     return { ...s, connected: true };
                 });
             }
@@ -45,8 +54,9 @@ function createGlobalState() {
         socket.onmessage = (event) => {
             try {
                 const msg = JSON.parse(event.data);
+
                 update(s => {
-                    s.data.history.push(msg);
+                    push_message(s.data, msg);
                     return { ...s, connected: true };
                 });
             } catch (e) {

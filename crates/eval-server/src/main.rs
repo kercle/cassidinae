@@ -4,7 +4,7 @@ use axum::{
     response::Response,
     routing::get,
 };
-use common::{ClientMessage, KernelMessage};
+use common::{ClientMessage, ExpressionForms, KernelMessage};
 use futures_util::{sink::SinkExt, stream::StreamExt};
 use parser::parse;
 use symbolics::{expr::RawExpr, format::MathDisplay, simplify::Simplifier};
@@ -75,7 +75,12 @@ fn process_message(inbound_msg: String) -> Result<KernelMessage, KernelMessage> 
     })?;
 
     let input_expr = RawExpr::from(ast_in);
-    let input_latex = input_expr.to_latex();
+
+    let input_expr_forms: ExpressionForms = ExpressionForms {
+        raw: input_expr.to_input_form(),
+        latex: input_expr.to_latex_form(),
+    };
+
     let input_expr = input_expr.normalize();
 
     let result_expr = Simplifier::new(input_expr)
@@ -84,7 +89,10 @@ fn process_message(inbound_msg: String) -> Result<KernelMessage, KernelMessage> 
         .canonicalize();
 
     Ok(KernelMessage::EvalResult {
-        input: input_latex,
-        output: result_expr.to_latex(),
+        input: input_expr_forms,
+        output: ExpressionForms {
+            raw: result_expr.to_input_form(),
+            latex: result_expr.to_latex_form(),
+        },
     })
 }

@@ -1,67 +1,39 @@
 <script lang="ts">
-	import { fly } from 'svelte/transition';
-	import { cubicOut } from 'svelte/easing';
 	import Math from './Math.svelte';
 
+	export let index: number = 1;
 	export let entry: ServerMessage | undefined = undefined;
-
-	const highlightColor = () => {
-		// if (entry) {
-		// 	if ('parseError' in entry) {
-		// 		return 'red-200';
-		// 	}
-		// }
-
-		return 'base-200';
-	};
 </script>
 
-{#snippet menu()}
-	<div
-		class="absolute top-4 right-4 z-10 opacity-0 transition-opacity duration-200 group-hover:opacity-100"
-	>
-		<ul class="menu menu-horizontal bg-base-200/50 rounded-box gap-1 p-0">
-			<li>
-				<button
-					class="hover:bg-base-300 flex items-center justify-center p-2 transition-colors"
-					title="Copy"
-				>
-					<i class="fa-solid fa-copy text-sm"></i>
-				</button>
-			</li>
-			<li>
-				<button
-					class="hover:bg-error/20 hover:text-error flex items-center justify-center p-2 transition-colors"
-					title="Delete"
-				>
-					<i class="fa-solid fa-trash text-sm"></i>
-				</button>
-			</li>
-		</ul>
-	</div>
-{/snippet}
-
-<div class="group w-full rounded-sm shadow-md" in:fly={{ y: 20, duration: 400, easing: cubicOut }}>
-	<div class="bg-{highlightColor()} relative rounded-t-sm">
-		{@render menu()}
-
+<div class="group w-full">
+	<div class="bg-base-200 relative">
 		{#if entry && 'evalResult' in entry}
-			<div class="bg-base-200 rounded-t-sm pt-2 pl-8 overflow-x-auto">
-				<Math expr={entry.evalResult.input} />
+			<div class="flex flex-row">
+				<div class="bg-base-200 text-info-content flex w-20 items-center justify-center">
+					(%i{index})
+				</div>
+				<div class="bg-base-200 overflow-x-auto pt-3 pb-2 pl-6">
+					{entry.evalResult.input.raw}
+				</div>
 			</div>
 		{:else if entry && 'parseError' in entry}
-			<div class="rounded-t-sm bg-red-200 py-4 pl-8 overflow-x-auto">
+			<div class="overflow-x-auto bg-red-200 py-2 pl-6">
 				<p>{entry.parseError.input}</p>
 			</div>
 		{/if}
 	</div>
 
 	{#if entry && 'evalResult' in entry}
-		<div class="border-base-200 bg-white rounded-b-sm border pl-8 overflow-x-auto">
-			<Math expr={'=' + entry.evalResult.output} />
+		<div class="flex flex-row">
+			<div class="bg-base-200 text-success-content flex w-20 items-center justify-center">
+				(%o{index})
+			</div>
+			<div class="border-base-200 w-full overflow-x-auto border pl-6">
+				<Math expr={entry.evalResult.output.latex} />
+			</div>
 		</div>
 	{:else if entry && 'parseError' in entry}
-		<div class=" rounded-b-sm border bg-white border-red-200 p-2 pl-8 overflow-x-auto">
+		<div class=" overflow-x-auto border border-red-200 bg-white py-2 pl-6">
 			<b class="mr-2">Error:</b>{entry.parseError.msg}
 		</div>
 	{/if}
