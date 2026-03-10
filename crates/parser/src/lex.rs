@@ -59,7 +59,7 @@ pub enum Token {
         code: String,
     },
     Pattern {
-        quantitiy: Quantity,
+        quantity: Quantity,
         prefix: Option<String>,
         postfix: Option<String>,
         optional: bool,
@@ -211,16 +211,98 @@ impl TokenStream {
         Ok(())
     }
 
+    fn consume_ident_or_pattern_chars(
+        iter: &mut CharIterator,
+    ) -> Result<(Token, TokenPos), LexError> {
+        let pos = iter.pos();
+
+        let prefix = if let Some(c) = iter.peek()
+            && c.is_alphabetic()
+        {
+            Some(Self::consume_identifier_chars(iter)?)
+        } else {
+            None
+        };
+
+        let blank_pos = iter.pos();
+        let blank_count = Self::consume_blanks_and_count(iter);
+
+        if blank_count == 0 {
+            let Some((prefix, _)) = prefix else {
+                return Err(LexError {
+                    message: "Expected identifier or pattern.".to_string(),
+                    line: iter.line,
+                    column: iter.column,
+                });
+            };
+
+            return Ok((Token::Identifier(prefix), pos));
+        }
+
+        let mut optional = false;
+        let postfix = if let Some(c) = iter.peek()
+            && c.is_alphabetic()
+        {
+            let (value, _) = Self::consume_identifier_chars(iter)?;
+            Some(value)
+        } else if matches!(iter.peek(), Some('.')) {
+            // Postfix identifiers and the dot denoting optionals are
+            // mutually exclusive, hence only check for dot if there is
+            // no postfix.
+
+            iter.next(); // consume '.'
+            optional = true;
+
+            None
+        } else {
+            None
+        };
+
+        let quantity = match blank_count {
+            1 => Quantity::One,
+            2 => Quantity::Many(1),
+            3 => Quantity::Many(0),
+            _ => {
+                return Err(LexError {
+                    message: "Only _, __ and ___ are supported as pattern variants.".to_string(),
+                    line: blank_pos.line,
+                    column: blank_pos.column,
+                });
+            }
+        };
+
+        Ok((
+            Token::Pattern {
+                quantity,
+                prefix: prefix.map(|x| x.0),
+                postfix: postfix,
+                optional,
+            },
+            pos,
+        ))
+    }
+
+    fn consume_blanks_and_count(iter: &mut CharIterator) -> u32 {
+        let mut count = 0;
+
+        while let Some('_') = iter.peek() {
+            iter.next(); // consume '_'
+            count += 1;
+        }
+
+        count
+    }
+
     fn consume_identifier_chars(iter: &mut CharIterator) -> Result<(String, TokenPos), LexError> {
         let pos = iter.pos();
         let mut identifier_string = String::new();
 
         if let Some(c) = iter.next() {
-            if c.is_alphabetic() || c == '_' {
+            if c.is_alphabetic() {
                 identifier_string.push(c);
             } else {
                 return Err(LexError {
-                    message: "Invalid identifier: Must start with an alphabetic character or '_'"
+                    message: "Invalid identifier: Must start with an alphabetic character"
                         .to_string(),
                     line: iter.line,
                     column: iter.column,
@@ -229,7 +311,7 @@ impl TokenStream {
         }
 
         while let Some(c) = iter.peek() {
-            if c.is_alphanumeric() || *c == '_' {
+            if c.is_alphanumeric() {
                 identifier_string.push(iter.next().unwrap());
             } else {
                 break;
@@ -493,8 +575,7 @@ impl FromStr for TokenStream {
             } else if c.is_ascii_digit() {
                 Self::comsume_number_chars(&mut iter, &mut tokens)?;
             } else if c.is_alphabetic() || c == '_' {
-                let (identifer, pos) = Self::consume_identifier_chars(&mut iter)?;
-                tokens.push((Token::Identifier(identifer), pos));
+                tokens.push(Self::consume_ident_or_pattern_chars(&mut iter)?);
             } else {
                 return Err(LexError {
                     message: format!("Unknown token: {}", c),
@@ -774,5 +855,62 @@ mod tests {
 
         let (_tok, pos) = &ts.tokens[0];
         assert_eq!((pos.line, pos.column), (1, 1));
+    }
+}
+
+#[test]
+fn test_pattern_tokens() {
+    let cases = vec![
+        (
+            "x_",
+            Token::Pattern {
+                quantity: Quantity::One,
+                prefix: Some("x".into()),
+                postfix: None,
+                optional: false,
+            },
+        ),
+        (
+            "x_Integer",
+            Token::Pattern {
+                quantity: Quantity::One,
+                prefix: Some("x".into()),
+                postfix: Some("Integer".into()),
+                optional: false,
+            },
+        ),
+        (
+            "x_.",
+            Token::Pattern {
+                quantity: Quantity::One,
+                prefix: Some("x".into()),
+                postfix: None,
+                optional: true,
+            },
+        ),
+        (
+            "x__",
+            Token::Pattern {
+                quantity: Quantity::Many(1),
+                prefix: Some("x".into()),
+                postfix: None,
+                optional: false,
+            },
+        ),
+        (
+            "_",
+            Token::Pattern {
+                quantity: Quantity::One,
+                prefix: None,
+                postfix: None,
+                optional: false,
+            },
+        ),
+    ];
+
+    for (input, expected) in cases {
+        let ts = TokenStream::from_str(input).unwrap();
+        assert_eq!(ts.tokens.len(), 1);
+        assert_eq!(ts.tokens[0].0, expected, "failed on input: {input}");
     }
 }
