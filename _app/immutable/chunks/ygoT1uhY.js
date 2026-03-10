@@ -1,14 +1,14 @@
-import { f as g, i as d, u as c, g as m, j as i, k as b, n as p, o as k, q as v, t as h } from "./CWZ4Cf0V.js";
-function x(n = false) {
+import { f as g, u as d, g as c, i as m, j as i, k as b, l as p, n as k, o as v, q as h } from "./KQ4vooii.js";
+function x(t = false) {
   const s = g, e = s.l.u;
   if (!e) return;
   let f = () => k(s.s);
-  if (n) {
-    let o = 0, t = {};
+  if (t) {
+    let o = 0, n = {};
     const _ = v(() => {
       let l = false;
       const r = s.s;
-      for (const a in r) r[a] !== t[a] && (t[a] = r[a], l = true);
+      for (const a in r) r[a] !== n[a] && (n[a] = r[a], l = true);
       return l && o++, o;
     });
     f = () => p(_);
@@ -18,14 +18,14 @@ function x(n = false) {
   }), c(() => {
     const o = m(() => e.m.map(b));
     return () => {
-      for (const t of o) typeof t == "function" && t();
+      for (const n of o) typeof n == "function" && n();
     };
   }), e.a.length && c(() => {
     u(s, f), i(e.a);
   });
 }
-function u(n, s) {
-  if (n.l.s) for (const e of n.l.s) p(e);
+function u(t, s) {
+  if (t.l.s) for (const e of t.l.s) p(e);
   s();
 }
 h();
