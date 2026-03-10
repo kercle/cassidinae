@@ -1,7 +1,5 @@
 use std::collections::HashMap;
 
-use numbers::Number;
-
 use crate::{
     atom::Atom,
     builtin::{
@@ -27,8 +25,8 @@ pub enum Instruction {
 }
 
 pub enum CompileError {
-    IntegerOverflow,
-    UnevaluableHead(&'static str),
+    NumberConversionFailed,
+    UnevaluableHead,
 }
 
 #[derive(Debug)]
@@ -54,13 +52,13 @@ impl EvalProgram {
             ExprKind::Atom {
                 entry: Atom::Number(num),
             } => {
-                let num = num.to_f64().ok_or(CompileError::IntegerOverflow)?;
+                let num = num.to_f64().ok_or(CompileError::NumberConversionFailed)?;
                 self.instructions.push(Instruction::PushConstant(num));
             }
             ExprKind::Atom {
                 entry: Atom::Symbol(name),
             } => {
-                let id = self.new_var(name);
+                let id = self.get_or_create_var_id(name);
                 self.instructions.push(Instruction::PushVar(id))
             }
             ExprKind::Atom {
@@ -72,7 +70,7 @@ impl EvalProgram {
         Ok(())
     }
 
-    fn new_var(&mut self, name: &str) -> VarId {
+    fn get_or_create_var_id(&mut self, name: &str) -> VarId {
         if let Some(id) = self.var_ids.get(name) {
             return *id;
         }
@@ -80,7 +78,6 @@ impl EvalProgram {
         let idx = self.vars.len() as VarId;
         self.vars.push(name.to_string());
         self.var_ids.insert(name.to_string(), idx);
-        self.instructions.push(Instruction::PushVar(idx));
         idx
     }
 
@@ -111,6 +108,8 @@ impl EvalProgram {
             self.instructions.push(Instruction::Sin);
         } else if head.matches_symbol(CANNONICAL_HEAD_COS) {
             self.instructions.push(Instruction::Cos);
+        } else {
+            return Err(CompileError::UnevaluableHead);
         }
 
         Ok(())

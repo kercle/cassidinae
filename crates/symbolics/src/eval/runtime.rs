@@ -34,7 +34,7 @@ impl<'p> EvalRuntime<'p> {
     }
 
     pub fn has_unbound_vars(&self) -> bool {
-        self.bindings.iter().any(|b| b.is_none()) && !self.bindings.is_empty()
+        self.bindings.iter().any(|b| b.is_none())
     }
 
     pub fn execute(&self) -> Result<f64, EvalRuntimeError> {
