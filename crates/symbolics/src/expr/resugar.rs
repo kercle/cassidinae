@@ -249,7 +249,7 @@ impl NormExpr {
             RawExpr::new_binary_node(
                 POW_HEAD,
                 Self::resugar_inner(lhs),
-                RawExpr::new_number(rhs_num),
+                Self::resugar_number(rhs_num),
             )
         };
 
