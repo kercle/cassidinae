@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { appState } from '$lib';
+	import { appState, submitExpression } from '$lib';
 
 	let inputValue = $state('');
 
@@ -12,13 +12,6 @@
 				inputValue = '';
 			}
 		}
-	}
-
-	function submitExpression(expr: string) {
-		const msg = {
-			eval: expr
-		};
-		appState.send(JSON.stringify(msg));
 	}
 </script>
 

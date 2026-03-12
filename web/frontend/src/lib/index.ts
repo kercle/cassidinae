@@ -91,3 +91,10 @@ function createGlobalState() {
 }
 
 export const appState = createGlobalState();
+
+export function submitExpression(expr: string) {
+    const msg = {
+        eval: expr
+    };
+    appState.send(JSON.stringify(msg));
+}

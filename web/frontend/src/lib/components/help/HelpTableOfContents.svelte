@@ -1,4 +1,6 @@
 <script lang="ts">
+	import HelpLink from "./HelpLink.svelte";
+
 	export let builtins: Array<[string, string]>;
 </script>
 
@@ -9,7 +11,7 @@
 			<tbody>
 				{#each builtins as b}
 					<tr>
-						<td><span class="badge badge-accent font-mono">{b[0]}</span></td>
+						<td><HelpLink symbol={b[0]} /></td>
 						<td><span class="ml-4">{b[1]}</span></td>
 					</tr>
 				{/each}

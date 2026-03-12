@@ -5,11 +5,11 @@ export let patterns: Array<[string, string]>;
 
 <div class="bg-base-200 font-sans mt-1">
 <h1 class="p-2 bg-neutral-content text-2xl font-semibold">{title}</h1>
-<ul class="ml-8 p-4 list-disc">
+<ul class="ml-2 p-4 divide-y divide-base-300">
     {#each patterns as pat }
-        <li>
+        <li class="pb-2 mt-2">
             <div class="badge badge-accent font-mono">{pat[0]}</div>
-            <div class="mt-2">{pat[1]}</div>
+            <div class="mt-2 ml-6">{pat[1]}</div>
         </li>
     {/each}
 </ul>

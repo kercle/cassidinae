@@ -2,9 +2,7 @@ use parser::parse;
 
 use crate::{
     builtins::{
-        calculus::{derivative::Derivative, integrate::Integrate},
-        simplify::Simplify,
-        traits::BuiltIn,
+        Help, calculus::{derivative::Derivative, integrate::Integrate}, simplify::Simplify, traits::BuiltIn
     },
     expr::{NormExpr, RawExpr},
 };
@@ -27,6 +25,7 @@ impl Default for Kernel {
                 Box::new(Integrate::new()),
                 Box::new(Derivative::new()),
                 Box::new(Simplify::new()),
+                Box::new(Help::default())
             ],
             auto_apply: Vec::new(),
         };
