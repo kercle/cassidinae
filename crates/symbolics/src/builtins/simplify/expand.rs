@@ -59,21 +59,18 @@ pub(super) fn build_rewriter() -> Rewriter {
             hold_expr!(Expand[a] + Expand[Add[b]]),
         ),
         (
-            norm_expr!(Expand[(a_ + b__) ^ 2]),
-            hold_expr!(Expand[a ^ 2 + 2 * a * Add[b] + Add[b] ^ 2]),
-        ),
-        (
-            norm_expr!(Expand[(a_ + b__) ^ 3]),
-            hold_expr!(Expand[a ^ 3 + 3 * a ^ 2 * Add[b] + 3 * a * Add[b] ^ 2 + Add[b] ^ 3]),
-        ),
-        (
             norm_expr!(Expand[a__ * (b_ + c__)]),
             hold_expr!(Expand[Mul[a] * b] + Expand[Mul[a] * Add[c]]),
         ),
         (
-            norm_expr!(Expand[a_ * b__]),
-            hold_expr!(Expand[a] * Expand[Mul[b]]),
+            norm_expr!(Expand[a__ * (b_ + c__) ^ PatternTest[m_, IsPositiveInteger]]),
+            hold_expr!(Expand[Mul[a] * (b + c) ^ (m - 1) * b + Mul[a] * (b + c) ^ (m - 1) * c]),
         ),
+        (
+            norm_expr!(Expand[(b_ + c__) ^ PatternTest[m_, IsPositiveInteger]]),
+            hold_expr!(Expand[(b + c) ^ (m - 1) * b + (b + c) ^ (m - 1) * c]),
+        ),
+        // Base case
         (norm_expr!(Expand[a_]), hold_expr!(a)),
     ];
 

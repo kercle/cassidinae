@@ -13,5 +13,5 @@
 	class=" border-0 bg-transparent p-0 hover:brightness-105"
 	on:click={handleClick}
 >
-	<span class="badge badge-accent cursor-pointer font-mono">{symbol}</span>
+	<span class="badge badge-info cursor-pointer font-mono">{symbol}</span>
 </button>

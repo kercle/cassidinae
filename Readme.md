@@ -53,6 +53,7 @@ The syntax of the expressions is Mathematica inspired.
 - [x] Remove annotation from Expr, as the intended use case was solved differently
 - [ ] Allow more sequences in commutative patterns
 - [ ] Support for more flexible predicate in pattern matching
+- [ ] Add compile errors for patterns (e.g. unsupported predicates etc.)
 - [x] Rework normalization to make it both more efficient and maintainable
 - [x] Basic Rewrite engine
 - [ ] Basic polynomial engine
