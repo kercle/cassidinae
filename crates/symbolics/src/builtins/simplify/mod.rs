@@ -3,6 +3,8 @@ pub mod factor;
 pub mod known_values;
 pub mod trigonometric;
 
+pub use expand::Expand;
+
 use crate::{
     builtins::traits::{BuiltIn, PatternDoc},
     expr::NormExpr,

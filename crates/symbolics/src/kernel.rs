@@ -1,9 +1,7 @@
 use parser::parse;
 
 use crate::{
-    builtins::{
-        Help, calculus::{derivative::Derivative, integrate::Integrate}, simplify::Simplify, traits::BuiltIn
-    },
+    builtins::{self, traits::BuiltIn},
     expr::{NormExpr, RawExpr},
 };
 
@@ -21,30 +19,34 @@ pub struct Kernel {
 impl Default for Kernel {
     fn default() -> Self {
         let mut result = Self {
-            builtins: vec![
-                Box::new(Integrate::new()),
-                Box::new(Derivative::new()),
-                Box::new(Simplify::new()),
-                Box::new(Help::default())
-            ],
+            builtins: Vec::new(),
             auto_apply: Vec::new(),
         };
 
-        result
-            .set_auto_apply("Integrate")
-            .expect("Builtin not registerd: Integrate");
-        result
-            .set_auto_apply("Diff")
-            .expect("Builtin not registerd: Diff");
-        result
-            .set_auto_apply("Simplify")
-            .expect("Builtin not registerd: Simplify");
-
+        result.register_initial_builtins();
         result
     }
 }
 
 impl Kernel {
+    fn register_initial_builtins(&mut self) {
+        self.register_builtin::<builtins::calculus::Integrate>(true);
+        self.register_builtin::<builtins::calculus::Derivative>(true);
+        self.register_builtin::<builtins::calculus::Derivative>(true);
+        self.register_builtin::<builtins::simplify::Simplify>(true);
+        self.register_builtin::<builtins::simplify::Expand>(true);
+        self.register_builtin::<builtins::system::Help>(false);
+    }
+
+    pub fn register_builtin<B: BuiltIn + Default + 'static>(&mut self, auto_apply: bool) {
+        let id = self.builtins.len();
+        self.builtins.push(Box::new(B::default()));
+
+        if auto_apply {
+            self.set_auto_apply_by_id(id);
+        }
+    }
+
     pub fn get_builtin<T: AsRef<str>>(&self, head_name: T) -> Option<&dyn BuiltIn> {
         self.builtins
             .iter()
@@ -52,14 +54,18 @@ impl Kernel {
             .map(|v| &**v)
     }
 
+    fn set_auto_apply_by_id(&mut self, id: usize) {
+        if !self.auto_apply.contains(&id) {
+            self.auto_apply.push(id);
+        }
+    }
+
     pub fn set_auto_apply<T: AsRef<str>>(&mut self, head_name: T) -> Result<(), KernelError> {
         let Some(id) = self.get_builtin_id(head_name) else {
             return Err(KernelError::UnknownBuiltIn);
         };
 
-        if !self.auto_apply.contains(&id) {
-            self.auto_apply.push(id);
-        }
+        self.set_auto_apply_by_id(id);
 
         Ok(())
     }
