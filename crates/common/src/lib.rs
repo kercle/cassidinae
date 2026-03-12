@@ -27,6 +27,8 @@ pub enum KernelMessage {
         input: String,
         title: String,
         patterns: Vec<(String, String)>,
+        examples: Vec<(String, String)>,
+        related: Vec<String>,
     },
     ParseError {
         input: String,

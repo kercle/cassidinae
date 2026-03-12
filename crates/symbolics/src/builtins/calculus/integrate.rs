@@ -1,10 +1,8 @@
 use crate::{
     builtins::traits::{BuiltIn, PatternDoc},
     expr::NormExpr,
-    format::MathDisplay,
     hold_expr, norm_expr,
     pattern::environment::Environment,
-    raw_expr,
     rewrite::Rewriter,
 };
 
@@ -16,11 +14,10 @@ pub struct Integrate {
 impl Integrate {
     pub fn new() -> Self {
         Self {
-            pattern_doc: vec![PatternDoc {
-                pattern: raw_expr!( Integrate[f_, PatternTest[x_, IsSymbol]] ).to_input_form(),
-                summary: "gives the indefinite integral (anti-derivative) if $f(x)$: $\\int f\\,{\rm d}x$"
-                    .to_string(),
-            }],
+            pattern_doc: vec![PatternDoc::new(
+                "Integrate[f_, x_?IsSymbol]",
+                "gives the indefinite integral (anti-derivative) $\\int f(x)\\!{\\rm d}x$",
+            )],
             rewriter: build_rewriter(),
         }
     }
@@ -33,8 +30,12 @@ impl Default for Integrate {
 }
 
 impl BuiltIn for Integrate {
-    fn title(&self) -> String {
-        "Integration".to_string()
+    fn category(&self) -> &'static str {
+        "Calculus"
+    }
+
+    fn title(&self) -> &'static str {
+        "Integration"
     }
 
     fn head_symbol(&self) -> &'static str {
@@ -47,6 +48,17 @@ impl BuiltIn for Integrate {
 
     fn pattern_doc(&self) -> Vec<PatternDoc> {
         self.pattern_doc.clone()
+    }
+
+    fn examples(&self) -> Vec<(&'static str, &'static str)> {
+        vec![
+            ("Integrate[x,x]", "x^2/2"),
+            ("Integrate[2 * Sqrt[x] + x^6, x]", "(4/3)*x^(3/2) + x^7/7"),
+        ]
+    }
+
+    fn related(&self) -> Vec<&'static str> {
+        vec!["Diff"]
     }
 
     fn apply_all(&self, expr: NormExpr) -> NormExpr {

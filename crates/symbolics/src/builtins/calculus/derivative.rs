@@ -1,10 +1,8 @@
 use crate::{
     builtins::traits::{BuiltIn, PatternDoc},
     expr::NormExpr,
-    format::MathDisplay,
     hold_expr, norm_expr,
     pattern::environment::Environment,
-    raw_expr,
     rewrite::Rewriter,
 };
 
@@ -16,11 +14,10 @@ pub struct Derivative {
 impl Derivative {
     pub fn new() -> Self {
         Self {
-            pattern_doc: vec![PatternDoc {
-                pattern: raw_expr!( Diff[f_, PatternTest[x_, IsSymbol]] ).to_input_form(),
-                summary: "gives the partial derivative $\\frac{\\partial f}{\\partial x}$"
-                    .to_string(),
-            }],
+            pattern_doc: vec![PatternDoc::new(
+                "Diff[f_,x_?IsSymbol]",
+                "gives the partial derivative $\\frac{\\partial f}{\\partial x}$",
+            )],
             rewriter: build_rewriter(),
         }
     }
@@ -33,8 +30,12 @@ impl Default for Derivative {
 }
 
 impl BuiltIn for Derivative {
-    fn title(&self) -> String {
-        "Derivative".to_string()
+    fn category(&self) -> &'static str {
+        "Calculus"
+    }
+
+    fn title(&self) -> &'static str {
+        "Derivative"
     }
 
     fn head_symbol(&self) -> &'static str {
@@ -47,6 +48,17 @@ impl BuiltIn for Derivative {
 
     fn pattern_doc(&self) -> Vec<PatternDoc> {
         self.pattern_doc.clone()
+    }
+
+    fn examples(&self) -> Vec<(&'static str, &'static str)> {
+        vec![
+            ("Diff[Cos[Exp[x]], x]", "-Exp[x]*Sin[Exp[x]]"),
+            ("Diff[y,x]", "0"),
+        ]
+    }
+
+    fn related(&self) -> Vec<&'static str> {
+        vec!["Integrate"]
     }
 
     fn apply_all(&self, expr: NormExpr) -> NormExpr {

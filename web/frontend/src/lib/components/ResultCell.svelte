@@ -69,7 +69,12 @@
 	{:else if entry && 'helpTableOfContents' in entry}
 		<HelpTableOfContents builtins={entry.helpTableOfContents.builtins} />
 	{:else if entry && 'helpBuiltin' in entry}
-		<HelpBuiltin title={entry.helpBuiltin.title} patterns={entry.helpBuiltin.patterns} />
+		<HelpBuiltin
+			title={entry.helpBuiltin.title}
+			patterns={entry.helpBuiltin.patterns}
+			examples={entry.helpBuiltin.examples}
+			related={entry.helpBuiltin.related}
+		/>
 	{:else}
 		<p>Unknown server message.</p>
 	{/if}

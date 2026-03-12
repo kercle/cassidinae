@@ -4,8 +4,12 @@ use crate::builtins::traits::{BuiltIn, PatternDoc};
 pub struct Help;
 
 impl BuiltIn for Help {
-    fn title(&self) -> String {
-        "Help".to_string()
+    fn category(&self) -> &'static str {
+        "System"
+    }
+
+    fn title(&self) -> &'static str {
+        "Help"
     }
 
     fn head_symbol(&self) -> &'static str {
@@ -14,6 +18,14 @@ impl BuiltIn for Help {
 
     fn summary(&self) -> &'static str {
         "Documentation for builtin functionality."
+    }
+
+    fn examples(&self) -> Vec<(&'static str, &'static str)> {
+        vec![]
+    }
+
+    fn related(&self) -> Vec<&'static str> {
+        vec![]
     }
 
     fn pattern_doc(&self) -> Vec<PatternDoc> {

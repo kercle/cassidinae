@@ -8,8 +8,6 @@ pub use expand::Expand;
 use crate::{
     builtins::traits::{BuiltIn, PatternDoc},
     expr::NormExpr,
-    format::MathDisplay,
-    raw_expr,
     rewrite::Rewriter,
 };
 
@@ -29,10 +27,7 @@ impl Simplify {
         let known_values_rewriter = known_values::build_rewriter();
 
         Self {
-            pattern_doc: vec![PatternDoc {
-                pattern: raw_expr!(Simplify[t_]).to_input_form(),
-                summary: "simplifies the term $t$".to_string(),
-            }],
+            pattern_doc: vec![PatternDoc::new("Simplify[t_]", "simplifies the term $t$")],
             factorization_rewriter,
             trigonometric_rewriter,
             known_values_rewriter,
@@ -47,8 +42,12 @@ impl Default for Simplify {
 }
 
 impl BuiltIn for Simplify {
-    fn title(&self) -> String {
-        "Simplify".to_string()
+    fn category(&self) -> &'static str {
+        "Simplification"
+    }
+
+    fn title(&self) -> &'static str {
+        "Basic simplification"
     }
 
     fn head_symbol(&self) -> &'static str {
@@ -61,6 +60,14 @@ impl BuiltIn for Simplify {
 
     fn pattern_doc(&self) -> Vec<PatternDoc> {
         self.pattern_doc.clone()
+    }
+
+    fn examples(&self) -> Vec<(&'static str, &'static str)> {
+        vec![]
+    }
+
+    fn related(&self) -> Vec<&'static str> {
+        vec!["Expand"]
     }
 
     fn apply_all(&self, expr: NormExpr) -> NormExpr {

@@ -16,13 +16,19 @@ impl PatternDoc {
 }
 
 pub trait BuiltIn {
-    fn title(&self) -> String;
+    fn category(&self) -> &'static str;
+
+    fn title(&self) -> &'static str;
 
     fn head_symbol(&self) -> &'static str;
 
     fn summary(&self) -> &'static str;
 
     fn pattern_doc(&self) -> Vec<PatternDoc>;
+
+    fn examples(&self) -> Vec<(&'static str, &'static str)>;
+
+    fn related(&self) -> Vec<&'static str>;
 
     fn apply_all(&self, expr: NormExpr) -> NormExpr {
         expr

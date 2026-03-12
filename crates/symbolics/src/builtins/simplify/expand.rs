@@ -27,8 +27,12 @@ impl Default for Expand {
 }
 
 impl BuiltIn for Expand {
-    fn title(&self) -> String {
-        "Term expansion".to_string()
+    fn category(&self) -> &'static str {
+        "Simplification"
+    }
+
+    fn title(&self) -> &'static str {
+        "Term expansion"
     }
 
     fn head_symbol(&self) -> &'static str {
@@ -41,6 +45,14 @@ impl BuiltIn for Expand {
 
     fn pattern_doc(&self) -> Vec<PatternDoc> {
         self.pattern_doc.clone()
+    }
+
+    fn examples(&self) -> Vec<(&'static str, &'static str)> {
+        vec![("x*(4 + x*(5 - x))", "4*x + 5*x^2 - x^3")]
+    }
+
+    fn related(&self) -> Vec<&'static str> {
+        vec!["Simplify"]
     }
 
     fn apply_all(&self, expr: NormExpr) -> NormExpr {

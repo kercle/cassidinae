@@ -25,6 +25,8 @@ type ServerMessage = {
     helpBuiltin: {
         input: string,
         title: string,
-        patterns: [],
+        patterns: Array<[string, string]>,
+        examples: Array<[string, string]>,
+        related: Array<string>
     }
 };
