@@ -53,12 +53,12 @@ fn test_full_processing_chain() {
         ("Diff[f, x]", "0"),
     ];
 
+    let kernel = Kernel::default();
     for (input, output) in cases {
         // let ast = parse(input).expect(&format!("Parsing of `{input}` failed"));
 
         // let expr = RawExpr::from(ast).normalize();
         // let result = Simplifier::new(expr).simple();
-        let kernel = Kernel::default();
         let result = kernel
             .eval(input)
             .expect(&format!("Input fails to evaluate: {input}"));
