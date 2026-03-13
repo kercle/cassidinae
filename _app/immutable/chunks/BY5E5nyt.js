@@ -41,7 +41,7 @@ let __tla = (async () => {
     }
     return n;
   }
-  const B = "" + new URL("../assets/kernel_bg.D9hhd0T6.wasm", import.meta.url).href, C = async (e = {}, t) => {
+  const B = "" + new URL("../assets/kernel_bg.BKClYrlp.wasm", import.meta.url).href, C = async (e = {}, t) => {
     let n;
     if (t.startsWith("data:")) {
       const o = t.replace(/^data:.*?base64,/, "");
@@ -125,7 +125,7 @@ let __tla = (async () => {
     };
   });
   let w = 0, _;
-  function X(e) {
+  function K(e) {
     _ = e;
   }
   URL = globalThis.URL;
@@ -133,19 +133,19 @@ let __tla = (async () => {
     "./kernel_bg.js": {
       __wbindgen_init_externref_table: D
     }
-  }, B), J = f.memory, K = f.eval_input, P = f.__wbindgen_externrefs, V = f.__wbindgen_malloc, Y = f.__wbindgen_realloc, $ = f.__wbindgen_free, v = f.__wbindgen_start, q = Object.freeze(Object.defineProperty({
+  }, B), X = f.memory, Y = f.eval_input, J = f.__wbindgen_externrefs, P = f.__wbindgen_malloc, V = f.__wbindgen_realloc, $ = f.__wbindgen_free, v = f.__wbindgen_start, q = Object.freeze(Object.defineProperty({
     __proto__: null,
-    __wbindgen_externrefs: P,
+    __wbindgen_externrefs: J,
     __wbindgen_free: $,
-    __wbindgen_malloc: V,
-    __wbindgen_realloc: Y,
+    __wbindgen_malloc: P,
+    __wbindgen_realloc: V,
     __wbindgen_start: v,
-    eval_input: K,
-    memory: J
+    eval_input: Y,
+    memory: X
   }, Symbol.toStringTag, {
     value: "Module"
   }));
-  X(q);
+  K(q);
   v();
   function z() {
     const { subscribe: e, set: t, update: n } = N({
