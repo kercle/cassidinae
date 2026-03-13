@@ -1,8 +1,9 @@
 use crate::{
     builtins::traits::{BuiltIn, PatternDoc},
     expr::NormExpr,
-    hold_expr, norm_expr,
+    norm_expr,
     pattern::environment::Environment,
+    raw_expr,
     rewrite::Rewriter,
 };
 
@@ -64,22 +65,22 @@ pub(super) fn build_rewriter() -> Rewriter {
     let rules = vec![
         (
             norm_expr!(Expand[a_ + b__]),
-            hold_expr!(Expand[a] + Expand[Add[b]]),
+            raw_expr!(Expand[a] + Expand[Add[b]]),
         ),
         (
             norm_expr!(Expand[a__ * (b_ + c__)]),
-            hold_expr!(Expand[Mul[a] * b] + Expand[Mul[a] * Add[c]]),
+            raw_expr!(Expand[Mul[a] * b] + Expand[Mul[a] * Add[c]]),
         ),
         (
             norm_expr!(Expand[a__ * (b_ + c__) ^ PatternTest[m_, IsPositiveInteger]]),
-            hold_expr!(Expand[Mul[a] * (b + c) ^ (m - 1) * b + Mul[a] * (b + c) ^ (m - 1) * c]),
+            raw_expr!(Expand[Mul[a] * (b + c) ^ (m - 1) * b + Mul[a] * (b + c) ^ (m - 1) * c]),
         ),
         (
             norm_expr!(Expand[(b_ + c__) ^ PatternTest[m_, IsPositiveInteger]]),
-            hold_expr!(Expand[(b + c) ^ (m - 1) * b + (b + c) ^ (m - 1) * c]),
+            raw_expr!(Expand[(b + c) ^ (m - 1) * b + (b + c) ^ (m - 1) * c]),
         ),
         // Base case
-        (norm_expr!(Expand[a_]), hold_expr!(a)),
+        (norm_expr!(Expand[a_]), raw_expr!(a)),
     ];
 
     Rewriter::new().with_rules(rules.into_iter().map(|(pat, repl)| {

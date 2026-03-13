@@ -3,7 +3,15 @@ use numbers::Number;
 use crate::expr::NormExpr;
 
 #[derive(Clone)]
-pub struct UnivariatePolynomial(Vec<Number>);
+pub struct UnivariatePolynomial {
+    coeff: Vec<Number>,
+    symbol: String,
+}
+
+#[derive(Debug, Clone)]
+pub enum LongDivisionError {
+    SymbolMismatch,
+}
 
 impl UnivariatePolynomial {
     pub fn from_expr(_expr: &NormExpr) -> Option<Self> {
@@ -13,21 +21,28 @@ impl UnivariatePolynomial {
         todo!()
     }
 
-    pub fn zero() -> Self {
-        Self(vec![Number::zero()])
+    pub fn zero<T: AsRef<str>>(symbol: T) -> Self {
+        Self {
+            coeff: vec![Number::zero()],
+            symbol: symbol.as_ref().to_string(),
+        }
     }
 
     pub fn degree(&self) -> usize {
-        self.0.len() - 1
+        self.coeff.len() - 1
     }
 
     pub fn coeff(&self, i: usize) -> &Number {
-        self.0.get(i).unwrap_or(&numbers::ZERO)
+        self.coeff.get(i).unwrap_or(&numbers::ZERO)
     }
 
-    pub fn long_division(&self, other: &Self) -> (Self, Self) {
+    pub fn long_division(&self, other: &Self) -> Result<(Self, Self), LongDivisionError> {
+        if self.symbol != other.symbol {
+            return Err(LongDivisionError::SymbolMismatch);
+        }
+
         if other.degree() > self.degree() {
-            return (UnivariatePolynomial::zero(), other.clone());
+            return Ok((UnivariatePolynomial::zero(&self.symbol), other.clone()));
         }
         todo!()
     }

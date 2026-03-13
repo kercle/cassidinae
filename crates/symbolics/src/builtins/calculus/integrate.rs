@@ -1,8 +1,9 @@
 use crate::{
     builtins::traits::{BuiltIn, PatternDoc},
     expr::NormExpr,
-    hold_expr, norm_expr,
+    norm_expr,
     pattern::environment::Environment,
+    raw_expr,
     rewrite::Rewriter,
 };
 
@@ -71,16 +72,16 @@ fn build_rewriter() -> Rewriter {
         // =============== Linearity ===============
         (
             norm_expr!( Integrate[f_ + r__, PatternTest[x_, IsSymbol]] ),
-            hold_expr!( Integrate[f, x] + Integrate[Add[r],x] ),
+            raw_expr!( Integrate[f, x] + Integrate[Add[r],x] ),
         ),
         (
             norm_expr!( Integrate[PatternTest[c_, IsNumber] * r__, PatternTest[x_, IsSymbol]] ),
-            hold_expr!( c * Integrate[Mul[r],x] ),
+            raw_expr!( c * Integrate[Mul[r],x] ),
         ),
         // =============== Basic ===============
         (
             norm_expr!( Integrate[PatternTest[c_, IsNumber], PatternTest[x_, IsSymbol]] ),
-            hold_expr!(c * x),
+            raw_expr!(c * x),
         ),
         (
             norm_expr!(
@@ -88,7 +89,7 @@ fn build_rewriter() -> Rewriter {
                 x_,
                 PatternTest[x_, IsSymbol]
             ]),
-            hold_expr!(x ^ 2 / 2),
+            raw_expr!(x ^ 2 / 2),
         ),
         (
             norm_expr!(
@@ -96,7 +97,7 @@ fn build_rewriter() -> Rewriter {
                 PatternTest[c_, IsSymbol],
                 PatternTest[x_, IsSymbol]
             ]),
-            hold_expr!(c * x),
+            raw_expr!(c * x),
         ),
         (
             norm_expr!(
@@ -104,7 +105,7 @@ fn build_rewriter() -> Rewriter {
                 PatternTest[a_, IsSymbol],
                 PatternTest[x_, IsSymbol]
             ]),
-            hold_expr!(a * x),
+            raw_expr!(a * x),
         ),
         // =============== Powers ===============
         (
@@ -113,7 +114,7 @@ fn build_rewriter() -> Rewriter {
                 1 / x_,
                 PatternTest[x_, IsSymbol]
             ]),
-            hold_expr!(Log[Abs[x]]),
+            raw_expr!(Log[Abs[x]]),
         ),
         (
             norm_expr!(
@@ -121,7 +122,7 @@ fn build_rewriter() -> Rewriter {
                 x_ ^ PatternTest[k_, IsNumber],
                 PatternTest[x_, IsSymbol]
             ]),
-            hold_expr!(x ^ (k + 1) / (k + 1)),
+            raw_expr!(x ^ (k + 1) / (k + 1)),
         ),
         // =============== Exponentials ===============
         (
@@ -130,7 +131,7 @@ fn build_rewriter() -> Rewriter {
                 Exp[x_],
                 PatternTest[x_, IsSymbol]
             ]),
-            hold_expr!(Exp[x]),
+            raw_expr!(Exp[x]),
         ),
         // =============== Logarithms ===============
         (
@@ -139,7 +140,7 @@ fn build_rewriter() -> Rewriter {
                 Log[x_],
                 PatternTest[x_, IsSymbol]
             ]),
-            hold_expr!(x * Log[x] - x),
+            raw_expr!(x * Log[x] - x),
         ),
         // =============== Trigonometric functions ===============
         (
@@ -148,7 +149,7 @@ fn build_rewriter() -> Rewriter {
                 Sin[x_],
                 PatternTest[x_, IsSymbol]
             ]),
-            hold_expr!(-Cos[x]),
+            raw_expr!(-Cos[x]),
         ),
         (
             norm_expr!(
@@ -156,13 +157,13 @@ fn build_rewriter() -> Rewriter {
                 Cos[x_],
                 PatternTest[x_, IsSymbol]
             ]),
-            hold_expr!(Sin[x]),
+            raw_expr!(Sin[x]),
         ),
     ];
 
     Rewriter::new().with_rules(rules.into_iter().map(|(pat, repl)| {
         (pat, move |ctx: &Environment<'_, '_>| {
-            ctx.fill(repl.clone()).normalize().release_all_holds()
+            ctx.fill(repl.clone()).normalize()
         })
     }))
 }

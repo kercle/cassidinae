@@ -1,8 +1,9 @@
 use crate::{
     builtins::traits::{BuiltIn, PatternDoc},
     expr::NormExpr,
-    hold_expr, norm_expr,
+    norm_expr,
     pattern::environment::Environment,
+    raw_expr,
     rewrite::Rewriter,
 };
 
@@ -71,7 +72,7 @@ fn build_rewriter() -> Rewriter {
         // =============== Linearity ===============
         (
             norm_expr!( Diff[f_ + r__, PatternTest[x_, IsSymbol]] ),
-            hold_expr!( Diff[f, x] + Diff[Add[r],x] ),
+            raw_expr!( Diff[f, x] + Diff[Add[r],x] ),
         ),
         (
             norm_expr!(
@@ -79,14 +80,14 @@ fn build_rewriter() -> Rewriter {
                 PatternTest[c_, IsNumber] * r__,
                 PatternTest[x_, IsSymbol]
             ]),
-            hold_expr!(
+            raw_expr!(
             c * Diff[Mul[r],x]
             ),
         ),
         // =============== Basic ===============
         (
             norm_expr!( Diff[x_, PatternTest[x_, IsSymbol]] ),
-            norm_expr!(1),
+            raw_expr!(1),
         ),
         (
             norm_expr!(
@@ -94,7 +95,7 @@ fn build_rewriter() -> Rewriter {
                 PatternTest[c_, IsNumber],
                 PatternTest[x_, IsSymbol]
             ]),
-            norm_expr!(0),
+            raw_expr!(0),
         ),
         (
             norm_expr!(
@@ -102,11 +103,11 @@ fn build_rewriter() -> Rewriter {
                 PatternTest[a_, IsSymbol],
                 PatternTest[x_, IsSymbol]
             ]),
-            norm_expr!(0),
+            raw_expr!(0),
         ),
         (
             norm_expr!( Diff[f_ * g__, PatternTest[x_, IsSymbol]] ),
-            hold_expr!(Diff[f, x] * g + f * Diff[Mul[g], x]),
+            raw_expr!(Diff[f, x] * g + f * Diff[Mul[g], x]),
         ),
         // =============== Powers ===============
         (
@@ -115,7 +116,7 @@ fn build_rewriter() -> Rewriter {
                 f_ ^ g_,
                 PatternTest[x_, IsSymbol]
             ]),
-            hold_expr!((f ^ g) *((g / f) * Diff[f, x] + Log[f] * Diff[g, x])),
+            raw_expr!((f ^ g) *((g / f) * Diff[f, x] + Log[f] * Diff[g, x])),
         ),
         // =============== Exponential ===============
         (
@@ -124,7 +125,7 @@ fn build_rewriter() -> Rewriter {
                 Exp[f_],
                 PatternTest[x_, IsSymbol]
             ]),
-            hold_expr!(Exp[f] * Diff[f, x]),
+            raw_expr!(Exp[f] * Diff[f, x]),
         ),
         // =============== Logarithms ===============
         (
@@ -133,7 +134,7 @@ fn build_rewriter() -> Rewriter {
                 Log[f_],
                 PatternTest[x_, IsSymbol]
             ]),
-            hold_expr!((1 / f) * Diff[f, x]),
+            raw_expr!((1 / f) * Diff[f, x]),
         ),
         // =============== Trigonometric functions ===============
         (
@@ -142,7 +143,7 @@ fn build_rewriter() -> Rewriter {
                 Sin[f_],
                 PatternTest[x_, IsSymbol]
             ]),
-            hold_expr!(Cos[f] * Diff[f, x]),
+            raw_expr!(Cos[f] * Diff[f, x]),
         ),
         (
             norm_expr!(
@@ -150,7 +151,7 @@ fn build_rewriter() -> Rewriter {
                 Cos[f_],
                 PatternTest[x_, IsSymbol]
             ]),
-            hold_expr!(-Sin[f] * Diff[f, x]),
+            raw_expr!(-Sin[f] * Diff[f, x]),
         ),
         (
             norm_expr!(
@@ -158,7 +159,7 @@ fn build_rewriter() -> Rewriter {
                 Tan[f_],
                 PatternTest[x_, IsSymbol]
             ]),
-            hold_expr!((1 / (Cos[f] ^ 2)) * Diff[f, x]),
+            raw_expr!((1 / (Cos[f] ^ 2)) * Diff[f, x]),
         ),
         (
             norm_expr!(
@@ -166,7 +167,7 @@ fn build_rewriter() -> Rewriter {
                 Cot[f_],
                 PatternTest[x_, IsSymbol]
             ]),
-            hold_expr!(-(1 / (Sin[f] ^ 2)) * Diff[f, x]),
+            raw_expr!(-(1 / (Sin[f] ^ 2)) * Diff[f, x]),
         ),
         (
             norm_expr!(
@@ -174,7 +175,7 @@ fn build_rewriter() -> Rewriter {
                 Sec[f_],
                 PatternTest[x_, IsSymbol]
             ]),
-            hold_expr!(Sec[f] * Tan[f] * Diff[f, x]),
+            raw_expr!(Sec[f] * Tan[f] * Diff[f, x]),
         ),
         (
             norm_expr!(
@@ -182,7 +183,7 @@ fn build_rewriter() -> Rewriter {
                 Csc[f_],
                 PatternTest[x_, IsSymbol]
             ]),
-            hold_expr!(-Csc[f] * Cot[f] * Diff[f, x]),
+            raw_expr!(-Csc[f] * Cot[f] * Diff[f, x]),
         ),
         // =============== Inverse Trigonometric functions ===============
         (
@@ -191,7 +192,7 @@ fn build_rewriter() -> Rewriter {
                 ArcSin[f_],
                 PatternTest[x_, IsSymbol]
             ]),
-            norm_expr!((1 / (1 - f ^ 2) ^ (1 / 2)) * Diff[f, x]),
+            raw_expr!((1 / (1 - f ^ 2) ^ (1 / 2)) * Diff[f, x]),
         ),
         (
             norm_expr!(
@@ -199,7 +200,7 @@ fn build_rewriter() -> Rewriter {
                 ArcCos[f_],
                 PatternTest[x_, IsSymbol]
             ]),
-            norm_expr!(-(1 / (1 - f ^ 2) ^ (1 / 2)) * Diff[f, x]),
+            raw_expr!(-(1 / (1 - f ^ 2) ^ (1 / 2)) * Diff[f, x]),
         ),
         (
             norm_expr!(
@@ -207,7 +208,7 @@ fn build_rewriter() -> Rewriter {
                 ArcTan[f_],
                 PatternTest[x_, IsSymbol]
             ]),
-            norm_expr!((1 / (1 + f ^ 2)) * Diff[f, x]),
+            raw_expr!((1 / (1 + f ^ 2)) * Diff[f, x]),
         ),
         // =============== Inverse Trigonometric functions ===============
         (
@@ -216,7 +217,7 @@ fn build_rewriter() -> Rewriter {
                 ArcSin[f_],
                 PatternTest[x_, IsSymbol]
             ]),
-            norm_expr!((1 / (1 - f ^ 2) ^ (1 / 2)) * Diff[f, x]),
+            raw_expr!((1 / (1 - f ^ 2) ^ (1 / 2)) * Diff[f, x]),
         ),
         (
             norm_expr!(
@@ -224,7 +225,7 @@ fn build_rewriter() -> Rewriter {
                 ArcCos[f_],
                 PatternTest[x_, IsSymbol]
             ]),
-            norm_expr!(-(1 / (1 - f ^ 2) ^ (1 / 2)) * Diff[f, x]),
+            raw_expr!(-(1 / (1 - f ^ 2) ^ (1 / 2)) * Diff[f, x]),
         ),
         (
             norm_expr!(
@@ -232,7 +233,7 @@ fn build_rewriter() -> Rewriter {
                 ArcTan[f_],
                 PatternTest[x_, IsSymbol]
             ]),
-            norm_expr!((1 / (1 + f ^ 2)) * Diff[f, x]),
+            raw_expr!((1 / (1 + f ^ 2)) * Diff[f, x]),
         ),
         // =============== Hyperbolic functions ===============
         (
@@ -241,7 +242,7 @@ fn build_rewriter() -> Rewriter {
                 Sinh[f_],
                 PatternTest[x_, IsSymbol]
             ]),
-            norm_expr!(Cosh[f] * Diff[f, x]),
+            raw_expr!(Cosh[f] * Diff[f, x]),
         ),
         (
             norm_expr!(
@@ -249,7 +250,7 @@ fn build_rewriter() -> Rewriter {
                 Cosh[f_],
                 PatternTest[x_, IsSymbol]
             ]),
-            norm_expr!(Sinh[f] * Diff[f, x]),
+            raw_expr!(Sinh[f] * Diff[f, x]),
         ),
         (
             norm_expr!(
@@ -257,7 +258,7 @@ fn build_rewriter() -> Rewriter {
                 Tanh[f_],
                 PatternTest[x_, IsSymbol]
             ]),
-            norm_expr!((1 / (Cosh[f] ^ 2)) * Diff[f, x]),
+            raw_expr!((1 / (Cosh[f] ^ 2)) * Diff[f, x]),
         ),
     ];
 
