@@ -394,26 +394,6 @@ impl BigInteger {
         result
     }
 
-    fn div_by_digit_with_reminder_naive(lhs: &[Digit], rhs: Digit) -> Option<(Vec<Digit>, Digit)> {
-        if rhs == 0 {
-            return None;
-        }
-
-        let mut result = Vec::with_capacity(lhs.len());
-        let mut rem: DoubleDigit = 0;
-
-        for &digit in lhs.iter().rev() {
-            rem = (rem << DIGIT_BITS) | digit as DoubleDigit; // Shift left and add new digit
-            let quotient = (rem / rhs as DoubleDigit) as Digit;
-            rem %= rhs as DoubleDigit; // Update remainder
-
-            result.push(quotient);
-        }
-
-        result.reverse();
-        Some((result, rem as Digit))
-    }
-
     fn estimate_quotient_digit(rem: &[Digit], rhs: &[Digit]) -> Digit {
         let n = rhs.len();
         let m = rem.len();
@@ -435,44 +415,6 @@ impl BigInteger {
         } else {
             q_hat as Digit + 1 // Round up to ensure we don't underestimate
         }
-    }
-
-    fn div_multi_digit_with_reminder_naive(
-        lhs: &[Digit],
-        rhs: &[Digit],
-    ) -> Option<(Vec<Digit>, Vec<Digit>)> {
-        if !Self::cmp_digits(CompareFunction::NotEqual, lhs, &[0]) {
-            return None;
-        }
-
-        let mut result = Vec::new();
-        let mut rem: Vec<Digit> = Vec::new();
-        let mut rhs = rhs.to_vec();
-        Self::trim_leading_zeros_from_digits(&mut rhs);
-
-        for &digit in lhs.iter().rev() {
-            rem.insert(0, digit); // Add new digit to the remainder
-            let mut quotient = 0;
-
-            if Self::cmp_digits(CompareFunction::GreaterEqual, &rem, &rhs) {
-                quotient = Self::estimate_quotient_digit(&rem, &rhs);
-
-                let mut prod = Self::mul_by_digit_naive(&rhs, quotient);
-
-                while Self::cmp_digits(CompareFunction::Greater, &prod, &rem) && quotient > 0 {
-                    quotient -= 1;
-                    prod = Self::sub_digits_larger_from_smaller_naive(&prod, &rhs);
-                }
-
-                rem = Self::sub_digits_larger_from_smaller_naive(&rem, &prod);
-                Self::trim_leading_zeros_from_digits(&mut rem);
-            }
-
-            result.push(quotient);
-        }
-
-        result.reverse();
-        Some((result, rem))
     }
 
     pub fn add(first: &Self, second: &Self) -> Self {
@@ -588,6 +530,117 @@ impl BigInteger {
             BigInteger::from_vec(sign, digits),
             BigInteger::from_vec(lhs.sign, rem),
         ))
+    }
+
+    fn div_by_digit_with_reminder_naive(lhs: &[Digit], rhs: Digit) -> Option<(Vec<Digit>, Digit)> {
+        if rhs == 0 {
+            return None;
+        }
+
+        let mut result = Vec::with_capacity(lhs.len());
+        let mut rem: DoubleDigit = 0;
+
+        for &digit in lhs.iter().rev() {
+            rem = (rem << DIGIT_BITS) | digit as DoubleDigit; // Shift left and add new digit
+            let quotient = (rem / rhs as DoubleDigit) as Digit;
+            rem %= rhs as DoubleDigit; // Update remainder
+
+            result.push(quotient);
+        }
+
+        result.reverse();
+        Some((result, rem as Digit))
+    }
+
+    fn div_multi_digit_with_reminder_naive(
+        lhs: &[Digit],
+        rhs: &[Digit],
+    ) -> Option<(Vec<Digit>, Vec<Digit>)> {
+        if !Self::cmp_digits(CompareFunction::NotEqual, lhs, &[0]) {
+            return None;
+        }
+
+        let mut result = Vec::new();
+        let mut rem: Vec<Digit> = Vec::new();
+        let mut rhs = rhs.to_vec();
+        Self::trim_leading_zeros_from_digits(&mut rhs);
+
+        for &digit in lhs.iter().rev() {
+            rem.insert(0, digit); // Add new digit to the remainder
+            let mut quotient = 0;
+
+            if Self::cmp_digits(CompareFunction::GreaterEqual, &rem, &rhs) {
+                quotient = Self::estimate_quotient_digit(&rem, &rhs);
+
+                let mut prod = Self::mul_by_digit_naive(&rhs, quotient);
+
+                while Self::cmp_digits(CompareFunction::Greater, &prod, &rem) && quotient > 0 {
+                    quotient -= 1;
+                    prod = Self::sub_digits_larger_from_smaller_naive(&prod, &rhs);
+                }
+
+                rem = Self::sub_digits_larger_from_smaller_naive(&rem, &prod);
+                Self::trim_leading_zeros_from_digits(&mut rem);
+            }
+
+            result.push(quotient);
+        }
+
+        result.reverse();
+        Some((result, rem))
+    }
+
+    pub fn shift_right(&self, n: usize) -> Self {
+        let bits_in_digit = std::mem::size_of::<Digit>() * 8;
+
+        let first_retained_digit = n / bits_in_digit;
+
+        if first_retained_digit >= self.digits.len() {
+            return Self::zero();
+        }
+
+        let shift = n % bits_in_digit;
+
+        if shift == 0 {
+            Self::from_slice(self.sign, &self.digits[first_retained_digit..])
+        } else {
+            let mut result = vec![0 as Digit; self.digits.len() - first_retained_digit];
+            let carry_mask = ((1 as Digit) << shift) - 1;
+
+            result[0] = self.digits[first_retained_digit] >> shift;
+            for (i, &digit) in self.digits[first_retained_digit + 1..].iter().enumerate() {
+                result[i] |= (digit & carry_mask) << (bits_in_digit - shift);
+                result[i + 1] = digit >> shift;
+            }
+
+            Self::from_vec(self.sign, result)
+        }
+    }
+
+    pub fn shift_left(&self, n: usize) -> Self {
+        let bits_in_digit = std::mem::size_of::<Digit>() * 8;
+
+        let mut result = vec![0; n / bits_in_digit];
+
+        let shift = n % bits_in_digit;
+
+        if shift == 0 {
+            result.extend_from_slice(&self.digits);
+        } else {
+            let carry_mask = Digit::MAX << (bits_in_digit - shift);
+
+            let mut carry = 0;
+            for digit in self.digits.iter() {
+                result.push((digit << shift) | carry);
+                carry = (*digit & carry_mask) >> (bits_in_digit - shift);
+            }
+
+            if carry != 0 {
+                result.push(carry);
+            }
+        }
+
+        Self::from_vec(self.sign, result)
     }
 
     pub fn pow(&self, exp: &Self) -> Result<Self, String> {
@@ -1086,5 +1139,77 @@ mod tests {
 
         assert!(q.eq_inner(&expected_q), "q was {}", q);
         assert!(r.eq_inner(&expected_r), "r was {}", r);
+    }
+
+    #[test]
+    fn test_right_shift_small() {
+        let x = BigInteger::from_str_radix("123022321455", 10)
+            .unwrap()
+            .shift_right(29);
+
+        let expected = BigInteger::from_str_radix("229", 10).unwrap();
+
+        assert!(x.eq_inner(&expected))
+    }
+
+    #[test]
+    fn test_right_shift_large() {
+        let x = BigInteger::from_str_radix(
+            "12302556959215319080439869486705260436435669956771286732638\
+            961083170069626250041609128570238081515621916430973969104763314",
+            10,
+        )
+        .unwrap()
+        .shift_right(113);
+
+        let expected = BigInteger::from_str_radix(
+            "1184693142014118044970259572889481630152769179200252954819140506303259\
+            114132860296488516",
+            10,
+        )
+        .unwrap();
+
+        assert!(x.eq_inner(&expected))
+    }
+
+    #[test]
+    fn test_right_shift_digits_more_than_available() {
+        let x = BigInteger::from_str_radix("123022321455", 10)
+            .unwrap()
+            .shift_right(181);
+
+        assert!(x.eq_inner(&ZERO))
+    }
+
+    #[test]
+    fn test_left_shift_small() {
+        let x = BigInteger::from_str_radix("15415", 10)
+            .unwrap()
+            .shift_left(6);
+
+        let expected = BigInteger::from_str_radix("986560", 10).unwrap();
+
+        assert!(x.eq_inner(&expected))
+    }
+
+    #[test]
+    fn test_left_shift_large() {
+        let x = BigInteger::from_str_radix(
+            "12302556959215319080439869486705260436435669956771286732638\
+            961083170069626250041609128570238081515621916430973969104763314",
+            10,
+        )
+        .unwrap()
+        .shift_left(113);
+
+        let expected = BigInteger::from_str_radix(
+            "1277570557025589655403877334913789323992265022925488610902663105199877\
+            9291118478177990437210379190126643644262750366775793069950410510293438\
+            6389912584716288",
+            10,
+        )
+        .unwrap();
+
+        assert!(x.eq_inner(&expected))
     }
 }
