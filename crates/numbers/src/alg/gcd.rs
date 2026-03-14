@@ -1,6 +1,10 @@
 use crate::integer::BigInteger;
 
 pub fn gcd(a: BigInteger, b: BigInteger) -> BigInteger {
+    gcd_euclid(a, b)
+}
+
+fn gcd_euclid(a: BigInteger, b: BigInteger) -> BigInteger {
     let mut a = a;
     let mut b = b;
 
@@ -16,6 +20,38 @@ pub fn gcd(a: BigInteger, b: BigInteger) -> BigInteger {
     }
 
     a.abs()
+}
+
+fn _gcd_stein(a: BigInteger, b: BigInteger) -> BigInteger {
+    let mut a = a.abs();
+    let mut b = b.abs();
+
+    if a.is_zero() {
+        return b;
+    }
+    if b.is_zero() {
+        return a;
+    }
+
+    let shift = a.trailing_zeros().min(b.trailing_zeros());
+    a >>= shift;
+    b >>= shift;
+
+    a >>= a.trailing_zeros();
+
+    loop {
+        b >>= b.trailing_zeros();
+
+        if a > b {
+            std::mem::swap(&mut a, &mut b);
+        }
+
+        b -= &a;
+
+        if b.is_zero() {
+            return a << shift;
+        }
+    }
 }
 
 #[cfg(test)]
