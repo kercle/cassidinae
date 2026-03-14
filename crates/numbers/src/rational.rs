@@ -3,7 +3,7 @@ use std::{
     fmt::{Debug, Display},
 };
 
-use crate::{alg::gcd, integer::BigInteger};
+use crate::{alg::gcd::gcd, integer::BigInteger};
 
 #[derive(Clone)]
 pub struct BigRational {
