@@ -1,28 +1,29 @@
-use std::rc::Rc;
-
-use numbers::alg::binomial::BinomialGenerator;
+use numbers::{Number, alg::binomial::BinomialGenerator, integer::BigInteger};
 
 use crate::{
+    atom::Atom,
+    builtin::{ADD_HEAD, MUL_HEAD, POW_HEAD},
     builtins::traits::{BuiltIn, PatternDoc},
-    expr::NormExpr,
+    expr::{ExprKind, NormExpr, RawExpr},
+    kernel::Shared,
     norm_expr,
     pattern::environment::Environment,
     raw_expr,
     rewrite::Rewriter,
 };
 
+pub const EXPAND_HEAD: &'static str = "Expand";
+
 pub struct Expand {
     pattern_doc: Vec<PatternDoc>,
     rewriter: Rewriter,
-    binomial_generator: Rc<BinomialGenerator>,
 }
 
 impl Expand {
-    pub fn new(binomial_generator: Rc<BinomialGenerator>) -> Self {
+    pub fn new(binomial_generator: Shared<BinomialGenerator>) -> Self {
         Self {
             pattern_doc: vec![PatternDoc::new("Expand[t_]", "Expands the given term $t$.")],
-            rewriter: build_rewriter(),
-            binomial_generator,
+            rewriter: build_rewriter(binomial_generator),
         }
     }
 }
@@ -57,11 +58,74 @@ impl BuiltIn for Expand {
     }
 
     fn apply_all(&self, expr: NormExpr) -> NormExpr {
-        expr.rewrite_all(&self.rewriter, 100)
+        expr.rewrite_all(&self.rewriter, 1000)
     }
 }
 
-pub(super) fn build_rewriter() -> Rewriter {
+pub(super) fn build_rewriter(_binomial_gen: Shared<BinomialGenerator>) -> Rewriter {
+    let rw = Rewriter::new().with_rule(
+        norm_expr!(Expand[Pattern[sum, _ + __] ^ PatternTest[m_, IsPositiveInteger]]),
+        move |ctx: &Environment<'_, '_>| {
+            let sum = ctx.get_one("sum").unwrap();
+            let m = ctx.get_one("m").unwrap();
+
+            let Number::Integer(n) = m.get_number().unwrap() else {
+                unreachable!("m is guaranteed to be a positive integer.");
+            };
+
+            let Some(n) = n.to_u64() else {
+                // n is too large to be expandable. For now: silently fall back
+                // to input expression.
+                // TODO: at some point report this to user, but these large
+                // polynomials would not be feasable anyway.
+
+                return RawExpr::new_binary_node(
+                    POW_HEAD,
+                    sum.clone().into_raw(),
+                    m.clone().into_raw(),
+                )
+                .normalize();
+            };
+
+            RawExpr::new_unary_node(EXPAND_HEAD, expand_multinomial(sum, None, n)).normalize()
+        },
+    );
+
+    // TODO: once Optional is implemented in pattern matching, this rule can be merged
+    // with the previous one! For now, let's just copy&paste it :/
+    let rw = rw.with_rule(
+        norm_expr!(Expand[a__ * Pattern[sum, _ + __] ^ PatternTest[m_, IsPositiveInteger]]),
+        move |ctx: &Environment<'_, '_>| {
+            let sum = ctx.get_one("sum").unwrap();
+            let m = ctx.get_one("m").unwrap();
+            let overall_factors = ctx.get_seq("a").unwrap();
+
+            let Number::Integer(n) = m.get_number().unwrap() else {
+                unreachable!("m is guaranteed to be a positive integer.");
+            };
+
+            let Some(n) = n.to_u64() else {
+                // n is too large to be expandable. For now: silently fall back
+                // to input expression.
+                // TODO: at some point report this to user, but these large
+                // polynomials would not be feasable anyway.
+
+                return RawExpr::new_binary_node(
+                    POW_HEAD,
+                    sum.clone().into_raw(),
+                    m.clone().into_raw(),
+                )
+                .normalize();
+            };
+
+            RawExpr::new_unary_node(
+                EXPAND_HEAD,
+                expand_multinomial(sum, Some(overall_factors), n),
+            )
+            .normalize()
+        },
+    );
+
     let rules = vec![
         (
             norm_expr!(Expand[a_ + b__]),
@@ -71,21 +135,142 @@ pub(super) fn build_rewriter() -> Rewriter {
             norm_expr!(Expand[a__ * (b_ + c__)]),
             raw_expr!(Expand[Mul[a] * b] + Expand[Mul[a] * Add[c]]),
         ),
-        (
-            norm_expr!(Expand[a__ * (b_ + c__) ^ PatternTest[m_, IsPositiveInteger]]),
-            raw_expr!(Expand[Mul[a] * (b + c) ^ (m - 1) * b + Mul[a] * (b + c) ^ (m - 1) * c]),
-        ),
-        (
-            norm_expr!(Expand[(b_ + c__) ^ PatternTest[m_, IsPositiveInteger]]),
-            raw_expr!(Expand[(b + c) ^ (m - 1) * b + (b + c) ^ (m - 1) * c]),
-        ),
-        // Base case
         (norm_expr!(Expand[a_]), raw_expr!(a)),
     ];
 
-    Rewriter::new().with_rules(rules.into_iter().map(|(pat, repl)| {
+    let rw = rw.with_rules(rules.into_iter().map(|(pat, repl)| {
         (pat, move |ctx: &Environment<'_, '_>| {
             ctx.fill(repl.clone()).normalize()
         })
-    }))
+    }));
+
+    rw
+}
+
+struct CombinationGenerator {
+    state: Vec<u64>,
+    k: u64,
+    first_step: bool,
+}
+
+impl CombinationGenerator {
+    fn new(n: u64, k: u64) -> Self {
+        let mut state = vec![0; n as usize];
+        state[0] = k;
+        Self {
+            state,
+            k,
+            first_step: false,
+        }
+    }
+
+    fn next(&mut self) -> Option<&[u64]> {
+        if !self.first_step {
+            self.first_step = true;
+            return Some(&self.state);
+        }
+
+        if self.state.is_empty() || *self.state.last().unwrap() == self.k {
+            return None;
+        }
+
+        let n = self.state.len();
+
+        // Among the first n-1 elements, find last one that is not
+        // zero → we can distribute one further up.
+        let i = (0..n - 1).rposition(|i| self.state[i] > 0)?;
+        self.state[i] -= 1;
+
+        if i + 1 == n - 1 {
+            self.state[i + 1] += 1;
+        } else {
+            // If i+1 is not n-1 we moved the cummulative value from
+            // the last bucket to i+1, so we need to drain the last
+            // bucket.
+            self.state[i + 1] = self.state[n - 1] + 1;
+            self.state[n - 1] = 0;
+        }
+
+        Some(&self.state)
+    }
+}
+
+fn expand_multinomial(sum: &NormExpr, overall_factors: Option<&[&NormExpr]>, n: u64) -> RawExpr {
+    let ExprKind::Node { args, .. } = sum.kind() else {
+        unreachable!()
+    };
+
+    let k = args.len() as u64;
+
+    let mut bin_gen = BinomialGenerator::default();
+    let mut new_args = Vec::with_capacity(
+        bin_gen
+            .get((n + k - 1) as u64, n)
+            .to_u64()
+            .expect("Number of terms exceeds capabilities.") as usize,
+    );
+
+    let mut combinations = CombinationGenerator::new(k, n);
+    while let Some(comb) = combinations.next() {
+        let mut coeff = BigInteger::one();
+
+        let mut n = n;
+        for ki in comb {
+            coeff *= bin_gen.get(n, *ki as u64);
+            n -= *ki;
+        }
+
+        let mut factors = if let Some(overall_factors) = overall_factors {
+            let mut factors = Vec::with_capacity((k + 2) as usize + overall_factors.len());
+            factors.extend(overall_factors.iter().map(|&e| e.clone().into_raw()));
+            factors
+        } else {
+            Vec::with_capacity((k + 2) as usize)
+        };
+        factors.push(RawExpr::new_atom(Atom::number(Number::Integer(coeff))));
+
+        for (factor, &exponent) in args.iter().zip(comb) {
+            factors.push(RawExpr::new_binary_node(
+                POW_HEAD,
+                factor.clone().into_raw(),
+                RawExpr::new_number_integer(exponent as i64),
+            ));
+        }
+
+        new_args.push(RawExpr::new_node(MUL_HEAD, factors));
+    }
+
+    RawExpr::new_node(ADD_HEAD, new_args)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_expand_multinomials() {
+        let expanded = expand_multinomial(&norm_expr!(a + b + c), None, 4).normalize();
+        let expected = norm_expr!(
+            a ^ 4 + 4 * a
+                ^ 3 * b + 6 * a
+                ^ 2 * b
+                ^ 2 + 4 * a * b
+                ^ 3 + b
+                ^ 4 + 4 * a
+                ^ 3 * c + 12 * a
+                ^ 2 * b * c + 12 * a * b
+                ^ 2 * c + 4 * b
+                ^ 3 * c + 6 * a
+                ^ 2 * c
+                ^ 2 + 12 * a * b * c
+                ^ 2 + 6 * b
+                ^ 2 * c
+                ^ 2 + 4 * a * c
+                ^ 3 + 4 * b * c
+                ^ 3 + c
+                ^ 4
+        );
+
+        assert_eq!(expanded, expected)
+    }
 }

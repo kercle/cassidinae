@@ -56,6 +56,12 @@ impl ops::Mul for &BigInteger {
     }
 }
 
+impl ops::MulAssign<&BigInteger> for BigInteger {
+    fn mul_assign(&mut self, other: &BigInteger) {
+        *self = &*self * other;
+    }
+}
+
 impl ops::Neg for &BigInteger {
     type Output = BigInteger;
 

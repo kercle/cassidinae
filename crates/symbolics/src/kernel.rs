@@ -1,4 +1,4 @@
-use std::rc::Rc;
+use std::{cell::RefCell, rc::Rc};
 
 use numbers::alg::binomial::BinomialGenerator;
 use parser::parse;
@@ -7,6 +7,12 @@ use crate::{
     builtins::{self, traits::BuiltIn},
     expr::{NormExpr, RawExpr},
 };
+
+pub type Shared<T> = Rc<RefCell<T>>;
+
+fn new_shared<T>(obj: T) -> Shared<T> {
+    Rc::new(RefCell::new(obj))
+}
 
 #[derive(Debug, Clone)]
 pub enum KernelError {
@@ -17,7 +23,7 @@ pub enum KernelError {
 pub struct Kernel {
     builtins: Vec<Box<dyn BuiltIn>>,
     auto_apply: Vec<usize>,
-    binomial_generator: Rc<BinomialGenerator>,
+    binomial_generator: Shared<BinomialGenerator>,
 }
 
 impl Default for Kernel {
@@ -25,7 +31,7 @@ impl Default for Kernel {
         let mut result = Self {
             builtins: Vec::new(),
             auto_apply: Vec::new(),
-            binomial_generator: Rc::new(BinomialGenerator::default()),
+            binomial_generator: new_shared(BinomialGenerator::default()),
         };
 
         result.register_initial_builtins();
@@ -44,7 +50,7 @@ impl Kernel {
             Box::new(builtins::simplify::Expand::new(
                 self.binomial_generator.clone(),
             )),
-            false,
+            true,
         );
     }
 
