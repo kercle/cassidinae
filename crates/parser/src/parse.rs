@@ -137,19 +137,28 @@ fn parse_signed_power(stream: &mut TokenStream) -> Result<ParserAst, ParseError>
 }
 
 fn parse_product(stream: &mut TokenStream) -> Result<ParserAst, ParseError> {
-    // <product> ::= <match_signed_power> { ("*"|"/") <match_signed_power> }*
+    // <product> ::= <signed_power> { ("*"|"/") <signed_power> }*
+    //               | <signed_power> { <signed_power> }*
 
     let mut result = parse_signed_power(stream)?;
 
     loop {
-        let c = stream.next_if_matches(|token| matches!(token, Token::Asterisk | Token::Slash));
+        let t = stream.next_if_matches(|token| matches!(token, Token::Asterisk | Token::Slash));
 
-        result = match c {
+        result = match t {
             Some(Token::Asterisk) => ParserAst::new_mul(result, parse_signed_power(stream)?),
             Some(Token::Slash) => ParserAst::new_div(result, parse_signed_power(stream)?),
             None => break,
             _ => unreachable!(),
         };
+    }
+
+    if matches!(
+        stream.peek_token(),
+        Some(Token::Identifier(_)) | Some(Token::Number(_)) | Some(Token::LeftParen)
+    ) {
+        // no explicit operator is interpreted as multiplication: 2 x = 2*x
+        return Ok(ParserAst::new_mul(result, parse_signed_power(stream)?));
     }
 
     Ok(result)
@@ -526,5 +535,38 @@ mod tests {
     fn test_parse_pattern() {
         let input = "a+r_^m_.";
         let _ast = parse(input).expect("Failed to parse block with nested expressions");
+    }
+
+    #[test]
+    fn test_parse_implicit_multiplication() {
+        let input = "2x";
+        let ast = parse(input).expect("Failed to parse block with nested expressions");
+
+        assert_eq!(
+            ast,
+            ParserAst::new_mul(ParserAst::from_i64(2), ParserAst::new_symbol("x")),
+        );
+
+        let input = "2(x+1)";
+        let ast = parse(input).expect("Failed to parse block with nested expressions");
+
+        assert_eq!(
+            ast,
+            ParserAst::new_mul(
+                ParserAst::from_i64(2),
+                ParserAst::new_add(ParserAst::new_symbol("x"), ParserAst::from_i64(1)),
+            ),
+        );
+
+        let input = "(x+1)2";
+        let ast = parse(input).expect("Failed to parse block with nested expressions");
+
+        assert_eq!(
+            ast,
+            ParserAst::new_mul(
+                ParserAst::new_add(ParserAst::new_symbol("x"), ParserAst::from_i64(1)),
+                ParserAst::from_i64(2),
+            ),
+        );
     }
 }
