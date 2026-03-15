@@ -4,6 +4,7 @@ use crate::{
     expr::{ExprKind, NormExpr},
     pattern::{
         PatternPredicate,
+        bit_mask::BitMaskArena,
         environment::Environment,
         program::{ArgPlan, InstrId, Instruction, Program, VarId},
         utils::MultisetMatchState,
@@ -26,7 +27,7 @@ enum FrameStack<'p, 's> {
     },
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 enum Frame<'p, 's> {
     Exec {
         instr: InstrId,
@@ -68,12 +69,70 @@ enum Frame<'p, 's> {
     },
 }
 
+impl<'p, 's> Frame<'p, 's> {
+    fn deep_clone(&self, bitmask_arena: &mut BitMaskArena) -> Self {
+        match self {
+            Frame::Exec { instr, subject } => Frame::Exec {
+                instr: *instr,
+                subject,
+            },
+            Frame::MatchSequence { instrs, subjects } => Frame::MatchSequence { instrs, subjects },
+            Frame::ResumeMatchSequence {
+                instrs,
+                subjects,
+                first_consume_count,
+                first_head_pattern,
+                first_bind,
+            } => Frame::ResumeMatchSequence {
+                instrs,
+                subjects,
+                first_consume_count: *first_consume_count,
+                first_head_pattern,
+                first_bind,
+            },
+            Frame::MatchMultiset {
+                instrs,
+                subjects,
+                state,
+            } => Frame::MatchMultiset {
+                instrs,
+                subjects,
+                state: state.deep_clone(bitmask_arena),
+            },
+            Frame::ResumeMatchMultiset {
+                instrs,
+                subjects,
+                state,
+                already_tried_count,
+            } => Frame::ResumeMatchMultiset {
+                instrs,
+                subjects,
+                state: state.deep_clone(bitmask_arena),
+                already_tried_count: *already_tried_count,
+            },
+            Frame::BindOne { bind_var, subject } => Frame::BindOne {
+                bind_var: *bind_var,
+                subject,
+            },
+            Frame::BindSeq { bind_var, subjects } => Frame::BindSeq {
+                bind_var: *bind_var,
+                subjects: subjects.clone(),
+            },
+            Frame::TestPredicate { subject, predicate } => Frame::TestPredicate {
+                subject,
+                predicate: *predicate,
+            },
+        }
+    }
+}
+
 pub struct Runtime<'p, 's> {
     program: &'p Program,
     environment: Environment<'p, 's>,
     frame_stack: Rc<FrameStack<'p, 's>>,
     choice_points: Vec<ChoicePoint<'p, 's>>,
     bind_stack: Vec<VarId>,
+    bitmask_arena: BitMaskArena,
 }
 
 impl<'p, 's> Runtime<'p, 's> {
@@ -90,6 +149,7 @@ impl<'p, 's> Runtime<'p, 's> {
             }),
             choice_points: Vec::new(),
             bind_stack: Vec::new(),
+            bitmask_arena: BitMaskArena::new(),
         }
     }
 
@@ -183,10 +243,16 @@ impl<'p, 's> Runtime<'p, 's> {
                         });
                     }
                     ArgPlan::Multiset(pattern_args) => {
+                        let state = MultisetMatchState::new(
+                            &mut self.bitmask_arena,
+                            pattern_args.len(),
+                            subject_args.len(),
+                        );
+
                         self.push_frame(Frame::MatchMultiset {
                             instrs: pattern_args.as_slice(),
                             subjects: subject_args,
-                            state: MultisetMatchState::new(pattern_args.len(), subject_args.len()),
+                            state,
                         });
                     }
                 }
@@ -460,20 +526,20 @@ impl<'p, 's> Runtime<'p, 's> {
         &mut self,
         instrs: &'p [InstrId],
         subjects: &'s [NormExpr],
-        mut state: MultisetMatchState,
+        state: MultisetMatchState,
         already_tried_count: usize,
     ) -> bool {
         // Get rid of all literals. If any literal in the pattern doesn't
         // match any subject we abort.
 
         for (instr_pos, &instr) in instrs.iter().enumerate() {
-            if !self.is_literal(instr) || state.is_instruction_set(instr_pos) {
+            if !self.is_literal(instr) || state.is_instruction_set(&self.bitmask_arena, instr_pos) {
                 continue;
             }
 
             let Some(subject_pos) = ('find_subject: {
                 for (subject_pos, subject) in subjects.iter().enumerate() {
-                    if state.is_subject_set(subject_pos) {
+                    if state.is_subject_set(&self.bitmask_arena, subject_pos) {
                         continue;
                     }
 
@@ -487,7 +553,7 @@ impl<'p, 's> Runtime<'p, 's> {
                 return false;
             };
 
-            state.set(instr_pos, subject_pos);
+            state.set(&mut self.bitmask_arena, instr_pos, subject_pos);
 
             self.schedule_bind_one_if_present(
                 self.program.instructions.get(instr).unwrap(),
@@ -495,13 +561,13 @@ impl<'p, 's> Runtime<'p, 's> {
             );
         }
 
-        if state.is_instructions_mask_full() {
+        if state.is_instructions_mask_full(&self.bitmask_arena) {
             // all instructions exhausted
-            return state.is_subjects_mask_full();
+            return state.is_subjects_mask_full(&self.bitmask_arena);
         }
 
         let Some(next_instr_pos) = state
-            .instructions_index_iter(true)
+            .instructions_index_iter(&self.bitmask_arena, true)
             .find(|pos| !self.is_variadic(*instrs.get(*pos).unwrap()))
         else {
             // There is possibly a variadic pattern left
@@ -511,23 +577,28 @@ impl<'p, 's> Runtime<'p, 's> {
 
         // among the unmatched subjects, take the one after `already_tried_count`
         // since they have already been tried in a previous choicepoint
-        let Some(next_subject_pos) = state.subject_index_iter(true).nth(already_tried_count) else {
+        let Some(next_subject_pos) = state
+            .subject_index_iter(&self.bitmask_arena, true)
+            .nth(already_tried_count)
+        else {
             return false;
         };
 
         // Optimization potential: check first if there are even
         // more subjects left to match before pushing choicepoint
         // For now, we just want to get it to work.
-        if already_tried_count + 1 < state.count_unmatched_subjects() {
+        if already_tried_count + 1 < state.count_unmatched_subjects(&self.bitmask_arena) {
+            let state = state.deep_clone(&mut self.bitmask_arena);
+
             self.push_choice_point(Frame::ResumeMatchMultiset {
                 instrs,
                 subjects,
-                state: state.clone(),
+                state,
                 already_tried_count: already_tried_count + 1,
             });
         }
 
-        state.set(next_instr_pos, next_subject_pos);
+        state.set(&mut self.bitmask_arena, next_instr_pos, next_subject_pos);
 
         self.push_frame(Frame::MatchMultiset {
             instrs,
@@ -550,17 +621,20 @@ impl<'p, 's> Runtime<'p, 's> {
         state: MultisetMatchState,
         _already_tried_count: usize, // for later use when implementing multiple variadics
     ) -> bool {
-        let unmatched_instr_count = state.count_unmatched_instructions();
+        let unmatched_instr_count = state.count_unmatched_instructions(&self.bitmask_arena);
 
         if unmatched_instr_count > 1 {
             todo!("More than one variadic pattern in Multiset is not supported yet.");
         }
 
         if unmatched_instr_count == 0 {
-            return state.is_subjects_mask_full();
+            return state.is_subjects_mask_full(&self.bitmask_arena);
         }
 
-        let Some(variadic_pos) = state.instructions_index_iter(true).next() else {
+        let Some(variadic_pos) = state
+            .instructions_index_iter(&self.bitmask_arena, true)
+            .next()
+        else {
             unreachable!()
         };
 
@@ -577,7 +651,7 @@ impl<'p, 's> Runtime<'p, 's> {
             todo!("Head patterns for variadics in multisets not supported yet");
         }
 
-        if state.count_unmatched_subjects() < min_len {
+        if state.count_unmatched_subjects(&self.bitmask_arena) < min_len {
             return false;
         }
 
@@ -586,7 +660,7 @@ impl<'p, 's> Runtime<'p, 's> {
                 .iter()
                 .enumerate()
                 .filter_map(|(p, e)| {
-                    if !state.is_subject_set(p) {
+                    if !state.is_subject_set(&self.bitmask_arena, p) {
                         Some(e)
                     } else {
                         None
@@ -684,7 +758,7 @@ impl<'p, 's> Runtime<'p, 's> {
         match self.frame_stack.as_ref() {
             Empty => None,
             More { frame, next } => {
-                let frame = frame.clone();
+                let frame = frame.deep_clone(&mut self.bitmask_arena);
                 self.frame_stack = next.clone();
                 Some(frame)
             }
