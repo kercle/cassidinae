@@ -56,16 +56,16 @@ type ExprId = u32;
 type ArgsId = u32;
 
 #[derive(Clone, PartialEq, Eq, Hash)]
-enum ExprObj {
+enum ExprCell {
     Atom(Atom),
-    Node { head: ExprId, args: ArgsId },
+    Node { head_id: ExprId, args_id: ArgsId },
 }
 
 struct ExprInterner {
-    objs: Vec<ExprObj>,
+    objs: Vec<ExprCell>,
     args: Vec<Vec<ExprId>>,
 
-    obj_map: HashMap<ExprObj, ExprId>,
+    obj_map: HashMap<ExprCell, ExprId>,
     args_map: HashMap<Vec<ExprId>, ArgsId>,
 }
 
@@ -79,6 +79,14 @@ impl ExprInterner {
         }
     }
 
+    fn get_obj(&self, id: ExprId) -> &ExprCell {
+        &self.objs[id as usize]
+    }
+
+    fn get_args(&self, id: ArgsId) -> &[ExprId] {
+        &self.args[id as usize]
+    }
+
     fn intern_args(&mut self, args: Vec<ExprId>) -> ArgsId {
         if let Some(&id) = self.args_map.get(&args) {
             return id;
@@ -89,7 +97,7 @@ impl ExprInterner {
         id
     }
 
-    fn intern(&mut self, obj: ExprObj) -> ExprId {
+    fn intern(&mut self, obj: ExprCell) -> ExprId {
         if let Some(&id) = self.obj_map.get(&obj) {
             return id;
         }
@@ -100,14 +108,14 @@ impl ExprInterner {
     }
 
     fn atom(&mut self, a: Atom) -> ExprId {
-        self.intern(ExprObj::Atom(a))
+        self.intern(ExprCell::Atom(a))
     }
 
     fn node(&mut self, head: ExprId, args: Vec<ExprId>) -> ExprId {
         let args_id = self.intern_args(args);
-        self.intern(ExprObj::Node {
-            head,
-            args: args_id,
+        self.intern(ExprCell::Node {
+            head_id: head,
+            args_id,
         })
     }
 
@@ -155,6 +163,23 @@ impl<'a, S> ExprHandle<'a, S> {
     fn id(&self) -> ExprId {
         self.root
     }
+
+    fn materialize(&self) -> Expr<S> {
+        match self.interner.get_obj(self.id()) {
+            ExprCell::Atom(atom) => Expr::new_unchecked(ExprKind::Atom {
+                entry: atom.clone(),
+            }),
+            ExprCell::Node { head_id, args_id } => Expr::new_unchecked(ExprKind::Node {
+                head: Box::new(Self::new(self.interner, *head_id).materialize()),
+                args: self
+                    .interner
+                    .get_args(*args_id)
+                    .iter()
+                    .map(|a| Self::new(self.interner, *a).materialize())
+                    .collect(),
+            }),
+        }
+    }
 }
 
 enum ExprView<'a, S> {
@@ -168,8 +193,11 @@ enum ExprView<'a, S> {
 impl<'a, S: Copy> ExprHandle<'a, S> {
     fn view(self) -> ExprView<'a, S> {
         match &self.interner.objs[self.root as usize] {
-            ExprObj::Atom(a) => ExprView::Atom(a),
-            ExprObj::Node { head, args } => ExprView::Node {
+            ExprCell::Atom(a) => ExprView::Atom(a),
+            ExprCell::Node {
+                head_id: head,
+                args_id: args,
+            } => ExprView::Node {
                 head: ExprHandle::new(self.interner, *head),
                 args: &self.interner.args[*args as usize],
             },
@@ -178,8 +206,8 @@ impl<'a, S: Copy> ExprHandle<'a, S> {
 
     fn children(self) -> impl Iterator<Item = ExprHandle<'a, S>> {
         let args = match &self.interner.objs[self.root as usize] {
-            ExprObj::Node { args, .. } => &self.interner.args[*args as usize],
-            ExprObj::Atom(_) => &[] as &[ExprId],
+            ExprCell::Node { args_id: args, .. } => &self.interner.args[*args as usize],
+            ExprCell::Atom(_) => &[] as &[ExprId],
         };
         args.iter()
             .map(move |&id| ExprHandle::new(self.interner, id))
